@@ -8,8 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
-dist-ssr
+Frontend/admin/node_modules
+Frontend/admin/dist
+Frontend/admin/dist-ssr
+.vite
 *.local
 playwright-report
 test-results

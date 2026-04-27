@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tiktok-app-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tiktok_app
+      POSTGRES_USER: tiktok_app
+      POSTGRES_PASSWORD: tiktok_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tiktok_app -d tiktok_app"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./Backend
+    container_name: tiktok-app-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tiktok_app
+      SPRING_DATASOURCE_USERNAME: tiktok_app
+      SPRING_DATASOURCE_PASSWORD: tiktok_app
+      APP_ADMIN_EMAIL: admin@tiktokapp.local
+      APP_ADMIN_PASSWORD: admin123
+      APP_ADMIN_NAME: Video Ops Admin
+      APP_JWT_SECRET: change-this-secret-before-production-1234567890
+      APP_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.11.100:5174
+      APP_SECURE_COOKIES: "false"
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

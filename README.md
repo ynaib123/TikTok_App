@@ -1,80 +1,27 @@
-# MyShop Client Desktop Frontend
+# TikTok App
 
-Cette application correspond au storefront desktop/client.
+Organisation actuelle :
 
-Arborescence cible du projet :
+- `Backend/` : API Spring Boot pour le login admin
+- `Frontend/admin/` : backoffice React
+- `docker-compose.yml` : PostgreSQL + backend Spring
 
-- `clientdesktop/frontend/` : storefront client
-- `admin/frontend/` : back-office admin
-- `clientmobile/frontend/` : future application mobile
-- `backend/` : API Spring Boot
-
-## Stack
-
-- React 19
-- React Router 7
-- Vite 7
-- ESLint 9
-
-## Lancer en local
+## Lancement backend + base
 
 ```bash
-cd clientdesktop/frontend
+cd C:\TikTok_App
+docker compose up --build -d
+```
+
+## Lancement du backoffice admin
+
+```bash
+cd C:\TikTok_App\Frontend\admin
 npm install
 npm run dev
 ```
 
-Storefront : `http://localhost:5173`
+## Notes
 
-## Scripts
-
-Storefront :
-
-```bash
-npm run dev
-npm run build
-npm run lint
-```
-
-## Auth
-
-Le frontend gère :
-
-- access token Bearer
-- refresh token
-- bootstrap de session au chargement
-- refresh automatique sur expiration ou `401`
-
-Endpoints attendus :
-
-```text
-POST /api/clients/login
-POST /api/clients/refresh
-POST /api/clients/logout
-POST /api/admins/login
-POST /api/admins/refresh
-POST /api/admins/logout
-```
-
-## Variables d’environnement
-
-Storefront :
-
-```text
-VITE_API_BASE_URL=/api
-VITE_ADMIN_APP_URL=http://localhost:5174
-```
-
-## Architecture
-
-```text
-src/
-├── components/
-├── contexts/
-├── hooks/
-├── pages/
-├── services/
-├── styles/
-└── utils/
-
-```
+- Les boutons `n8n` du dashboard pointent vers les webhooks de production, mais les workflows doivent etre **actifs** dans `n8n`.
+- Le login admin utilise maintenant une vraie base PostgreSQL Docker.
