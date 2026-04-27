@@ -5,17 +5,32 @@ const ADMIN_REMEMBER_ME_KEY = 'tiktok_app_admin_remember_me'
 
 let sessionState = readStoredSession()
 
-function resolveStorage() {
+function getStorageArea(name) {
   if (typeof window === 'undefined') return null
-  const rememberMe = window.localStorage.getItem(ADMIN_REMEMBER_ME_KEY)
+  const candidate = window[name]
+  if (!candidate) return null
+  const hasStorageApi = typeof candidate.getItem === 'function'
+    && typeof candidate.setItem === 'function'
+    && typeof candidate.removeItem === 'function'
+  return hasStorageApi ? candidate : null
+}
+
+function resolveStorage() {
+  const localStorageArea = getStorageArea('localStorage')
+  const sessionStorageArea = getStorageArea('sessionStorage')
+  if (!localStorageArea && !sessionStorageArea) return null
+
+  const rememberMe = localStorageArea?.getItem(ADMIN_REMEMBER_ME_KEY)
   if (rememberMe === 'false') {
-    return window.sessionStorage
+    return sessionStorageArea || localStorageArea
   }
-  return window.localStorage
+  return localStorageArea || sessionStorageArea
 }
 
 function readStoredSession() {
-  if (typeof window === 'undefined') {
+  const localStorageArea = getStorageArea('localStorage')
+  const sessionStorageArea = getStorageArea('sessionStorage')
+  if (!localStorageArea && !sessionStorageArea) {
     return {
       token: null,
       expiresAt: null,
@@ -24,8 +39,8 @@ function readStoredSession() {
     }
   }
 
-  const fromLocal = window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY)
-  const fromSession = window.sessionStorage.getItem(ADMIN_SESSION_STORAGE_KEY)
+  const fromLocal = localStorageArea?.getItem(ADMIN_SESSION_STORAGE_KEY)
+  const fromSession = sessionStorageArea?.getItem(ADMIN_SESSION_STORAGE_KEY)
   const raw = fromLocal || fromSession
 
   if (!raw) {
@@ -56,10 +71,12 @@ function readStoredSession() {
 }
 
 function persistSession() {
-  if (typeof window === 'undefined') return
+  const localStorageArea = getStorageArea('localStorage')
+  const sessionStorageArea = getStorageArea('sessionStorage')
+  if (!localStorageArea && !sessionStorageArea) return
 
-  window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY)
-  window.sessionStorage.removeItem(ADMIN_SESSION_STORAGE_KEY)
+  localStorageArea?.removeItem(ADMIN_SESSION_STORAGE_KEY)
+  sessionStorageArea?.removeItem(ADMIN_SESSION_STORAGE_KEY)
 
   if (!sessionState.token) return
 

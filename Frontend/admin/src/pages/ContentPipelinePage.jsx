@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import AdminShell from '../components/AdminShell'
 import { fetchContentIdeas } from '../services/videoOpsSupabase'
@@ -11,13 +11,8 @@ export default function ContentPipelinePage() {
 
   const [selectedId, setSelectedId] = useState(null)
 
-  useEffect(() => {
-    if (!selectedId && contentIdeas[0]?.id) {
-      setSelectedId(contentIdeas[0].id)
-    }
-  }, [contentIdeas, selectedId])
-
   const selectedItem = contentIdeas.find((item) => item.id === selectedId) || contentIdeas[0]
+  const showEmptyState = !isLoading && !error && !contentIdeas.length
 
   return (
     <div className="admin-page video-ops-page">
@@ -41,6 +36,15 @@ export default function ContentPipelinePage() {
                 <h2>content_ideas</h2>
                 <span>{contentIdeas.length} rows</span>
               </div>
+              {showEmptyState ? (
+                <div className="video-empty-state">
+                  <p>Aucune ligne n est visible depuis le backoffice.</p>
+                  <p>
+                    Si `content_ideas` contient deja des donnees dans Supabase, verifie les policies RLS
+                    et la permission `SELECT` pour le role `anon` sur `public.content_ideas`.
+                  </p>
+                </div>
+              ) : null}
               <div className="video-table-wrap">
                 <table className="video-table">
                   <thead>

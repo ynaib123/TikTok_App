@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
 const DEFAULT_CSRF_HEADER = 'X-XSRF-TOKEN'
 const CSRF_COOKIE_NAME = 'XSRF-TOKEN'
+const USE_ADMIN_CSRF = import.meta.env?.VITE_USE_ADMIN_CSRF !== 'false'
 
 let csrfTokenCache = null
 let csrfHeaderNameCache = DEFAULT_CSRF_HEADER
@@ -43,9 +44,9 @@ async function parseCsrfResponse(response) {
   }
 }
 
-function resolveTokenFromResponse(responseData) {
+function resolveTokenFromResponse(responseData, existingCookieToken = null) {
   const cookieToken = readCookieValue(CSRF_COOKIE_NAME)
-  return cookieToken || responseData?.token || null
+  return responseData?.token || cookieToken || existingCookieToken || null
 }
 
 export function clearAdminCsrfTokenCache() {
@@ -55,6 +56,13 @@ export function clearAdminCsrfTokenCache() {
 }
 
 export async function fetchAdminCsrfToken({ force = false } = {}) {
+  if (!USE_ADMIN_CSRF) {
+    return {
+      headerName: DEFAULT_CSRF_HEADER,
+      token: '',
+    }
+  }
+
   if (!force && csrfTokenCache) {
     return {
       headerName: csrfHeaderNameCache,
@@ -67,29 +75,43 @@ export async function fetchAdminCsrfToken({ force = false } = {}) {
   }
 
   csrfRequestPromise = (async () => {
-    const response = await fetch(buildUrl('/admins/csrf-token'), {
-      method: 'GET',
-      credentials: 'include',
-    })
+    try {
+      const existingCookieToken = readCookieValue(CSRF_COOKIE_NAME)
+      const response = await fetch(buildUrl('/admins/csrf-token'), {
+        method: 'GET',
+        credentials: 'include',
+      })
 
-    if (!response.ok) {
-      throw new Error('Impossible de recuperer la protection CSRF admin.')
-    }
+      if (!response.ok) {
+        return {
+          headerName: DEFAULT_CSRF_HEADER,
+          token: '',
+        }
+      }
 
-    const responseData = await parseCsrfResponse(response)
-    const token = resolveTokenFromResponse(responseData)
-    const headerName = responseData?.headerName || DEFAULT_CSRF_HEADER
+      const responseData = await parseCsrfResponse(response)
+      const token = resolveTokenFromResponse(responseData, existingCookieToken)
+      const headerName = responseData?.headerName || DEFAULT_CSRF_HEADER
 
-    if (!token) {
-      throw new Error('Impossible de recuperer la protection CSRF admin.')
-    }
+      if (!token) {
+        return {
+          headerName: DEFAULT_CSRF_HEADER,
+          token: '',
+        }
+      }
 
-    csrfTokenCache = token
-    csrfHeaderNameCache = headerName
+      csrfTokenCache = token
+      csrfHeaderNameCache = headerName
 
-    return {
-      headerName,
-      token,
+      return {
+        headerName,
+        token,
+      }
+    } catch {
+      return {
+        headerName: DEFAULT_CSRF_HEADER,
+        token: '',
+      }
     }
   })()
 
@@ -104,7 +126,9 @@ export async function attachAdminCsrfHeader(headers) {
   const resolvedHeaders = headers instanceof Headers ? headers : new Headers(headers || {})
 
   const { headerName, token } = await fetchAdminCsrfToken()
-  resolvedHeaders.set(headerName || DEFAULT_CSRF_HEADER, token)
+  if (token) {
+    resolvedHeaders.set(headerName || DEFAULT_CSRF_HEADER, token)
+  }
 
   return resolvedHeaders
 }

@@ -7,6 +7,7 @@ export default function TikTokAccountsPage() {
     queryKey: ['tiktok-accounts'],
     queryFn: fetchTikTokAccounts,
   })
+  const showEmptyState = !isLoading && !error && !tiktokAccounts.length
 
   return (
     <div className="admin-page video-ops-page">
@@ -30,6 +31,15 @@ export default function TikTokAccountsPage() {
                 <h2>tiktok_accounts</h2>
                 <span>{tiktokAccounts.length} connected account</span>
               </div>
+              {showEmptyState ? (
+                <div className="video-empty-state">
+                  <p>Aucun compte n est visible depuis le backoffice.</p>
+                  <p>
+                    Si la table n est pas vide dans Supabase, verifie les policies RLS et la permission
+                    `SELECT` pour le role `anon` sur `public.tiktok_accounts`.
+                  </p>
+                </div>
+              ) : null}
               <div className="video-table-wrap">
                 <table className="video-table">
                   <thead>

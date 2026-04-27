@@ -4,9 +4,11 @@ import { clearAdminCsrfTokenCache, fetchAdminCsrfToken } from './adminCsrfServic
 
 const ADMIN_REMEMBER_ME_KEY = 'tiktok_app_admin_remember_me'
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
-const USE_MOCK_ADMIN_AUTH = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH !== 'false'
+const USE_MOCK_ADMIN_AUTH = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH === 'true'
 const MOCK_ADMIN_EMAIL = 'admin@tiktokapp.local'
 const MOCK_ADMIN_PASSWORD = 'admin123'
+
+let refreshAdminSessionPromise = null
 
 function buildUrl(endpoint) {
   return `${API_BASE_URL}${endpoint}`
@@ -30,39 +32,61 @@ function parseJsonSafely(text) {
   }
 }
 
-async function requestWithOptionalCsrf(endpoint, { method = 'GET', body = null, includeCsrf = false } = {}) {
-  const headers = new Headers()
-  if (body !== null) {
-    headers.set('Content-Type', 'application/json')
+async function requestWithOptionalCsrf(endpoint, {
+  method = 'GET',
+  body = null,
+  includeCsrf = false,
+  retryOnForbiddenWithFreshCsrf = false,
+} = {}) {
+  const sendRequest = async ({ forceCsrfRefresh = false } = {}) => {
+    const headers = new Headers()
+    if (body !== null) {
+      headers.set('Content-Type', 'application/json')
+    }
+
+    if (includeCsrf) {
+      const { headerName, token } = await fetchAdminCsrfToken({ force: forceCsrfRefresh })
+      headers.set(headerName, token)
+    }
+
+    const response = await fetch(buildUrl(endpoint), {
+      method,
+      headers,
+      credentials: 'include',
+      body: body === null ? undefined : JSON.stringify(body),
+    })
+
+    const responseText = await response.text()
+    const responseData = parseJsonSafely(responseText)
+
+    if (!response.ok) {
+      const error = new Error(
+        responseData?.message
+        || responseData?.error
+        || `Erreur HTTP ${response.status}`
+      )
+      error.status = response.status
+      error.data = responseData
+      throw error
+    }
+
+    return responseData
   }
 
-  if (includeCsrf) {
-    const { headerName, token } = await fetchAdminCsrfToken()
-    headers.set(headerName, token)
-  }
+  try {
+    return await sendRequest()
+  } catch (error) {
+    if (
+      retryOnForbiddenWithFreshCsrf
+      && includeCsrf
+      && error?.status === 403
+    ) {
+      clearAdminCsrfTokenCache()
+      return sendRequest({ forceCsrfRefresh: true })
+    }
 
-  const response = await fetch(buildUrl(endpoint), {
-    method,
-    headers,
-    credentials: 'include',
-    body: body === null ? undefined : JSON.stringify(body),
-  })
-
-  const responseText = await response.text()
-  const responseData = parseJsonSafely(responseText)
-
-  if (!response.ok) {
-    const error = new Error(
-      responseData?.message
-      || responseData?.error
-      || `Erreur HTTP ${response.status}`,
-    )
-    error.status = response.status
-    error.data = responseData
     throw error
   }
-
-  return responseData
 }
 
 async function loginAdminWithMock(email, motDePasse, rememberMe = true) {
@@ -89,7 +113,7 @@ async function loginAdminWithMock(email, motDePasse, rememberMe = true) {
 }
 
 export function getAdminRememberPreference() {
-  if (typeof window === 'undefined') return true
+  if (typeof window === 'undefined' || !window.localStorage) return true
   const storedValue = window.localStorage.getItem(ADMIN_REMEMBER_ME_KEY)
   if (storedValue === 'false') return false
   if (storedValue === 'true') return true
@@ -97,7 +121,7 @@ export function getAdminRememberPreference() {
 }
 
 export function setAdminRememberPreference(rememberMe) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || !window.localStorage) return
   window.localStorage.setItem(ADMIN_REMEMBER_ME_KEY, rememberMe ? 'true' : 'false')
 }
 
@@ -114,6 +138,7 @@ export async function loginAdmin(email, motDePasse, rememberMe = true) {
     method: 'POST',
     body: { email, motDePasse, rememberMe },
     includeCsrf: true,
+    retryOnForbiddenWithFreshCsrf: true,
   })
 
   return applyAdminAuthResponse(responseData)
@@ -126,20 +151,31 @@ export async function refreshAdminSession() {
     throw new Error('Aucune session admin persistante')
   }
 
-  try {
-    clearAdminCsrfTokenCache()
-    const responseData = await requestWithOptionalCsrf('/admins/refresh', {
-      method: 'POST',
-      body: {},
-      includeCsrf: true,
-    })
-    clearAdminQueryCache()
-    return applyAdminAuthResponse(responseData)
-  } catch (error) {
-    clearAdminQueryCache()
-    clearAdminSession()
-    throw error
+  if (!refreshAdminSessionPromise) {
+    refreshAdminSessionPromise = (async () => {
+      try {
+        clearAdminCsrfTokenCache()
+        const responseData = await requestWithOptionalCsrf('/admins/refresh', {
+          method: 'POST',
+          body: {},
+          includeCsrf: true,
+        })
+        clearAdminQueryCache()
+        return applyAdminAuthResponse(responseData)
+      } catch (error) {
+        clearAdminQueryCache()
+        clearAdminSession()
+        if (Number(error?.status) === 401 || Number(error?.status) === 403) {
+          throw new Error('Aucune session admin persistante')
+        }
+        throw error
+      } finally {
+        refreshAdminSessionPromise = null
+      }
+    })()
   }
+
+  return refreshAdminSessionPromise
 }
 
 export async function logoutAdminSession() {
@@ -156,6 +192,7 @@ export async function logoutAdminSession() {
       method: 'POST',
       body: {},
       includeCsrf: true,
+      retryOnForbiddenWithFreshCsrf: true,
     })
   } finally {
     clearAdminCsrfTokenCache()

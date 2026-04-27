@@ -65,8 +65,22 @@ export async function fetchDashboardData() {
 
   if (!ideas.length) {
     return {
-      stats: mockDashboardStats,
-      groups: mockStatusGroups,
+      stats: isSupabaseConfigured && supabase
+        ? [
+            { label: 'Content Ideas', value: '0', tone: 'neutral' },
+            { label: 'Renders In Progress', value: '0', tone: 'accent' },
+            { label: 'Ready To Publish', value: '0', tone: 'success' },
+            { label: 'Manual Upload Queue', value: '0', tone: 'warning' },
+          ]
+        : mockDashboardStats,
+      groups: isSupabaseConfigured && supabase
+        ? [
+            { label: 'Queued', value: 0 },
+            { label: 'Rendering', value: 0 },
+            { label: 'Ready', value: 0 },
+            { label: 'Published', value: 0 },
+          ]
+        : mockStatusGroups,
     }
   }
 
@@ -98,21 +112,34 @@ export async function fetchManualActions() {
 
   const { data, error } = await supabase
     .from('content_ideas')
-    .select('id, topic, shotstack_url, tiktok_upload_url, tiktok_upload_status, publish_status')
-    .in('publish_status', ['draft', 'uploading', 'published'])
+    .select('id, topic, shotstack_url, tiktok_upload_url, tiktok_upload_status, publish_status, final_video_status, shotstack_status')
     .order('id', { ascending: false })
-    .limit(25)
+    .limit(50)
 
   if (error) throw error
 
-  return (data || []).map((row) => ({
+  const rows = (data || [])
+    .filter((row) => (
+      Boolean(row.shotstack_url)
+      || Boolean(row.tiktok_upload_url)
+      || row.final_video_status === 'ready'
+      || row.publish_status === 'uploading'
+      || row.publish_status === 'published'
+    ))
+    .map((row) => ({
     id: row.id,
     topic: row.topic || '',
     shotstackUrl: row.shotstack_url || '',
     uploadUrl: row.tiktok_upload_url || '',
-    uploadStatus: row.tiktok_upload_status || 'pending',
+    uploadStatus: row.tiktok_upload_status || (row.tiktok_upload_url ? 'init_done' : 'pending_init_publish'),
     publishStatus: row.publish_status || 'draft',
+    finalVideoStatus: row.final_video_status || 'unknown',
+    shotstackStatus: row.shotstack_status || 'unknown',
   }))
+
+  // If Supabase is configured, surface the real state instead of falling back
+  // to placeholder rows that can never be uploaded successfully.
+  return rows.length ? rows : []
 }
 
 function ensureSupabaseAvailable() {

@@ -70,6 +70,7 @@ function createHttpError(parsed) {
   const message =
     parsed?.data?.message
     || parsed?.data?.error
+    || parsed?.data?.details
     || `Erreur HTTP ${parsed?.status ?? 'inconnue'}`
 
   const error = new Error(message)
@@ -139,7 +140,7 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
   } catch (error) {
     if (error instanceof TypeError && String(error.message || '').toLowerCase().includes('fetch')) {
       throw new Error(
-        `Impossible de contacter le serveur admin. Vérifiez que le backend tourne et que VITE_API_BASE_URL pointe vers ${API_BASE_URL}.`
+        `Impossible de contacter le serveur admin. Verifiez que le backend tourne et que VITE_API_BASE_URL pointe vers ${API_BASE_URL}.`
       )
     }
 

@@ -124,6 +124,48 @@ test('loginAdmin persists remember preference and hydrates admin session', async
   assert.equal(getAdminQueryData(['products']), undefined)
 })
 
+test('loginAdmin uses the freshly issued csrf token instead of a stale cookie token', async () => {
+  installWindow()
+  installDocument('XSRF-TOKEN=stale-csrf-token')
+
+  const calls = []
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options })
+
+    if (calls.length === 1) {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: {
+          cookie: 'XSRF-TOKEN=fresh-csrf-token',
+        },
+      })
+
+      return createMockResponse({
+        data: {
+          token: 'csrf-body-token',
+          headerName: 'X-XSRF-TOKEN',
+        },
+      })
+    }
+
+    assert.equal(options.headers.get('X-XSRF-TOKEN'), 'csrf-body-token')
+    return createMockResponse({
+      data: {
+        token: 'login-token',
+        expiresInSeconds: 1800,
+        role: 'ADMIN',
+        admin: { email: 'admin@myshop.com' },
+      },
+    })
+  }
+
+  const session = await loginAdmin('admin@myshop.com', 'secret', true)
+
+  assert.equal(calls[0].url, '/api/admins/csrf-token')
+  assert.equal(calls[1].url, '/api/admins/login')
+  assert.equal(session.token, 'login-token')
+})
+
 test('refreshAdminSession deduplicates concurrent refresh requests', async () => {
   installWindow()
   installDocument()
@@ -276,7 +318,7 @@ test('logoutAdminSession refreshes the CSRF token and retries once after a forbi
     }
 
     if (calls.length === 2) {
-      assert.equal(options.headers.get('X-XSRF-TOKEN'), 'stale-csrf-token')
+      assert.equal(options.headers.get('X-XSRF-TOKEN'), 'csrf-body-token')
       Object.defineProperty(globalThis, 'document', {
         configurable: true,
         value: {
@@ -299,7 +341,7 @@ test('logoutAdminSession refreshes the CSRF token and retries once after a forbi
       })
     }
 
-    assert.equal(options.headers.get('X-XSRF-TOKEN'), 'fresh-csrf-token')
+    assert.equal(options.headers.get('X-XSRF-TOKEN'), 'csrf-body-token-refreshed')
     return createMockResponse({
       data: { message: 'Déconnecté' },
     })
