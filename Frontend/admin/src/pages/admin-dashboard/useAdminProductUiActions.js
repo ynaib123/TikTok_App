@@ -110,7 +110,7 @@ export default function useAdminProductUiActions({
     if (importFiles.length === 0) {
       setProductImportModalState((prev) => ({
         ...prev,
-        error: "Selectionnez entre 1 et 3 fichiers CSV ou Excel avant de lancer l'import.",
+        error: "Selectionnez entre 1 et 3 fichiers CSV avant de lancer l'import.",
       }))
       return
     }

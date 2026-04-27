@@ -1,13 +1,3 @@
-let xlsxModulePromise = null
-
-export function preloadProductImportModule() {
-  if (!xlsxModulePromise) {
-    xlsxModulePromise = import('xlsx')
-  }
-
-  return xlsxModulePromise
-}
-
 function parseCsvLine(line = '') {
   const cells = []
   let current = ''
@@ -71,7 +61,7 @@ async function readCsvRows(file) {
 export async function readProductImportRows(file) {
   const importFile = file || null
   if (!importFile) {
-    throw new Error("Selectionnez un fichier CSV ou Excel avant de lancer l'import.")
+    throw new Error("Selectionnez un fichier CSV avant de lancer l'import.")
   }
 
   const fileName = String(importFile?.name || '').trim().toLowerCase()
@@ -79,13 +69,5 @@ export async function readProductImportRows(file) {
     return readCsvRows(importFile)
   }
 
-  const XLSX = await preloadProductImportModule()
-  const workbook = XLSX.read(await importFile.arrayBuffer(), { type: 'array' })
-  const firstSheetName = workbook.SheetNames[0]
-
-  if (!firstSheetName) {
-    throw new Error('Le fichier ne contient aucune feuille exploitable.')
-  }
-
-  return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: '' })
+  throw new Error("Le format Excel n'est plus pris en charge. Utilisez un fichier CSV.")
 }

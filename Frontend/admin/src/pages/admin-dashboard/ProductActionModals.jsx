@@ -262,7 +262,7 @@ function ProductActionModalsComponent({
                 name="productImportFile"
                 type="file"
                 multiple
-                accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                accept=".csv,text/csv"
                 onChange={handleProductImportFileChange}
                 disabled={isImportActionInProgress}
               />

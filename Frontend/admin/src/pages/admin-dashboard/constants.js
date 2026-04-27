@@ -75,41 +75,6 @@ export const CATEGORY_PAGE_SIZE_OPTIONS = [
   { value: 48, label: '48' },
 ]
 
-export const CLIENT_DIRECTORY_PREFERENCES_STORAGE_KEY = 'admin_client_directory_preferences'
-export const CLIENT_SELECTION_STORAGE_KEY = 'admin_client_selection'
-export const ADMIN_SESSION_ACTIVITY_STORAGE_KEY = 'admin_session_activity'
-
-export const CLIENT_SORT_OPTIONS = [
-  { value: 'activity_desc', label: 'Activite recente' },
-  { value: 'name_asc', label: 'Nom A-Z' },
-  { value: 'name_desc', label: 'Nom Z-A' },
-  { value: 'orders_desc', label: 'Plus de commandes' },
-]
-
-export const CLIENT_PAGE_SIZE_OPTIONS = [
-  { value: 12, label: '12' },
-  { value: 24, label: '24' },
-  { value: 48, label: '48' },
-]
-
-export const CLIENT_ACCOUNT_FILTER_OPTIONS = [
-  { value: 'all', label: 'Tous les comptes' },
-  { value: 'active', label: 'Comptes actifs' },
-  { value: 'inactive', label: 'Comptes suspendus' },
-]
-
-export const CLIENT_CONNECTION_FILTER_OPTIONS = [
-  { value: 'all', label: 'Toutes presences' },
-  { value: 'online', label: 'En ligne' },
-  { value: 'offline', label: 'Hors ligne' },
-]
-
-export const CLIENT_VERIFICATION_FILTER_OPTIONS = [
-  { value: 'all', label: 'Tous les emails' },
-  { value: 'verified', label: 'Emails verifies' },
-  { value: 'pending', label: 'Emails en attente' },
-]
-
 export const PRODUCT_SELECTION_STORAGE_KEY = 'admin_product_selection'
 
 export const EMPTY_PRODUCT_FORM = {
