@@ -1,0 +1,189 @@
+.admin-console-page {
+  background: #1f1f1f;
+}
+
+.admin-navbar {
+  border-bottom: 1px solid var(--admin-border-subtle);
+  background:
+    radial-gradient(circle at top left, rgba(255, 168, 76, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 195, 111, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(17, 17, 17, 0.96) 0%, rgba(22, 22, 22, 0.94) 100%);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.admin-navbar-presence-indicator {
+  background: #6ee7a8;
+  box-shadow:
+    0 0 0 3px rgba(110, 231, 168, 0.18),
+    0 0 14px rgba(110, 231, 168, 0.45);
+}
+
+.admin-top-tabs-bar {
+  position: fixed;
+  top: var(--admin-sidebar-top);
+  left: var(--admin-top-tabs-inline-offset);
+  right: var(--admin-top-tabs-inline-offset);
+  z-index: 950;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-contract-panel-radius);
+  background:
+    radial-gradient(circle at top left, var(--admin-warm-soft), transparent 36%),
+    linear-gradient(180deg, #141414 0%, #191919 100%);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 var(--admin-border-faint);
+}
+
+.admin-navbar-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 10px;
+  overflow: visible;
+  padding: 12px;
+  border: none;
+  border-radius: var(--admin-contract-panel-radius);
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-navbar-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 54px;
+  width: 100%;
+  padding: 0 16px;
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #aab6c7;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: normal;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.admin-navbar-tab:hover {
+  color: #f6f8fb;
+  border-color: var(--admin-border);
+  background: var(--admin-surface-overlay-strong);
+  transform: translateY(-1px);
+}
+
+.admin-navbar-tab.is-active {
+  color: #0c1420;
+  border-color: rgba(255, 197, 118, 0.42);
+  background: linear-gradient(135deg, var(--admin-warm-gradient-start) 0%, var(--admin-warm-gradient-end) 100%);
+  box-shadow:
+    0 10px 22px rgba(255, 179, 71, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.admin-navbar-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  background: var(--admin-warm-soft);
+  color: var(--admin-warm-strong);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.admin-navbar-tab.is-active .admin-navbar-tab-icon {
+  background: rgba(17, 17, 17, 0.12);
+  color: #1a1a1a;
+}
+
+.admin-navbar-tab-label {
+  min-width: 0;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.admin-navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.admin-navbar-role,
+.admin-navbar-alert span,
+.admin-console-profile-pill,
+.admin-console-badge,
+.admin-import-help-title {
+  color: #ffc36f;
+}
+
+.admin-navbar-alert,
+.admin-import-help,
+.admin-console-profile-pill,
+.admin-console-badge {
+  background: rgba(255, 195, 111, 0.12);
+  border-color: rgba(255, 195, 111, 0.18);
+}
+
+.admin-navbar-feedback {
+  padding: 0;
+}
+
+.admin-navbar-logo,
+.admin-topbar-title {
+  color: #f5f7fa;
+}
+
+.admin-console-page.sidebar-collapsed .admin-topbar-shell {
+  padding-left: calc(var(--admin-sidebar-collapsed-width) + var(--admin-page-gutter));
+}
+
+.admin-console-page.no-side-nav {
+  margin-left: 0;
+  padding-top: calc(var(--admin-nav-height) + 12px);
+  padding-left: var(--admin-page-gutter);
+  padding-right: var(--admin-page-gutter);
+}
+
+.admin-console-page.with-side-nav {
+  margin-left: 0;
+  padding-top: calc(var(--admin-nav-height) + 48px);
+}
+
+.admin-console-page.sidebar-collapsed {
+  margin-left: var(--admin-sidebar-collapsed-width);
+}
+
+.admin-console-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.admin-console-shell.is-products-page {
+  width: calc(100% + (var(--admin-page-gutter) * 2));
+  max-width: none;
+  margin: 0 0 0 calc(var(--admin-page-gutter) * -1);
+  margin-top: -15px;
+}
+
+.admin-console-layout {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  padding-left: var(--admin-content-offset-x);
+  padding-right: var(--admin-page-gutter);
+}
+
+.admin-console-layout.has-selection-sidebar {
+  padding-right: calc(var(--admin-contract-sidebar-width) + var(--admin-selection-sidebar-inline-gap));
+}

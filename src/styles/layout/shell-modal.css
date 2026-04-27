@@ -1,0 +1,85 @@
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(8, 8, 8, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.admin-modal {
+  width: min(100%, 670px);
+  max-height: min(88vh, 920px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--admin-contract-modal-radius);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #171717;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+
+.admin-modal.admin-modal-tone-danger {
+  border-color: rgba(255, 140, 140, 0.12);
+}
+
+.admin-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--admin-contract-panel-head-gap);
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-modal-copy {
+  min-width: 0;
+}
+
+.admin-modal-head h2 {
+  margin: 0;
+  color: #f3f3f3;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.admin-modal-description {
+  margin: 10px 0 0;
+  color: #989898;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-modal-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: #222222;
+  color: #efefef;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.admin-modal-body {
+  padding: 22px 24px 24px;
+  overflow-y: auto;
+}
+
+.admin-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}

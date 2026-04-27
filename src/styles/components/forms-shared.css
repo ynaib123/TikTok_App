@@ -1,0 +1,116 @@
+.admin-coming-soon-sections {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.admin-coming-soon-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+}
+
+.admin-coming-soon-card.is-active {
+  border-color: rgba(255, 179, 71, 0.24);
+  background: linear-gradient(135deg, rgba(255, 179, 71, 0.12), rgba(255, 179, 71, 0.04));
+}
+
+.admin-coming-soon-card strong {
+  color: #f5f7fa;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.admin-coming-soon-card span {
+  color: #92a0b4;
+  font-size: 13px;
+}
+
+.admin-console-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  color: #8d9cb0;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(180deg, rgba(18, 27, 39, 0.72) 0%, rgba(14, 22, 31, 0.72) 100%);
+}
+
+.admin-skeleton,
+.admin-skeleton-block {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-skeleton::after,
+.admin-skeleton-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 45%, transparent 100%);
+  animation: adminSkeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.admin-skeleton-line {
+  display: block;
+  height: 12px;
+  width: 100%;
+}
+
+.admin-skeleton-line.is-title {
+  height: 18px;
+  width: 72%;
+}
+
+.admin-skeleton-line.is-medium {
+  width: 58%;
+}
+
+.admin-skeleton-line.is-short {
+  width: 40%;
+}
+
+.admin-skeleton-pill {
+  display: inline-flex;
+  width: 110px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.admin-skeleton-pill.is-short {
+  width: 84px;
+}
+
+.admin-skeleton-checkbox {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.admin-skeleton-block {
+  min-height: 100%;
+}
+
+.admin-skeleton-stack {
+  display: grid;
+  gap: 10px;
+}
+
+@keyframes adminSkeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+

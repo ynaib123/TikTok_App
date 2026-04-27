@@ -1,0 +1,631 @@
+.admin-page-products,
+.admin-page-categories,
+.admin-page-clients {
+  --admin-catalog-toolbar-radius: var(--admin-radius-lg);
+  --admin-catalog-control-radius: var(--admin-contract-control-radius);
+  --admin-catalog-list-item-radius: var(--admin-contract-list-item-radius);
+  --admin-catalog-list-item-min-height: var(--admin-contract-list-item-min-height);
+  --admin-catalog-list-item-padding-y: var(--admin-contract-list-item-padding-y);
+  --admin-catalog-list-item-padding-x: var(--admin-contract-list-item-padding-x);
+  --admin-catalog-list-item-gap: var(--admin-contract-list-item-gap);
+  --admin-catalog-list-item-surface: linear-gradient(180deg, rgba(31, 31, 31, 0.98) 0%, rgba(20, 20, 20, 0.98) 100%);
+  --admin-catalog-list-item-surface-hover: linear-gradient(180deg, rgba(36, 36, 36, 0.98) 0%, rgba(24, 24, 24, 0.98) 100%);
+  --admin-catalog-list-item-surface-active: linear-gradient(180deg, rgba(43, 43, 43, 0.98) 0%, rgba(28, 28, 28, 0.98) 100%);
+  --admin-catalog-list-item-border: rgba(255, 255, 255, 0.08);
+  --admin-catalog-list-item-border-hover: rgba(255, 255, 255, 0.14);
+  --admin-catalog-list-item-border-active: rgba(255, 255, 255, 0.18);
+  --admin-catalog-list-item-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 20px rgba(0, 0, 0, 0.16);
+  --admin-catalog-list-item-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 24px rgba(0, 0, 0, 0.2);
+  --admin-catalog-list-item-shadow-active: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 12px 24px rgba(0, 0, 0, 0.22);
+  --admin-catalog-list-title-size: 14px;
+  --admin-catalog-list-meta-size: 11px;
+  --admin-catalog-list-meta-color: #9b9b9b;
+  --admin-catalog-list-meta-min-width: var(--admin-contract-list-meta-min-width);
+  --admin-catalog-list-action-height: var(--admin-contract-list-action-height);
+  --admin-catalog-list-action-padding-x: var(--admin-contract-list-action-padding-x);
+  --admin-catalog-list-action-radius: var(--admin-contract-list-action-radius);
+  --admin-catalog-list-action-surface: linear-gradient(180deg, rgba(24, 24, 24, 0.98) 0%, rgba(18, 18, 18, 0.98) 100%);
+  --admin-catalog-list-action-surface-hover: var(--admin-surface-overlay-soft);
+  --admin-catalog-list-action-border: rgba(255, 255, 255, 0.08);
+  --admin-catalog-list-action-border-hover: rgba(255, 255, 255, 0.12);
+  --admin-catalog-list-action-text: #f1f1f1;
+  --admin-catalog-icon-box-size: var(--admin-contract-icon-box-size);
+  --admin-catalog-status-min-width: var(--admin-contract-list-status-min-width);
+  --admin-catalog-status-padding-x: var(--admin-contract-list-status-padding-x);
+  --admin-catalog-feed-item-radius: var(--admin-contract-list-item-radius);
+  --admin-catalog-feed-item-padding-y: 14px;
+  --admin-catalog-feed-item-padding-x: 16px;
+  --admin-catalog-menu-surface: linear-gradient(180deg, rgba(27, 27, 27, 0.98) 0%, rgba(20, 20, 20, 0.98) 100%);
+  --admin-catalog-menu-border: rgba(255, 255, 255, 0.08);
+  --admin-catalog-filter-gap: 10px;
+  --admin-catalog-filter-height: 36px;
+  --admin-catalog-filter-padding-x: 14px;
+  --admin-catalog-filter-surface: linear-gradient(180deg, rgba(22, 22, 22, 0.96) 0%, rgba(16, 16, 16, 0.98) 100%);
+  --admin-catalog-filter-surface-hover: linear-gradient(180deg, rgba(29, 29, 29, 0.98) 0%, rgba(21, 21, 21, 0.98) 100%);
+  --admin-catalog-filter-border: rgba(255, 255, 255, 0.08);
+  --admin-catalog-filter-border-hover: rgba(255, 255, 255, 0.14);
+  --admin-catalog-filter-text: #f1f1f1;
+  --admin-catalog-filter-text-muted: #b7b7b7;
+}
+
+.admin-product-toolbar-menu,
+.admin-category-list-surface,
+.admin-category-editor,
+.admin-category-editor-block,
+.admin-ops-list-surface,
+.admin-ops-editor,
+.admin-ops-stat-card,
+.admin-client-modal-highlight,
+.admin-client-modal-secret,
+.admin-category-insight-card,
+.admin-product-details-meta div,
+.admin-client-panel,
+.admin-product-selection-pill {
+  background: var(--admin-panel-surface-4);
+  border-color: var(--admin-border);
+  box-shadow: none;
+}
+
+.admin-catalog-list-item {
+  background: var(--admin-panel-surface-4);
+  box-shadow: none;
+}
+
+.admin-product-toolbar,
+.admin-product-toolbar-search input,
+.admin-product-toolbar-trigger,
+.admin-product-toolbar-bulk-toggle,
+.admin-product-toolbar-icon-btn,
+.admin-product-pagination-summary-btn,
+.admin-product-pagination-btn,
+.admin-product-view-btn,
+.admin-catalog-list-item,
+.admin-client-admin-action,
+.admin-client-admin-toggle {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-product-toolbar,
+.admin-client-panel,
+.admin-category-list-surface,
+.admin-category-editor,
+.admin-ops-list-surface,
+.admin-ops-editor {
+  border-radius: var(--admin-catalog-toolbar-radius);
+}
+
+.admin-product-toolbar {
+  background: #111111;
+  backdrop-filter: blur(14px);
+}
+
+.admin-product-toolbar-trigger,
+.admin-product-toolbar-bulk-toggle,
+.admin-product-toolbar-icon-btn,
+.admin-product-pagination-summary-btn,
+.admin-product-pagination-btn,
+.admin-product-view-switch,
+.admin-product-view-btn,
+.admin-client-admin-toggle {
+  background: var(--admin-panel-surface-2);
+  color: var(--admin-panel-text);
+  box-shadow: none;
+}
+
+.admin-product-toolbar-search input {
+  background: var(--admin-panel-surface-3);
+  color: var(--admin-panel-text);
+  box-shadow: none;
+}
+
+.admin-product-toolbar-trigger,
+.admin-product-toolbar-bulk-toggle,
+.admin-product-toolbar-icon-btn,
+.admin-product-pagination-summary-btn,
+.admin-product-pagination-btn,
+.admin-product-view-btn,
+.admin-client-admin-toggle {
+  border-radius: var(--admin-catalog-control-radius);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-page-clients .admin-client-admin-action.admin-console-btn-muted {
+  background: var(--admin-panel-surface-2);
+  color: var(--admin-panel-text);
+  box-shadow: none;
+  border-radius: var(--admin-catalog-control-radius);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-product-toolbar-trigger span,
+.admin-product-toolbar-bulk-toggle span,
+.admin-product-toolbar-icon-btn span,
+.admin-product-pagination-btn span {
+  color: var(--admin-panel-icon);
+}
+
+.admin-product-toolbar-trigger .admin-toolbar-icon,
+.admin-product-toolbar-bulk-toggle .admin-toolbar-icon,
+.admin-product-toolbar-icon-btn .admin-toolbar-icon,
+.admin-product-pagination-btn .admin-toolbar-icon {
+  color: var(--admin-panel-icon);
+  font-size: 0;
+}
+
+.admin-toolbar-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-panel-icon);
+}
+
+.admin-toolbar-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.admin-product-toolbar-trigger::after {
+  border-color: var(--admin-panel-icon-soft);
+}
+
+.admin-product-toolbar-search input::placeholder {
+  color: #ffffff;
+}
+
+.admin-product-toolbar-search input:focus,
+.admin-product-toolbar-trigger:focus-visible,
+.admin-product-toolbar-bulk-toggle:focus-visible,
+.admin-product-toolbar-icon-btn:focus-visible,
+.admin-product-pagination-summary-btn:focus-visible,
+.admin-product-pagination-btn:focus-visible,
+.admin-client-admin-action:focus-visible,
+.admin-catalog-list-item:focus-visible {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.admin-product-toolbar-trigger:hover,
+.admin-product-toolbar-bulk-toggle:hover,
+.admin-product-toolbar-icon-btn:hover,
+.admin-product-pagination-summary-btn:hover,
+.admin-product-pagination-btn:hover:not(:disabled),
+.admin-product-view-btn:hover,
+.admin-catalog-list-item:hover,
+.admin-client-admin-toggle:hover:not(:disabled) {
+  background: var(--admin-surface-overlay-soft);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--admin-panel-icon);
+  box-shadow: none;
+}
+
+.admin-product-toolbar-option {
+  background: var(--admin-panel-surface-2);
+  color: #dcdcdc;
+  border-radius: var(--admin-catalog-control-radius);
+  border-color: var(--admin-border);
+}
+
+.admin-product-toolbar-option:hover,
+.admin-product-toolbar-option.is-selected {
+  background: var(--admin-panel-surface-hover);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--admin-panel-icon);
+  box-shadow: none;
+}
+
+.admin-product-toolbar-trigger.is-open,
+.admin-product-toolbar-bulk-toggle.is-active,
+.admin-product-toolbar-icon-btn.is-active,
+.admin-product-view-btn.is-active,
+.admin-product-pagination-summary-btn.is-active {
+  background: var(--admin-panel-surface-hover);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--admin-panel-icon);
+  box-shadow: none;
+}
+
+.admin-catalog-list-item.is-active,
+.admin-product-selection-pill-button.is-active {
+  background: var(--admin-panel-surface-active);
+  border-color: var(--admin-border);
+  box-shadow: none;
+}
+
+.admin-product-pagination-btn:disabled {
+  background: var(--admin-panel-surface-disabled);
+}
+
+.admin-product-selection-pill-button:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-category-list-copy strong,
+.admin-ops-list-copy strong,
+.admin-ops-list-meta strong,
+.admin-category-insight-card strong,
+.admin-client-modal-highlight strong,
+.admin-client-modal-secret strong {
+  color: var(--admin-text);
+}
+
+.admin-category-list-copy span,
+.admin-ops-list-copy span,
+.admin-ops-list-meta span,
+.admin-category-insight-card span,
+.admin-product-details-meta span,
+.admin-client-modal-highlight span,
+.admin-client-modal-secret span,
+.admin-client-modal-copy {
+  color: var(--admin-panel-text-soft);
+}
+
+.admin-product-table-price,
+.admin-product-selection-id,
+.admin-page-categories .admin-category-editor-submit span {
+  color: var(--admin-text);
+}
+
+.admin-product-category,
+.admin-product-stock,
+.admin-ops-chip,
+.admin-console-badge,
+.admin-status-pill {
+  background: #2a2a2a;
+  color: #efefef;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-console-badge,
+.admin-status-pill {
+  min-height: var(--admin-contract-badge-height);
+  padding: 0 var(--admin-contract-badge-padding-x);
+  border-radius: var(--admin-contract-badge-radius);
+}
+
+.admin-page-products .admin-product-toolbar-menu,
+.admin-page-products .admin-product-toolbar-menu-empty,
+.admin-page-categories .admin-product-toolbar-menu,
+.admin-page-categories .admin-product-toolbar-menu-empty,
+.admin-page-clients .admin-product-toolbar-menu,
+.admin-page-clients .admin-product-toolbar-menu-empty {
+  background: var(--admin-catalog-menu-surface);
+  border-color: var(--admin-catalog-menu-border);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.admin-page-products .admin-product-active-filters-list,
+.admin-page-categories .admin-product-active-filters-list,
+.admin-page-clients .admin-product-active-filters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-catalog-filter-gap);
+}
+
+.admin-page-products .admin-product-active-filter-tag,
+.admin-page-categories .admin-product-active-filter-tag,
+.admin-page-clients .admin-product-active-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-catalog-filter-gap);
+  min-height: var(--admin-catalog-filter-height);
+  padding: 0 var(--admin-catalog-filter-padding-x);
+  border: 1px solid var(--admin-catalog-filter-border);
+  border-radius: 999px;
+  background: var(--admin-catalog-filter-surface);
+  color: var(--admin-catalog-filter-text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--admin-motion-fast), border-color var(--admin-motion-fast), transform var(--admin-motion-fast);
+}
+
+.admin-page-products .admin-product-active-filter-tag.is-default,
+.admin-page-categories .admin-product-active-filter-tag.is-default,
+.admin-page-clients .admin-product-active-filter-tag.is-default {
+  color: var(--admin-catalog-filter-text-muted);
+  cursor: default;
+  opacity: 0.92;
+}
+
+.admin-page-products .admin-product-active-filter-tag strong,
+.admin-page-categories .admin-product-active-filter-tag strong,
+.admin-page-clients .admin-product-active-filter-tag strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7d7d7;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.admin-page-products .admin-product-active-filter-tag.is-clearable:hover,
+.admin-page-products .admin-product-active-filters-reset:hover,
+.admin-page-categories .admin-product-active-filter-tag.is-clearable:hover,
+.admin-page-categories .admin-product-active-filters-reset:hover,
+.admin-page-clients .admin-product-active-filter-tag.is-clearable:hover,
+.admin-page-clients .admin-product-active-filters-reset:hover {
+  transform: translateY(-1px);
+  border-color: var(--admin-catalog-filter-border-hover);
+  background: var(--admin-catalog-filter-surface-hover);
+}
+
+.admin-page-products .admin-product-active-filter-tag.is-clearable:focus-visible,
+.admin-page-products .admin-product-active-filters-reset:focus-visible,
+.admin-page-categories .admin-product-active-filter-tag.is-clearable:focus-visible,
+.admin-page-categories .admin-product-active-filters-reset:focus-visible,
+.admin-page-clients .admin-product-active-filter-tag.is-clearable:focus-visible,
+.admin-page-clients .admin-product-active-filters-reset:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.admin-page-products .admin-product-active-filter-tag:disabled,
+.admin-page-categories .admin-product-active-filter-tag:disabled,
+.admin-page-clients .admin-product-active-filter-tag:disabled {
+  pointer-events: none;
+}
+
+.admin-page-products .admin-product-active-filters-reset,
+.admin-page-categories .admin-product-active-filters-reset,
+.admin-page-clients .admin-product-active-filters-reset {
+  flex-shrink: 0;
+  min-height: var(--admin-catalog-filter-height);
+  padding: 0 var(--admin-catalog-filter-padding-x);
+  border: 1px solid var(--admin-catalog-filter-border);
+  border-radius: 999px;
+  background: var(--admin-catalog-filter-surface);
+  color: var(--admin-catalog-filter-text);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background var(--admin-motion-fast), border-color var(--admin-motion-fast), transform var(--admin-motion-fast);
+}
+
+.admin-page-products .admin-selection-saved-actions,
+.admin-page-categories .admin-selection-saved-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-page-products .admin-selection-saved-head span,
+.admin-page-categories .admin-selection-saved-head span {
+  color: #f1f1f1;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-page-products .admin-selection-saved-clear.is-pending,
+.admin-page-products .admin-selection-saved-clear.is-save,
+.admin-page-products .admin-selection-saved-clear.is-dirty,
+.admin-page-categories .admin-selection-saved-clear.is-pending {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #161616;
+  color: #f1f1f1;
+}
+
+.admin-page-products .admin-selection-saved-clear:hover,
+.admin-page-products .admin-selection-saved-clear.is-pending:hover,
+.admin-page-products .admin-selection-saved-clear.is-dirty:hover,
+.admin-page-products .admin-selection-saved-clear.is-save:hover,
+.admin-page-categories .admin-selection-saved-clear:hover:not(:disabled),
+.admin-page-categories .admin-selection-saved-clear.is-pending:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.admin-page-products .admin-product-selection-pill-button:hover,
+.admin-page-categories .admin-product-selection-pill-button:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-page-products .admin-product-selection-pill-button.is-active,
+.admin-page-categories .admin-product-selection-pill-button.is-active {
+  border-color: transparent;
+  background: #343434;
+  box-shadow: none;
+}
+
+.admin-page-products .admin-selection-group-block,
+.admin-page-categories .admin-selection-group-block {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--admin-contract-panel-gap-tight);
+  min-height: 0;
+  align-content: start;
+}
+
+.admin-page-products .admin-selection-group-block-pending .admin-product-selection-thumb,
+.admin-page-categories .admin-selection-group-block-create .admin-product-selection-thumb {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-page-products .admin-selection-group-block-pending .admin-product-selection-copy small,
+.admin-page-categories .admin-selection-group-block-create .admin-product-selection-copy small {
+  color: #bcbcbc;
+}
+
+.admin-page-products .admin-selection-group-block-pending .admin-product-selection-pill-button:hover,
+.admin-page-categories .admin-selection-group-block-create .admin-product-selection-pill-button:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(52, 52, 52, 0.96) 0%, rgba(32, 32, 32, 0.98) 100%);
+}
+
+.admin-page-products .admin-selection-group-block-pending .admin-product-selection-pill-button.is-active,
+.admin-page-categories .admin-selection-group-block-create .admin-product-selection-pill-button.is-active,
+.admin-page-categories .admin-selection-group-block-create .admin-product-selection-pill-button.is-active {
+  background: linear-gradient(180deg, rgba(64, 64, 64, 0.98) 0%, rgba(40, 40, 40, 0.98) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.admin-page-products .admin-selection-group-block-dirty .admin-product-selection-pill,
+.admin-page-categories .admin-selection-group-block-edit .admin-product-selection-pill,
+.admin-page-categories .admin-selection-group-block-merge .admin-product-selection-pill {
+  border-color: rgba(255, 141, 128, 0.16);
+  background: linear-gradient(180deg, rgba(56, 26, 26, 0.92) 0%, rgba(37, 20, 22, 0.96) 100%);
+}
+
+.admin-page-products .admin-selection-group-block-dirty .admin-product-selection-thumb,
+.admin-page-categories .admin-selection-group-block-edit .admin-product-selection-thumb,
+.admin-page-categories .admin-selection-group-block-merge .admin-product-selection-thumb {
+  border-color: rgba(255, 141, 128, 0.14);
+  background: rgba(255, 141, 128, 0.08);
+}
+
+.admin-page-products .admin-selection-group-block-dirty .admin-product-selection-copy small,
+.admin-page-categories .admin-selection-group-block-edit .admin-product-selection-copy small,
+.admin-page-categories .admin-selection-group-block-merge .admin-product-selection-copy small {
+  color: #ff9f8f;
+}
+
+.admin-page-products .admin-selection-group-block-dirty .admin-product-selection-pill-button:hover,
+.admin-page-categories .admin-selection-group-block-edit .admin-product-selection-pill-button:hover,
+.admin-page-categories .admin-selection-group-block-merge .admin-product-selection-pill-button:hover {
+  border-color: rgba(255, 141, 128, 0.24);
+  background: linear-gradient(180deg, rgba(68, 31, 31, 0.94) 0%, rgba(45, 23, 26, 0.98) 100%);
+}
+
+.admin-catalog-list {
+  gap: var(--admin-contract-panel-gap-tight);
+}
+
+.admin-catalog-list-item {
+  position: relative;
+  overflow: hidden;
+  min-height: var(--admin-catalog-list-item-min-height);
+  gap: var(--admin-catalog-list-item-gap);
+  padding: var(--admin-catalog-list-item-padding-y) var(--admin-catalog-list-item-padding-x);
+  border: 1px solid var(--admin-catalog-list-item-border);
+  border-radius: var(--admin-catalog-list-item-radius);
+  background: var(--admin-catalog-list-item-surface);
+  box-shadow: var(--admin-catalog-list-item-shadow);
+  transition: transform var(--admin-motion-fast), border-color var(--admin-motion-fast), background var(--admin-motion-fast), box-shadow var(--admin-motion-fast);
+}
+
+.admin-catalog-list-item:hover {
+  transform: translateY(-1px);
+  border-color: var(--admin-catalog-list-item-border-hover);
+  background: var(--admin-catalog-list-item-surface-hover);
+  box-shadow: var(--admin-catalog-list-item-shadow-hover);
+}
+
+.admin-catalog-list-item.is-active {
+  border-color: var(--admin-catalog-list-item-border-active);
+  background: var(--admin-catalog-list-item-surface-active);
+  box-shadow: var(--admin-catalog-list-item-shadow-active);
+}
+
+.admin-catalog-list-copy {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-catalog-list-copy strong {
+  color: var(--admin-text);
+  font-size: var(--admin-catalog-list-title-size);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-catalog-list-copy span,
+.admin-catalog-list-copy small {
+  color: var(--admin-catalog-list-meta-color);
+  font-size: var(--admin-catalog-list-meta-size);
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-catalog-list-meta {
+  display: grid;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: var(--admin-catalog-list-meta-min-width);
+  justify-items: end;
+}
+
+.admin-catalog-list-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: var(--admin-catalog-list-action-height);
+  padding: 0 var(--admin-catalog-list-action-padding-x);
+  border: 1px solid var(--admin-catalog-list-action-border);
+  border-radius: var(--admin-catalog-list-action-radius);
+  background: var(--admin-catalog-list-action-surface);
+  color: var(--admin-catalog-list-action-text);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--admin-motion-fast), border-color var(--admin-motion-fast), background var(--admin-motion-fast), box-shadow var(--admin-motion-fast);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.admin-catalog-list-action:hover {
+  transform: none;
+  border-color: var(--admin-catalog-list-action-border-hover);
+  background: var(--admin-catalog-list-action-surface-hover);
+}
+
+.admin-catalog-list-action:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.admin-catalog-feed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-contract-panel-gap);
+  padding: var(--admin-catalog-feed-item-padding-y) var(--admin-catalog-feed-item-padding-x);
+  border-radius: var(--admin-catalog-feed-item-radius);
+}
+
+.admin-catalog-feed-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-catalog-feed-main strong,
+.admin-catalog-feed-main span,
+.admin-catalog-feed-main small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-catalog-feed-aside {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: var(--admin-catalog-list-meta-min-width);
+}
+

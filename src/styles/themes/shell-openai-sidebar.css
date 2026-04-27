@@ -1,0 +1,86 @@
+.admin-selection-sidebar {
+  position: fixed;
+  top: var(--admin-sidebar-top);
+  right: var(--admin-sidebar-offset-x);
+  width: var(--admin-contract-sidebar-width);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: var(--admin-sidebar-height);
+  max-height: var(--admin-sidebar-height);
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--admin-contract-sidebar-radius);
+  background:
+    radial-gradient(circle at top right, rgba(255, 179, 71, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(24, 24, 24, 0.96) 0%, rgba(18, 18, 18, 0.94) 100%);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.admin-selection-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-contract-panel-head-gap);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-selection-sidebar-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.admin-selection-empty {
+  padding: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #979797;
+  font-size: 13px;
+}
+
+.admin-context-sidebar,
+.admin-sidebar {
+  left: 0;
+  margin-left: 0;
+}
+
+.admin-context-sidebar {
+  top: var(--admin-nav-height);
+  width: var(--admin-shell-static-nav-width);
+  height: calc(100vh - var(--admin-nav-height));
+  max-height: calc(100vh - var(--admin-nav-height));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 40;
+  border: none;
+  border-radius: 0;
+  border-top: none;
+  border-left: none;
+  padding: 20px 14px 0;
+  background: var(--admin-shell-static-bg);
+  border-right: 1px solid var(--admin-shell-static-border);
+}
+
+.admin-console-layout {
+  padding-left: var(--admin-shell-static-content-offset);
+}
+
+.admin-console-page.sidebar-collapsed {
+  margin-left: 0;
+}
+
+.admin-console-page.sidebar-collapsed .admin-console-layout {
+  padding-left: var(--admin-shell-static-content-offset-collapsed);
+}

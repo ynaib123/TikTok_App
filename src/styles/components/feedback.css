@@ -1,0 +1,77 @@
+.error-message.account-feedback-dismissible,
+.info-message.account-feedback-dismissible,
+.success-message.account-feedback-dismissible {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 1105;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(var(--admin-feedback-width), calc(100vw - 32px));
+  margin: 0;
+  padding: var(--admin-feedback-padding-y) var(--admin-feedback-padding-x);
+  border-radius: var(--admin-feedback-radius);
+  transform: translateX(-50%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  animation: admin-feedback-slide-in 200ms ease;
+  backdrop-filter: blur(14px);
+}
+
+.error-message.account-feedback-dismissible {
+  background: var(--admin-semantic-surface-danger);
+  border: 1px solid var(--admin-semantic-border-danger);
+  color: var(--admin-semantic-text-danger);
+}
+
+.info-message.account-feedback-dismissible,
+.success-message.account-feedback-dismissible {
+  background: var(--admin-semantic-surface-success);
+  border: 1px solid var(--admin-semantic-border-success);
+  color: var(--admin-semantic-text-success);
+}
+
+.account-feedback-dismissible.is-inline-navbar {
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: auto;
+  width: 100%;
+  margin: 0;
+  transform: none;
+  animation: admin-feedback-slide-in 200ms ease;
+  pointer-events: auto;
+}
+
+@keyframes admin-feedback-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-close-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 140ms ease;
+}
+
+.alert-close-btn:hover {
+  opacity: 1;
+}

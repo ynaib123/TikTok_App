@@ -1,0 +1,99 @@
+.admin-page-products .admin-product-identity-fields {
+  display: grid;
+  gap: 18px;
+  padding: 0 4px;
+}
+
+.admin-page-products .admin-product-stock-adjust > span {
+  color: #dfe7f1;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.admin-page-products .admin-product-identity-fields .admin-product-field > span {
+  color: #dfe7f1;
+}
+
+.admin-page-products .admin-product-ops-fields {
+  display: block;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.admin-page-products .admin-product-media-fields {
+  display: block;
+  width: 100%;
+  padding: 0 4px;
+  margin-top: 22px;
+}
+
+.admin-page-products .admin-product-create-secondary-panel {
+  display: block;
+  width: 100%;
+  justify-self: stretch;
+  align-self: stretch;
+}
+
+.admin-page-products .admin-product-ops-fields .admin-product-ops-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  justify-items: stretch;
+}
+
+.admin-page-products .admin-product-media-group,
+.admin-page-products .admin-product-ops-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  justify-self: stretch;
+}
+
+.admin-page-products .admin-product-media-preview-group .admin-product-image-preview-card {
+  width: 320px;
+  max-width: 100%;
+}
+
+.admin-page-products .admin-product-image-composer-row .admin-product-inline-input input {
+  width: 100%;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(20, 29, 42, 0.96) 0%, rgba(13, 21, 31, 0.96) 100%);
+  color: #f7f9fc;
+  font-size: 14px;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.admin-page-products #product-image-url,
+.admin-page-products #product-image-url:hover,
+.admin-page-products #product-image-url:active,
+.admin-page-products #product-image-url:focus,
+.admin-page-products #product-image-url:focus-visible {
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(180deg, rgba(25, 25, 25, 0.98) 0%, rgba(19, 19, 19, 0.98) 100%);
+  background-image: linear-gradient(180deg, rgba(25, 25, 25, 0.98) 0%, rgba(19, 19, 19, 0.98) 100%);
+  -webkit-text-fill-color: #f7f9fc;
+  color: #f7f9fc;
+}
+
+.admin-page-products .admin-product-ops-group-pricing {
+  gap: 4px;
+}
+
+.admin-page-products .admin-product-identity-fields #product-description {
+  height: 100px;
+  min-height: 365px;
+}
+
+.admin-page-products .admin-product-stock-adjust-row input[readonly] {
+  background: linear-gradient(180deg, rgba(32, 32, 32, 0.98) 0%, rgba(24, 24, 24, 0.98) 100%);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #d7d7d7;
+  cursor: default;
+  opacity: 0.92;
+}

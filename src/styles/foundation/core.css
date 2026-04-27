@@ -1,0 +1,457 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: dark;
+  --admin-bg: #101010;
+  --admin-surface: #171717;
+  --admin-surface-2: #1d1d1d;
+  --admin-surface-3: #232323;
+  --admin-surface-4: #1a1a1a;
+  --admin-surface-5: #161616;
+  --admin-border-faint: rgba(255, 255, 255, 0.04);
+  --admin-border-subtle: rgba(255, 255, 255, 0.06);
+  --admin-border: rgba(255, 255, 255, 0.08);
+  --admin-border-soft: rgba(255, 255, 255, 0.1);
+  --admin-border-strong: rgba(255, 255, 255, 0.14);
+  --admin-surface-overlay-faint: rgba(255, 255, 255, 0.02);
+  --admin-surface-overlay-soft: rgba(255, 255, 255, 0.04);
+  --admin-surface-overlay: rgba(255, 255, 255, 0.05);
+  --admin-surface-overlay-strong: rgba(255, 255, 255, 0.06);
+  --admin-surface-overlay-hover: rgba(255, 255, 255, 0.08);
+  --admin-text: #f3f3f3;
+  --admin-text-soft: #b6b6b6;
+  --admin-text-soft-2: #a6a6a6;
+  --admin-text-dim: #8f8f8f;
+  --admin-text-muted: #8d8d8d;
+  --admin-text-inverse: #111111;
+  --admin-pill: rgba(255, 255, 255, 0.05);
+  --admin-accent: #12b76a;
+  --admin-accent-soft: rgba(18, 183, 106, 0.14);
+  --admin-warm: #c4a140;
+  --admin-warm-strong: #ffc36f;
+  --admin-warm-stronger: #ffd08b;
+  --admin-warm-strongest: #ffd79c;
+  --admin-warm-gradient-start: #ffd38d;
+  --admin-warm-gradient-end: #ffb347;
+  --admin-warm-soft: rgba(255, 179, 71, 0.12);
+  --admin-warm-border: rgba(255, 179, 71, 0.18);
+  --admin-warm-border-strong: rgba(255, 179, 71, 0.32);
+  --admin-shell-bg-start: #141414;
+  --admin-shell-bg-mid: #1b1b1b;
+  --admin-shell-bg-end: #161616;
+  --admin-panel-ink-soft: #dfdfdf;
+  --admin-panel-black: #000000;
+  --admin-panel-surface: #111111;
+  --admin-panel-surface-2: #161616;
+  --admin-panel-surface-3: #1a1a1a;
+  --admin-panel-surface-4: #232323;
+  --admin-panel-surface-hover: #3a3a3a;
+  --admin-panel-surface-active: #343434;
+  --admin-panel-surface-disabled: #262626;
+  --admin-panel-text: #f1f1f1;
+  --admin-panel-text-soft: #a6a6a6;
+  --admin-panel-text-dimmer: #8d8d8d;
+  --admin-panel-text-placeholder: #868686;
+  --admin-panel-icon: #ffffff;
+  --admin-panel-icon-soft: #cfcfcf;
+  --admin-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+  --admin-focus-ring: rgba(255, 208, 139, 0.82);
+  --admin-motion-fast: 160ms ease;
+  --admin-motion-base: 180ms ease;
+  --admin-bp-sm: 640px;
+  --admin-bp-md: 960px;
+  --admin-bp-lg: 1120px;
+  --admin-bp-xl: 1360px;
+  --admin-bp-admin-blocked-max: 980px;
+  --admin-layout-gap-sm: 12px;
+  --admin-layout-gap-md: 18px;
+  --admin-layout-gap-lg: 24px;
+  --admin-page-gutter: 26px;
+  --admin-content-max-width: 1280px;
+  --admin-nav-height: 78px;
+  --admin-topbar-top: 70px;
+  --admin-topbar-height: 56px;
+  --admin-sidebar-width: 260px;
+  --admin-sidebar-collapsed-width: 70px;
+  --admin-sidebar-offset-x: 25px;
+  --admin-sidebar-top: 108px;
+  --admin-sidebar-height: calc(100vh - 132px);
+  --admin-content-offset-x: 309px;
+  --admin-content-offset-collapsed-x: 108px;
+  --admin-top-tabs-inline-offset: var(--admin-content-offset-x);
+  --admin-selection-sidebar-inline-gap: 49px;
+  --admin-semantic-surface-panel: var(--admin-panel-surface);
+  --admin-semantic-surface-panel-subtle: var(--admin-panel-surface-2);
+  --admin-semantic-surface-muted: var(--admin-surface-3);
+  --admin-semantic-surface-overlay: var(--admin-surface-overlay);
+  --admin-semantic-surface-danger: rgba(134, 28, 41, 0.92);
+  --admin-semantic-surface-success: rgba(18, 98, 74, 0.92);
+  --admin-semantic-border-panel: var(--admin-border);
+  --admin-semantic-border-danger: rgba(255, 120, 120, 0.28);
+  --admin-semantic-border-success: rgba(93, 232, 177, 0.24);
+  --admin-semantic-text-muted: var(--admin-text-muted);
+  --admin-semantic-text-danger: #ffe3e7;
+  --admin-semantic-text-success: #dcfff2;
+  --admin-feedback-width: 560px;
+  --admin-feedback-radius: 16px;
+  --admin-feedback-padding-y: 12px;
+  --admin-feedback-padding-x: 16px;
+  --admin-radius-sm: 10px;
+  --admin-radius-md: 14px;
+  --admin-radius-lg: 18px;
+  --admin-radius-xl: 24px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at 78% 14%, rgba(194, 161, 64, 0.16), transparent 20%),
+    radial-gradient(circle at 66% 12%, rgba(255, 255, 255, 0.05), transparent 16%),
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.06), transparent 16%),
+    linear-gradient(180deg, #111111 0%, #0d0d0d 100%);
+  color: var(--admin-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  transition:
+    background-color var(--admin-motion-base),
+    border-color var(--admin-motion-base),
+    color var(--admin-motion-base),
+    box-shadow var(--admin-motion-base),
+    transform var(--admin-motion-base);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--admin-focus-ring);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-page {
+  color: var(--admin-text);
+}
+
+.admin-console-page {
+  position: relative;
+  background: transparent;
+}
+
+.admin-console-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 100%);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 100%);
+  opacity: 0.32;
+}
+
+.admin-console-hero,
+.admin-console-profile-card,
+.admin-console-stat-card,
+.admin-console-panel,
+.admin-context-sidebar,
+.admin-selection-sidebar,
+.admin-modal,
+.admin-loading-card {
+  border-color: var(--admin-border);
+  background:
+    linear-gradient(180deg, rgba(30, 30, 30, 0.95) 0%, rgba(22, 22, 22, 0.96) 100%);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-console-kicker,
+.admin-console-panel-kicker,
+.admin-context-sidebar-kicker,
+.admin-selection-sidebar-hero-kicker,
+.admin-modal-kicker,
+.admin-auth-card-kicker {
+  color: #d4d4d4;
+  letter-spacing: 0.14em;
+}
+
+.admin-console-hero h1,
+.admin-console-panel h2,
+.admin-context-sidebar-head h2,
+.admin-auth-card-head h2 {
+  color: var(--admin-text);
+}
+
+.admin-console-copy,
+.admin-context-sidebar-copy,
+.admin-selection-sidebar-hero-subtitle,
+.admin-console-panel-head span,
+.admin-profile-email,
+.admin-auth-card-copy {
+  color: var(--admin-text-soft);
+}
+
+.admin-console-btn,
+.admin-auth-submit {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: #f2f2f2;
+  color: #111111;
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.08);
+}
+
+.admin-console-btn:hover,
+.admin-auth-submit:hover:not(:disabled) {
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(255, 255, 255, 0.12);
+}
+
+.admin-console-btn-muted {
+  border-color: var(--admin-border);
+  background: var(--admin-surface-3);
+  color: var(--admin-text);
+}
+
+.admin-console-btn-muted:hover {
+  border-color: var(--admin-border-strong);
+  background: #2a2a2a;
+}
+
+.admin-console-btn-danger {
+  border-color: rgba(255, 122, 122, 0.2);
+  background: #2a1618;
+  color: #ffb4bc;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+}
+
+.admin-console-btn-danger:hover {
+  background: #351b1e;
+}
+
+.admin-console-list li,
+.admin-selection-group,
+.admin-client-selection-block,
+.admin-overview-card,
+.admin-console-health-card,
+.admin-auth-card,
+.admin-profile-dropdown,
+.admin-profile-trigger,
+.admin-context-nav-item,
+.admin-selection-empty,
+.admin-import-dropzone,
+.admin-import-help {
+  background: linear-gradient(180deg, rgba(34, 34, 34, 0.94) 0%, rgba(24, 24, 24, 0.96) 100%);
+  border-color: var(--admin-border);
+  box-shadow: none;
+}
+
+.admin-console-list li:hover,
+.admin-context-nav-item:hover,
+.admin-import-dropzone:hover {
+  background: linear-gradient(180deg, rgba(39, 39, 39, 0.98) 0%, rgba(28, 28, 28, 0.98) 100%);
+  border-color: var(--admin-border-strong);
+}
+
+.admin-context-nav-item.is-active,
+.admin-context-nav-item.is-child.is-active {
+  color: var(--admin-text);
+  border-color: rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(35, 35, 35, 0.98) 0%, rgba(25, 25, 25, 0.98) 100%);
+}
+
+.admin-console-badge,
+.admin-selection-group-count,
+.admin-selection-sidebar-total,
+.admin-console-profile-pill,
+.admin-navbar-status {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--admin-text);
+}
+
+.admin-console-badge-alert,
+.admin-stock-pill.is-danger {
+  background: rgba(255, 87, 87, 0.12);
+  color: #ff9b9b;
+}
+
+.admin-status-pill,
+.admin-selection-sidebar-hero-pill.is-online,
+.admin-selection-sidebar-hero-pill.is-success {
+  background: var(--admin-accent-soft);
+  color: #8ce0b4;
+  border-color: rgba(18, 183, 106, 0.2);
+}
+
+.admin-console-health-card.is-indigo,
+.admin-console-stat-card.is-indigo,
+.admin-console-stat-card.is-sky,
+.admin-console-stat-card.is-mint,
+.admin-console-stat-card.is-amber {
+  background:
+    linear-gradient(180deg, rgba(29, 29, 29, 0.98) 0%, rgba(21, 21, 21, 0.98) 100%);
+  border-color: var(--admin-border);
+}
+
+.admin-navbar-logo,
+.admin-profile-name,
+.admin-console-list li strong,
+.admin-console-stat-card strong,
+.admin-console-health-card strong,
+.admin-overview-card strong,
+.admin-selection-sidebar-hero-title {
+  color: var(--admin-text);
+}
+
+.admin-selection-group-title strong,
+.admin-selection-subgroup-head strong,
+.admin-auth-label {
+  color: #dddddd;
+}
+
+.admin-navbar-link,
+.admin-navbar-status,
+.admin-context-nav-icon {
+  color: var(--admin-text-soft);
+}
+
+.admin-auth-input,
+.admin-session-history-date-inputs input {
+  background: linear-gradient(180deg, rgba(23, 23, 23, 0.98) 0%, rgba(17, 17, 17, 0.98) 100%);
+  border-color: var(--admin-border);
+}
+
+.admin-auth-input:focus,
+.admin-session-history-date-inputs input:focus {
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.06);
+}
+
+.admin-order-entry-thumb,
+.admin-product-image-card-media,
+.admin-product-preview-media img,
+.admin-product-preview-media-row img {
+  border-radius: 16px;
+}
+
+.admin-state-panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 20px 22px;
+  border: 1px solid var(--admin-border);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(31, 31, 31, 0.96) 0%, rgba(21, 21, 21, 0.98) 100%);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-state-panel.is-compact {
+  padding: 18px 20px;
+  border-radius: 20px;
+}
+
+.admin-state-panel-critical {
+  border-color: rgba(255, 122, 122, 0.22);
+}
+
+.admin-state-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--admin-warm-stronger);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.admin-state-panel-critical .admin-state-panel-icon {
+  background: rgba(255, 122, 122, 0.14);
+  color: #ffb4bc;
+}
+
+.admin-state-panel-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-state-panel-kicker {
+  margin: 0;
+  color: var(--admin-text-dim);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.admin-state-panel-copy h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.admin-state-panel-copy p {
+  margin: 0;
+  color: var(--admin-text-soft);
+  line-height: 1.6;
+}
+
+.admin-state-panel-action {
+  grid-column: 2;
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+

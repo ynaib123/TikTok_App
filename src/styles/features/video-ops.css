@@ -1,0 +1,253 @@
+.video-ops-page {
+  min-height: 100vh;
+}
+
+.video-ops-shell {
+  display: grid;
+  gap: 1.25rem;
+  padding: 2rem;
+}
+
+.video-ops-hero,
+.video-panel-card,
+.video-stat-card {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1.5rem;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.32);
+}
+
+.video-ops-hero {
+  padding: 1.8rem;
+}
+
+.video-ops-kicker {
+  margin: 0 0 0.6rem;
+  color: #6ee7f9;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.video-ops-hero h1,
+.video-page-heading h1,
+.video-panel-head h2 {
+  margin: 0;
+  color: #f8fafc;
+}
+
+.video-ops-hero p,
+.video-page-heading p,
+.video-panel-head span,
+.video-preview-block p,
+.video-preview-block a,
+.video-pipeline-step p,
+.video-status-row span,
+.video-action-btn,
+.video-inline-action {
+  color: #cbd5e1;
+}
+
+.video-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.video-stats-grid,
+.video-panel-grid,
+.video-console-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.video-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.video-stat-card {
+  padding: 1.2rem;
+}
+
+.video-stat-card span {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.video-stat-card strong {
+  display: block;
+  margin-top: 0.55rem;
+  color: #f8fafc;
+  font-size: 2rem;
+}
+
+.video-panel-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.video-panel-grid.single-column {
+  grid-template-columns: 1fr;
+}
+
+.video-console-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+}
+
+.video-panel-card {
+  padding: 1.25rem;
+}
+
+.video-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.video-panel-head span {
+  font-size: 0.88rem;
+}
+
+.video-pipeline-list,
+.video-status-stack,
+.video-preview-stack,
+.video-action-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.video-pipeline-step,
+.video-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.66);
+}
+
+.video-pipeline-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #2dd4bf;
+  flex: 0 0 auto;
+}
+
+.video-pipeline-step p {
+  margin: 0;
+  width: 100%;
+}
+
+.video-table-wrap {
+  overflow: auto;
+}
+
+.video-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.video-table th,
+.video-table td {
+  padding: 0.95rem 0.8rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  text-align: left;
+  color: #e2e8f0;
+  vertical-align: top;
+}
+
+.video-table th {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.video-table tbody tr {
+  cursor: pointer;
+}
+
+.video-table tbody tr.is-selected,
+.video-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.video-preview-block {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.66);
+}
+
+.video-preview-block span {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #7dd3fc;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.video-preview-block p,
+.video-preview-block a {
+  margin: 0;
+  word-break: break-word;
+}
+
+.video-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.video-pill.success {
+  background: rgba(16, 185, 129, 0.16);
+  color: #86efac;
+}
+
+.video-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.video-action-btn,
+.video-inline-action {
+  min-height: 2.7rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  cursor: pointer;
+}
+
+.video-action-btn.ghost {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.tone-success {
+  background: rgba(16, 185, 129, 0.18);
+}
+
+.tone-warning {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.tone-accent {
+  background: rgba(59, 130, 246, 0.16);
+}
+
+@media (max-width: 1180px) {
+  .video-stats-grid,
+  .video-panel-grid,
+  .video-console-grid {
+    grid-template-columns: 1fr;
+  }
+}

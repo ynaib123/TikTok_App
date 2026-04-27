@@ -1,0 +1,111 @@
+:root {
+  --admin-contract-panel-radius: 26px;
+  --admin-contract-sidebar-radius: 26px;
+  --admin-contract-modal-radius: 26px;
+  --admin-contract-control-radius: var(--admin-radius-md);
+  --admin-contract-chip-radius: 999px;
+  --admin-contract-button-height: 42px;
+  --admin-contract-button-padding-x: 18px;
+  --admin-contract-button-radius: 14px;
+  --admin-contract-badge-height: 28px;
+  --admin-contract-badge-padding-x: 12px;
+  --admin-contract-badge-radius: 999px;
+  --admin-contract-card-padding: 18px;
+  --admin-contract-panel-gap: var(--admin-layout-gap-md);
+  --admin-contract-panel-gap-tight: var(--admin-layout-gap-sm);
+  --admin-contract-toolbar-gap: 12px;
+  --admin-contract-list-item-min-height: 72px;
+  --admin-contract-list-item-padding-y: 14px;
+  --admin-contract-list-item-padding-x: 16px;
+  --admin-contract-list-item-radius: 16px;
+  --admin-contract-list-item-gap: 12px;
+  --admin-contract-list-action-height: 38px;
+  --admin-contract-list-action-padding-x: 14px;
+  --admin-contract-list-action-radius: 12px;
+  --admin-contract-icon-box-size: 32px;
+  --admin-contract-list-meta-min-width: 140px;
+  --admin-contract-list-status-min-width: 108px;
+  --admin-contract-list-status-padding-x: 10px;
+  --admin-contract-sidebar-block-gap: 12px;
+  --admin-contract-sidebar-section-gap: 10px;
+  --admin-contract-sidebar-action-size: 46px;
+  --admin-contract-table-cell-padding-y: 15px;
+  --admin-contract-table-cell-padding-x: 12px;
+  --admin-contract-table-radius: 18px;
+  --admin-contract-panel-head-gap: 14px;
+  --admin-contract-panel-head-padding-y: 18px;
+  --admin-contract-panel-head-title-size: clamp(1.1rem, 1rem + 0.36vw, 1.32rem);
+  --admin-contract-panel-head-copy-size: 0.95rem;
+  --admin-contract-divider-color: var(--admin-border-subtle);
+  --admin-contract-sidebar-width: 300px;
+  --admin-contract-sidebar-layout-gap: 28px;
+}
+
+.admin-console-panel {
+  border-radius: var(--admin-contract-panel-radius);
+}
+
+.admin-selection-sidebar {
+  border-radius: var(--admin-contract-sidebar-radius);
+}
+
+.admin-modal {
+  border-radius: var(--admin-contract-modal-radius);
+}
+
+.admin-console-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--admin-contract-panel-head-gap);
+  padding-bottom: var(--admin-contract-panel-head-padding-y);
+  border-bottom: 1px solid var(--admin-contract-divider-color);
+}
+
+.admin-console-panel-head h2 {
+  margin: 0;
+  font-size: var(--admin-contract-panel-head-title-size);
+  line-height: 1.2;
+}
+
+.admin-console-panel-head span {
+  font-size: var(--admin-contract-panel-head-copy-size);
+  line-height: 1.5;
+}
+
+.admin-console-btn,
+.admin-console-btn-muted,
+.admin-console-btn-danger {
+  min-height: var(--admin-contract-button-height);
+  padding: 0 var(--admin-contract-button-padding-x);
+  border-radius: var(--admin-contract-button-radius);
+  font-weight: 700;
+}
+
+.admin-console-badge,
+.admin-status-pill,
+.admin-selection-sidebar-total {
+  min-height: var(--admin-contract-badge-height);
+  padding: 0 var(--admin-contract-badge-padding-x);
+  border-radius: var(--admin-contract-badge-radius);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.admin-selection-sidebar-head {
+  gap: var(--admin-contract-panel-head-gap);
+}
+
+.admin-modal-head {
+  gap: var(--admin-contract-panel-head-gap);
+}
+
+.admin-page-products .admin-product-selection-sidebar,
+.admin-page-categories .admin-category-selection-sidebar,
+.admin-page-clients .admin-client-selection-sidebar {
+  width: min(var(--admin-contract-sidebar-width), calc(100vw - 32px));
+}

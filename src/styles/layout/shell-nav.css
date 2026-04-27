@@ -1,0 +1,152 @@
+/* Shared shell layout primitives */
+.admin-console-page {
+  min-height: 100vh;
+  padding: var(--admin-page-gutter);
+  padding-top: calc(var(--admin-nav-height) + 8px);
+}
+
+.admin-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  min-height: var(--admin-nav-height);
+}
+
+.admin-navbar-shell {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  height: 100%;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 18px;
+}
+
+.admin-navbar-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  width: min(var(--admin-feedback-width), calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.admin-navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: fit-content;
+  padding-right: 6px;
+}
+
+.admin-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: fit-content;
+  margin-left: auto;
+}
+
+.admin-navbar-presence-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.admin-topbar {
+  position: fixed;
+  top: var(--admin-topbar-top);
+  left: 0;
+  right: 0;
+  z-index: 980;
+  height: var(--admin-topbar-height);
+}
+
+.admin-topbar-shell {
+  width: min(var(--admin-content-max-width), 100%);
+  margin: 0 auto;
+  height: 100%;
+  padding: 0 var(--admin-page-gutter);
+  padding-left: calc(var(--admin-sidebar-width) + var(--admin-page-gutter));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  transition: padding-left 300ms ease;
+}
+
+.admin-topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-topbar-icon {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+}
+
+.admin-topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.admin-console-page.sidebar-collapsed .admin-topbar-shell {
+  padding-left: calc(var(--admin-sidebar-collapsed-width) + var(--admin-page-gutter));
+}
+
+.admin-console-page.no-side-nav {
+  margin-left: 0;
+  padding-top: calc(var(--admin-nav-height) + 12px);
+  padding-left: var(--admin-page-gutter);
+  padding-right: var(--admin-page-gutter);
+}
+
+.admin-console-page.with-side-nav {
+  margin-left: 0;
+  padding-top: calc(var(--admin-nav-height) + 48px);
+}
+
+.admin-console-page.sidebar-collapsed {
+  margin-left: var(--admin-sidebar-collapsed-width);
+}
+
+.admin-console-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.admin-console-shell.is-products-page {
+  width: calc(100% + (var(--admin-page-gutter) * 2));
+  max-width: none;
+  margin: 0 0 0 calc(var(--admin-page-gutter) * -1);
+  margin-top: -15px;
+}
+
+.admin-console-layout {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  padding-left: var(--admin-content-offset-x);
+  padding-right: var(--admin-page-gutter);
+}
+
+.admin-console-layout.has-selection-sidebar {
+  padding-right: calc(var(--admin-contract-sidebar-width) + var(--admin-selection-sidebar-inline-gap));
+}

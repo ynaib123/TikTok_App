@@ -1,0 +1,553 @@
+.admin-page-categories .admin-console-page {
+  --admin-page-surface: var(--admin-panel-surface);
+  --admin-page-text-muted: var(--admin-panel-text-dimmer);
+  --admin-page-accent: rgba(255, 179, 71, 0.16);
+  --admin-overview-border: rgba(255, 179, 71, 0.18);
+  --admin-overview-background: linear-gradient(180deg, rgba(26, 23, 16, 0.94) 0%, rgba(18, 17, 13, 0.9) 100%);
+  --admin-overview-label: var(--admin-warm-strong);
+  --admin-overview-meta: var(--admin-panel-text-dimmer);
+  --admin-contract-sidebar-width: 300px;
+  --admin-catalog-list-item-padding-y: 14px;
+  --admin-catalog-list-item-padding-x: 16px;
+  --admin-catalog-list-item-gap: 12px;
+  --admin-catalog-list-item-surface: linear-gradient(180deg, rgba(31, 31, 31, 0.98) 0%, rgba(20, 20, 20, 0.98) 100%);
+  --admin-catalog-list-item-surface-hover: linear-gradient(180deg, rgba(36, 36, 36, 0.98) 0%, rgba(24, 24, 24, 0.98) 100%);
+  --admin-catalog-list-item-surface-active: linear-gradient(180deg, rgba(43, 43, 43, 0.98) 0%, rgba(28, 28, 28, 0.98) 100%);
+  --admin-catalog-list-action-surface: linear-gradient(180deg, rgba(24, 24, 24, 0.98) 0%, rgba(18, 18, 18, 0.98) 100%);
+  --admin-catalog-list-meta-min-width: 112px;
+}
+
+.admin-page-categories .admin-selection-sidebar-hero-category {
+  --admin-sidebar-hero-border: rgba(255, 195, 111, 0.2);
+  --admin-sidebar-hero-glow: rgba(255, 195, 111, 0.14);
+  --admin-sidebar-hero-kicker: var(--admin-warm-strong);
+  --admin-sidebar-hero-line: rgba(255, 195, 111, 0.28);
+}
+
+.admin-categories-page-shell {
+  width: 100%;
+}
+
+.admin-page-categories .admin-category-panel {
+  scroll-margin-top: 96px;
+  padding: 0;
+  margin-top: 0;
+}
+
+.admin-page-categories .admin-category-active-filters {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--admin-contract-toolbar-gap);
+  margin-bottom: 14px;
+}
+
+.admin-page-categories .admin-product-toolbar {
+  background: var(--admin-page-surface);
+}
+
+.admin-page-categories .admin-product-toolbar-search input,
+.admin-page-categories .admin-product-toolbar-trigger,
+.admin-page-categories .admin-product-toolbar-bulk-toggle,
+.admin-page-categories .admin-product-toolbar-icon-btn {
+  background: var(--admin-panel-black);
+}
+
+.admin-page-categories .admin-product-toolbar-trigger:hover,
+.admin-page-categories .admin-product-toolbar-bulk-toggle:hover,
+.admin-page-categories .admin-product-toolbar-icon-btn:hover {
+  background: var(--admin-surface-overlay-soft);
+}
+
+.admin-page-categories .admin-product-toolbar-trigger.is-open,
+.admin-page-categories .admin-product-toolbar-bulk-toggle.is-active,
+.admin-page-categories .admin-product-toolbar-icon-btn.is-active {
+  background: var(--admin-panel-surface-hover);
+}
+
+.admin-page-categories .admin-product-toolbar-option,
+.admin-page-categories .admin-product-toolbar-option:hover,
+.admin-page-categories .admin-product-toolbar-option.is-selected {
+  background: var(--admin-panel-black);
+}
+
+.admin-page-categories .admin-product-pagination-summary-btn,
+.admin-page-categories .admin-product-pagination-btn {
+  background: var(--admin-panel-black);
+}
+
+.admin-page-categories .admin-product-pagination-summary-btn:hover,
+.admin-page-categories .admin-product-pagination-summary-btn.is-open,
+.admin-page-categories .admin-product-pagination-btn:hover:not(:disabled) {
+  background: var(--admin-surface-overlay-soft);
+}
+
+.admin-page-categories .admin-product-pagination-btn.is-primary,
+.admin-page-categories .admin-product-pagination-btn.is-primary:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--admin-panel-black);
+  color: var(--admin-panel-text);
+  box-shadow: none;
+}
+
+.admin-page-categories .admin-selection-sidebar {
+  scroll-margin-top: 96px;
+}
+
+.admin-page-categories .admin-console-layout.has-selection-sidebar {
+  padding-right: calc(var(--admin-contract-sidebar-width) + var(--admin-contract-sidebar-layout-gap));
+}
+
+.admin-page-categories .admin-category-selection-sidebar {
+  top: 78px;
+  right: 0;
+  width: var(--admin-contract-sidebar-width);
+  min-width: var(--admin-contract-sidebar-width);
+  max-width: var(--admin-contract-sidebar-width);
+  height: calc(100vh - 78px);
+  max-height: calc(100vh - 78px);
+  padding: 18px 14px 0;
+  border: none;
+  border-left: 1px solid var(--admin-border);
+  border-radius: 0;
+  background: var(--admin-panel-surface);
+  box-shadow: none;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-selection-sidebar-head {
+  display: none;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-selection-sidebar-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: var(--admin-contract-sidebar-block-gap);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px 14px;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-selection-sidebar-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-selection-sidebar-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 195, 111, 0.28);
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-selection-sidebar-body::-webkit-scrollbar-track {
+  background: var(--admin-surface-overlay-soft);
+  border-radius: 999px;
+}
+
+.admin-page-categories .admin-category-panel .admin-console-panel-head {
+  margin-bottom: 14px;
+  padding-bottom: var(--admin-contract-panel-head-padding-y);
+  border-bottom: 1px solid var(--admin-contract-divider-color);
+}
+
+.admin-page-categories .admin-category-management-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.admin-page-categories .admin-category-list {
+  gap: 12px;
+}
+
+.admin-page-categories .admin-category-list-item {
+  align-items: center;
+}
+
+.admin-page-categories .admin-category-list-item.is-active {
+  border-color: rgba(255, 255, 255, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 34%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(39, 39, 39, 0.98) 0%, rgba(32, 32, 32, 0.97) 52%, rgba(28, 28, 28, 0.99) 100%);
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.1),
+    0 20px 36px rgba(8, 14, 24, 0.26),
+    0 12px 22px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.admin-page-categories .admin-category-list-copy {
+  flex: 1 1 auto;
+}
+
+.admin-page-categories .admin-category-products-button {
+  min-height: var(--admin-contract-list-action-height);
+  min-width: 112px;
+  white-space: nowrap;
+}
+
+.admin-page-categories .admin-category-list-item:hover .admin-category-products-button,
+.admin-page-categories .admin-category-list-item.is-active .admin-category-products-button {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--admin-surface-overlay-soft);
+  color: #f1f1f1;
+}
+
+.admin-page-categories .admin-category-editor-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-contract-sidebar-block-gap);
+  min-height: 100%;
+}
+
+.admin-page-categories .admin-category-editor-bottom-stack {
+  display: grid;
+  gap: var(--admin-contract-sidebar-section-gap);
+  margin-top: auto;
+  flex: 0 0 auto;
+}
+
+.admin-page-categories .admin-category-inline-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-page-categories .admin-category-editor-stack .admin-selection-group-block:not(.admin-category-selection-hero-block) {
+  grid-template-rows: auto auto;
+  gap: 8px;
+}
+
+.admin-page-categories .admin-category-selection-hero-block {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 2px;
+}
+
+.admin-page-categories .admin-category-selection-hero-block .admin-product-selection-summary {
+  display: grid;
+  gap: 8px;
+  max-height: calc((56px * 6) + (8px * 5));
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.admin-page-categories .admin-category-selection-hero-block .admin-product-selection-summary::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-page-categories .admin-category-selection-hero-block .admin-product-selection-summary::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 195, 111, 0.28);
+}
+
+.admin-page-categories .admin-category-selection-hero-block .admin-product-selection-summary::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+.admin-page-categories .admin-category-selection-pill {
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--admin-page-surface-2);
+  box-shadow: none;
+}
+
+.admin-page-categories .admin-category-selection-pill-hero {
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.admin-page-categories .admin-category-selection-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(245, 245, 245, 0.98) 0%, rgba(225, 225, 225, 0.98) 100%);
+  color: #111111;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.admin-page-categories .admin-category-selection-copy {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: 0;
+}
+
+.admin-page-categories .admin-category-selection-pill-hero .admin-product-selection-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-page-categories .admin-category-selection-pill-hero .admin-product-selection-copy strong {
+  color: var(--admin-page-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-page-categories .admin-category-selection-pill-hero .admin-product-selection-copy small {
+  color: #bcbcbc;
+  font-size: 11px;
+}
+
+.admin-page-categories .admin-category-selection-copy strong,
+.admin-page-categories .admin-category-selection-copy small {
+  white-space: normal;
+}
+
+.admin-page-categories .admin-category-edit-field {
+  flex: 1;
+  gap: 0;
+  margin-top: 0;
+}
+
+.admin-page-categories .admin-category-inline-row .admin-category-edit-field {
+  width: 100%;
+}
+
+.admin-page-categories .admin-category-edit-field input {
+  margin-top: 0;
+  min-height: 46px;
+  height: 46px;
+  padding: 0 12px;
+  background: var(--admin-page-surface-2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--admin-page-text);
+  box-shadow: none;
+}
+
+.admin-page-categories .admin-category-editor-bottom-stack .admin-category-edit-field input:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.admin-page-categories .admin-category-editor-bottom-stack .admin-category-edit-field input:focus,
+.admin-page-categories .admin-category-editor-bottom-stack .admin-category-edit-field input:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
+}
+
+.admin-page-categories .admin-category-edit-field input::placeholder {
+  color: var(--admin-page-text-muted);
+}
+
+.admin-page-categories .admin-category-edit-field input:disabled {
+  background: var(--admin-page-surface-2);
+  color: var(--admin-page-text-muted);
+  opacity: 1;
+}
+
+.admin-page-categories .admin-category-selection-action {
+  align-self: center;
+  width: var(--admin-contract-sidebar-action-size);
+  height: var(--admin-contract-sidebar-action-size);
+  flex: 0 0 var(--admin-contract-sidebar-action-size);
+  justify-self: end;
+  border-radius: var(--admin-contract-button-radius);
+}
+
+.admin-page-categories .admin-selection-saved-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-contract-sidebar-block-gap);
+  padding: 0 2px;
+  min-height: 20px;
+}
+
+.admin-page-categories .admin-product-selection-group-title {
+  color: var(--admin-page-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-page-categories .admin-selection-saved-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-page-categories .admin-selection-saved-head span {
+  color: var(--admin-page-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-page-categories .admin-selection-saved-clear {
+  width: var(--admin-contract-sidebar-action-size);
+  height: var(--admin-contract-sidebar-action-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--admin-contract-button-radius);
+  background: var(--admin-page-surface-2);
+  color: #d2d2d2;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-page-categories .admin-category-selection-hero-block .admin-selection-saved-clear {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 15px;
+}
+
+.admin-page-categories .admin-selection-saved-clear.is-dirty,
+.admin-page-categories .admin-selection-saved-clear.is-save,
+.admin-page-categories .admin-category-selection-action.is-save {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: var(--admin-page-surface-2);
+  color: #d2d2d2;
+}
+
+.admin-page-categories .admin-category-editor-bottom-stack .admin-selection-saved-clear.is-pending,
+.admin-page-categories .admin-category-editor-bottom-stack .admin-selection-saved-clear.is-dirty,
+.admin-page-categories .admin-category-editor-bottom-stack .admin-selection-saved-clear.is-save,
+.admin-page-categories .admin-category-editor-bottom-stack .admin-category-selection-action.is-save {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(28, 28, 28, 0.98) 0%, rgba(20, 20, 20, 0.98) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.admin-page-categories .admin-selection-saved-clear.is-dirty:hover:not(:disabled),
+.admin-page-categories .admin-selection-saved-clear.is-save:hover:not(:disabled),
+.admin-page-categories .admin-category-selection-action.is-save:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #d2d2d2;
+}
+
+.admin-page-categories .admin-category-editor-bottom-stack .admin-selection-saved-clear:hover:not(:disabled) span,
+.admin-page-categories .admin-category-editor-bottom-stack .admin-selection-saved-clear.is-save:hover:not(:disabled) span,
+.admin-page-categories .admin-category-editor-bottom-stack .admin-category-selection-action.is-save:hover:not(:disabled) span {
+  color: #d2d2d2;
+}
+
+.admin-page-categories .admin-selection-saved-clear:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-page-categories .admin-product-selection-pill-button {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.admin-page-categories .admin-product-selection-pill-main,
+.admin-page-categories .admin-category-selection-pill {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-page-categories .admin-category-selection-pill .admin-product-selection-copy strong {
+  color: var(--admin-page-text);
+  font-size: 13px;
+  font-weight: 700;
+  display: none;
+}
+
+.admin-page-categories .admin-category-selection-pill .admin-product-selection-copy small {
+  color: var(--admin-page-text-muted);
+  font-size: 11px;
+  display: none;
+}
+
+.admin-page-categories .admin-category-selection-pill-hero .admin-product-selection-copy strong,
+.admin-page-categories .admin-category-selection-pill-hero .admin-product-selection-copy small {
+  display: block;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-product-selection-copy strong {
+  color: var(--admin-page-text);
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-product-selection-copy small {
+  color: var(--admin-page-text-muted);
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-thumb {
+  color: #111111;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(245, 245, 245, 0.98) 0%, rgba(225, 225, 225, 0.98) 100%);
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-thumb span {
+  color: #111111;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(42, 42, 42, 0.94) 0%, rgba(27, 27, 27, 0.98) 100%);
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-copy small,
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill-button.is-active .admin-product-selection-copy small,
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill-button:hover .admin-product-selection-copy small {
+  color: #bcbcbc;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-copy strong,
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill-button.is-active .admin-product-selection-copy strong,
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill-button:hover .admin-product-selection-copy strong {
+  color: #ffffff;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill-button.is-active {
+  background: linear-gradient(180deg, rgba(64, 64, 64, 0.98) 0%, rgba(40, 40, 40, 0.98) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-category-selection-hero-block .admin-product-selection-pill-button:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(52, 52, 52, 0.96) 0%, rgba(32, 32, 32, 0.98) 100%);
+}
+
+.admin-page-categories .admin-category-selection-pill .admin-product-field input {
+  background: var(--admin-page-surface-2);
+  border-color: var(--admin-page-border);
+  color: var(--admin-page-text);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.admin-page-categories .admin-category-selection-pill .admin-product-field input:focus {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.admin-page-categories .admin-category-panel {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.admin-page-categories .admin-category-selection-sidebar .admin-selection-sidebar-body {
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
