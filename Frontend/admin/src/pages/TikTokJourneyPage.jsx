@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import AdminShell from '../components/AdminShell'
 import AdminToolbarMenuButton from './admin-dashboard/AdminToolbarMenuButton'
 import {
-  triggerCheckShotstackWorkflow,
+  triggerCheckShotstackWorkflow as triggerScriptGenerationWorkflow,
   triggerMainContentPipeline,
   triggerPublishTikTokWorkflow,
 } from '../services/n8nClient'
@@ -20,7 +20,7 @@ import '../styles/themes/products-dark.css'
 
 const STEPS = [
   { id: 'creation', label: 'Creation' },
-  { id: 'render', label: 'Render' },
+  { id: 'script', label: 'Script' },
   { id: 'init-publish', label: 'Init publish' },
   { id: 'upload', label: 'Upload' },
   { id: 'publish', label: 'Publish' },
@@ -42,6 +42,7 @@ const LIST_SORT_OPTIONS = [
   { value: 'topic_desc', label: 'Topic Z-A' },
   { value: 'published_first', label: 'Publiees d abord' },
 ]
+const TIKTOK_CATEGORY_OPTIONS = ['Food', 'Love', 'Sport', 'Fitness', 'Beauty']
 const MAX_IDEA_BATCH_SIZE = 5
 
 function sleep(ms) {
@@ -54,6 +55,14 @@ function isRenderReady(idea) {
     || idea?.shotstackStatus === 'done'
 }
 
+function hasScriptGenerationResult(idea) {
+  return Boolean(
+    String(idea?.script || '').trim()
+    || String(idea?.caption || '').trim()
+    || String(idea?.keyword || '').trim()
+  )
+}
+
 function isPublished(idea) {
   return String(idea?.tiktokStatus || '').toLowerCase() === 'published'
 }
@@ -61,6 +70,21 @@ function isPublished(idea) {
 function normalizeUrl(value) {
   const url = String(value || '').trim()
   return url || null
+}
+
+function normalizeText(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function mergeIdeasById(existingIdeas, incomingIdeas) {
+  const byId = new Map()
+  existingIdeas.forEach((idea) => {
+    byId.set(Number(idea?.id), idea)
+  })
+  incomingIdeas.forEach((idea) => {
+    byId.set(Number(idea?.id), idea)
+  })
+  return [...byId.values()].sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
 }
 
 function getIdeaStatusLabel(idea) {
@@ -98,6 +122,14 @@ function SortIcon() {
       <path d="M8 18h4" />
       <path d="m4 8 2-2 2 2" />
       <path d="M6 6v12" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6 9 6 6 6-6" />
     </svg>
   )
 }
@@ -201,10 +233,12 @@ export default function TikTokJourneyPage() {
   const [generatedIdeas, setGeneratedIdeas] = useState([])
   const [selectedGeneratedIdeaId, setSelectedGeneratedIdeaId] = useState(null)
   const [generationCount, setGenerationCount] = useState(1)
-  const [generationCategory, setGenerationCategory] = useState('')
+  const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
   const [lastGenerationBaselineId, setLastGenerationBaselineId] = useState(null)
   const [lastGenerationExpectedCount, setLastGenerationExpectedCount] = useState(0)
-  const [renderedIdea, setRenderedIdea] = useState(null)
+  const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false)
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false)
+  const [scriptedIdea, setScriptedIdea] = useState(null)
   const [manualAction, setManualAction] = useState(null)
   const [uploadResult, setUploadResult] = useState(null)
   const [errorMessage, setErrorMessage] = useState(null)
@@ -264,7 +298,11 @@ export default function TikTokJourneyPage() {
 
     return contentIdeas
       .filter((idea) => Number(idea?.id || 0) > Number(lastGenerationBaselineId))
-      .filter((idea) => String(idea?.category || '').trim().toLowerCase() === String(generationCategory || '').trim().toLowerCase())
+      .filter((idea) => {
+        const expectedCategory = normalizeText(generationCategory)
+        const currentCategory = normalizeText(idea?.category)
+        return !expectedCategory || !currentCategory || currentCategory === expectedCategory
+      })
       .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
       .slice(0, lastGenerationExpectedCount || MAX_IDEA_BATCH_SIZE)
   }, [contentIdeas, generatedIdeas, generationCategory, lastGenerationBaselineId, lastGenerationExpectedCount])
@@ -272,7 +310,7 @@ export default function TikTokJourneyPage() {
     () => displayedGeneratedIdeas.find((idea) => Number(idea.id) === Number(selectedGeneratedIdeaId)) || displayedGeneratedIdeas[0] || null,
     [displayedGeneratedIdeas, selectedGeneratedIdeaId],
   )
-  const activeIdea = renderedIdea || selectedGeneratedIdea
+  const activeIdea = scriptedIdea || selectedGeneratedIdea
   const selectedListFilter = LIST_FILTER_OPTIONS.find((option) => option.value === listFilter) || LIST_FILTER_OPTIONS[0]
   const selectedListSort = LIST_SORT_OPTIONS.find((option) => option.value === listSort) || LIST_SORT_OPTIONS[0]
   const catalogTags = [
@@ -316,40 +354,74 @@ export default function TikTokJourneyPage() {
 
   const waitForNewIdeas = async (baselineMaxId, expectedCount, requestedCategory) => {
     const timeoutAt = Date.now() + 3 * 60 * 1000
+    let bestMatch = []
 
     while (Date.now() < timeoutAt) {
       const ideas = await fetchContentIdeas()
-      const nextIdeas = ideas
+      const ideasAfterBaseline = ideas
         .filter((idea) => Number(idea.id) > baselineMaxId)
-        .filter((idea) => String(idea?.category || '').trim().toLowerCase() === String(requestedCategory || '').trim().toLowerCase())
         .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+      const expectedCategory = normalizeText(requestedCategory)
+      const categoryMatchedIdeas = ideasAfterBaseline.filter((idea) => {
+        const currentCategory = normalizeText(idea?.category)
+        return !expectedCategory || !currentCategory || currentCategory === expectedCategory
+      })
+      const nextIdeas = categoryMatchedIdeas.length ? categoryMatchedIdeas : ideasAfterBaseline
+
+      if (nextIdeas.length) {
+        bestMatch = nextIdeas.slice(0, Math.max(expectedCount, nextIdeas.length))
+        setGeneratedIdeas((currentIdeas) => mergeIdeasById(currentIdeas, bestMatch))
+        setSelectedGeneratedIdeaId((currentSelectedId) => currentSelectedId || bestMatch[0]?.id || null)
+      }
 
       if (nextIdeas.length >= expectedCount) return nextIdeas.slice(0, expectedCount)
       await sleep(4000)
     }
 
     const ideas = await fetchContentIdeas()
-    const partialIdeas = ideas
+    const ideasAfterBaseline = ideas
       .filter((idea) => Number(idea.id) > baselineMaxId)
-      .filter((idea) => String(idea?.category || '').trim().toLowerCase() === String(requestedCategory || '').trim().toLowerCase())
       .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+    const expectedCategory = normalizeText(requestedCategory)
+    const categoryMatchedIdeas = ideasAfterBaseline.filter((idea) => {
+      const currentCategory = normalizeText(idea?.category)
+      return !expectedCategory || !currentCategory || currentCategory === expectedCategory
+    })
+    const partialIdeas = (categoryMatchedIdeas.length ? categoryMatchedIdeas : ideasAfterBaseline)
+      .slice(0, expectedCount)
 
-    if (partialIdeas.length) return partialIdeas.slice(0, expectedCount)
+    if (partialIdeas.length) return partialIdeas
 
     throw new Error("Les nouvelles idees n'ont pas ete trouvees dans content_ideas.")
   }
 
-  const waitForRenderedIdea = async (ideaId) => {
+  const waitForScriptGeneration = async (ideaId, baselineIdea = null) => {
     const timeoutAt = Date.now() + 15 * 60 * 1000
+    const baselineScript = String(baselineIdea?.script || '').trim()
+    const baselineCaption = String(baselineIdea?.caption || '').trim()
+    const baselineKeyword = String(baselineIdea?.keyword || '').trim()
 
     while (Date.now() < timeoutAt) {
       const ideas = await fetchContentIdeas()
       const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
-      if (nextIdea && isRenderReady(nextIdea)) return nextIdea
+      if (!nextIdea) {
+        await sleep(5000)
+        continue
+      }
+
+      const nextScript = String(nextIdea?.script || '').trim()
+      const nextCaption = String(nextIdea?.caption || '').trim()
+      const nextKeyword = String(nextIdea?.keyword || '').trim()
+      const hasChanged = nextScript !== baselineScript || nextCaption !== baselineCaption || nextKeyword !== baselineKeyword
+
+      if (hasScriptGenerationResult(nextIdea) && (hasChanged || !baselineIdea)) {
+        return nextIdea
+      }
+
       await sleep(5000)
     }
 
-    throw new Error("Le render n'a pas fini dans le temps attendu.")
+    throw new Error("La generation du script n'a pas fini dans le temps attendu.")
   }
 
   const waitForUploadPreparation = async (ideaId) => {
@@ -373,14 +445,20 @@ export default function TikTokJourneyPage() {
     ])
   }
 
-  const resetFlowState = () => {
+  const resetGeneratedIdeasState = () => {
     setGeneratedIdeas([])
     setSelectedGeneratedIdeaId(null)
-    setLastGenerationBaselineId(null)
-    setLastGenerationExpectedCount(0)
-    setRenderedIdea(null)
+    setIsGeneratingScript(false)
+    setScriptedIdea(null)
     setManualAction(null)
     setUploadResult(null)
+  }
+
+  const resetFlowState = () => {
+    resetGeneratedIdeasState()
+    setLastGenerationBaselineId(null)
+    setLastGenerationExpectedCount(0)
+    setIsGeneratingIdeas(false)
     setErrorMessage(null)
     setSuccessMessage(null)
   }
@@ -429,34 +507,37 @@ export default function TikTokJourneyPage() {
     }
 
     setIsWorking(true)
+    setIsGeneratingIdeas(true)
     setErrorMessage(null)
+    setSuccessMessage(null)
 
     try {
       const ideas = await fetchContentIdeas()
       const baselineMaxId = ideas.reduce((maxId, idea) => Math.max(maxId, Number(idea?.id) || 0), 0)
+      resetGeneratedIdeasState()
       setLastGenerationBaselineId(baselineMaxId)
       setLastGenerationExpectedCount(requestedCount)
       const generationRequests = Array.from({ length: requestedCount }, (_, index) => (
         triggerMainContentPipeline({
-          source: `backoffice-tiktok-step-creation-${index + 1}`,
+          source: `backoffice-tiktok-step-creation-${Date.now()}-${index + 1}`,
           ideaCount: 1,
           category: requestedCategory,
           force: shouldForceGeneration,
         })
       ))
-
       await Promise.all(generationRequests)
       const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
       setGeneratedIdeas(nextIdeas)
       setSelectedGeneratedIdeaId(nextIdeas[0]?.id || null)
-      setRenderedIdea(null)
+      setScriptedIdea(null)
       setManualAction(null)
       setUploadResult(null)
       await refreshPipelineData()
-      showSuccess(`${nextIdeas.length} idee(s) generee(s). Choisis-en une puis valide pour lancer le render.`)
+      showSuccess(`${nextIdeas.length} idee(s) generee(s). Choisis-en une puis valide pour lancer l etape script.`)
     } catch (error) {
       showError(error, "La generation n'a pas abouti.")
     } finally {
+      setIsGeneratingIdeas(false)
       setIsWorking(false)
     }
   }
@@ -468,64 +549,69 @@ export default function TikTokJourneyPage() {
     }
 
     setIsWorking(true)
+    setIsGeneratingScript(true)
     setErrorMessage(null)
 
     try {
-      await triggerCheckShotstackWorkflow({
-        source: 'backoffice-tiktok-step-render',
+      await triggerScriptGenerationWorkflow({
+        source: 'backoffice-tiktok-step-script',
         contentIdeaId: selectedGeneratedIdea.id,
         topic: selectedGeneratedIdea.topic,
       })
-      const nextRenderedIdea = await waitForRenderedIdea(selectedGeneratedIdea.id)
-      setRenderedIdea(nextRenderedIdea)
+      goToStep('script')
+      showSuccess('Workflow script lance. Les resultats apparaitront ici des qu ils seront prets.')
+      const nextScriptedIdea = await waitForScriptGeneration(selectedGeneratedIdea.id, selectedGeneratedIdea)
+      setScriptedIdea(nextScriptedIdea)
       setGeneratedIdeas((currentIdeas) => currentIdeas.map((idea) => (
-        Number(idea.id) === Number(nextRenderedIdea.id) ? nextRenderedIdea : idea
+        Number(idea.id) === Number(nextScriptedIdea.id) ? nextScriptedIdea : idea
       )))
-      goToStep('render')
       await refreshPipelineData()
-      showSuccess('Render termine. Verifie la video avant de valider.')
+      showSuccess('Script, caption et keyword generes. Verifie le resultat avant de valider.')
     } catch (error) {
-      showError(error, "Le render n'a pas abouti.")
+      showError(error, "La generation script n'a pas abouti.")
     } finally {
+      setIsGeneratingScript(false)
       setIsWorking(false)
     }
   }
 
-  const handleRegenerateRender = async () => {
-    const idea = renderedIdea || selectedGeneratedIdea
+  const handleRegenerateScript = async () => {
+    const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
-      setErrorMessage('Aucune idee disponible pour relancer le render.')
+      setErrorMessage('Aucune idee disponible pour relancer le script.')
       return
     }
 
     setIsWorking(true)
+    setIsGeneratingScript(true)
     setErrorMessage(null)
 
     try {
-      await triggerCheckShotstackWorkflow({
-        source: 'backoffice-tiktok-step-render-regenerate',
+      await triggerScriptGenerationWorkflow({
+        source: 'backoffice-tiktok-step-script-regenerate',
         contentIdeaId: idea.id,
         topic: idea.topic,
         force: true,
       })
-      const nextRenderedIdea = await waitForRenderedIdea(idea.id)
-      setRenderedIdea(nextRenderedIdea)
+      const nextScriptedIdea = await waitForScriptGeneration(idea.id, idea)
+      setScriptedIdea(nextScriptedIdea)
       setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
-        Number(currentIdea.id) === Number(nextRenderedIdea.id) ? nextRenderedIdea : currentIdea
+        Number(currentIdea.id) === Number(nextScriptedIdea.id) ? nextScriptedIdea : currentIdea
       )))
       await refreshPipelineData()
-      showSuccess('Render regenere. Tu peux valider si la video te convient.')
+      showSuccess('Script regenere. Tu peux valider si le contenu te convient.')
     } catch (error) {
-      showError(error, "La regeneration du render n'a pas abouti.")
+      showError(error, "La regeneration du script n'a pas abouti.")
     } finally {
+      setIsGeneratingScript(false)
       setIsWorking(false)
     }
   }
 
-  const handleValidateRender = async () => {
-    const idea = renderedIdea || selectedGeneratedIdea
+  const handleValidateScript = async () => {
+    const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
-      setErrorMessage('Aucune video rendue a valider.')
+      setErrorMessage('Aucun resultat script a valider.')
       return
     }
 
@@ -551,7 +637,7 @@ export default function TikTokJourneyPage() {
   }
 
   const handleRetryInitPublish = async () => {
-    await handleValidateRender()
+    await handleValidateScript()
   }
 
   const handleValidateInitPublish = () => {
@@ -565,7 +651,7 @@ export default function TikTokJourneyPage() {
   }
 
   const handleUploadVideo = async () => {
-    const idea = renderedIdea || selectedGeneratedIdea
+    const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id || !manualAction?.shotstackUrl || !manualAction?.uploadUrl) {
       setErrorMessage('Il manque la video ou l upload URL pour lancer l upload.')
       return
@@ -601,7 +687,7 @@ export default function TikTokJourneyPage() {
   }
 
   const handlePublishVideo = async () => {
-    const idea = renderedIdea || selectedGeneratedIdea
+    const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
       setErrorMessage('Aucune video disponible pour finaliser la publication.')
       return
@@ -838,38 +924,87 @@ export default function TikTokJourneyPage() {
       return {
         actions: (
           <div className="tiktok-step-actions">
-            <div className="tiktok-step-intro">
-              <strong>Genere une nouvelle idee TikTok</strong>
-              <p>Choisis une categorie, indique combien d idees generer jusqu a 5, puis valide celle a garder pour le render.</p>
-            </div>
             <div className="tiktok-step-form">
               <label className="tiktok-step-field">
                 <span>Categorie</span>
-                <input
-                  type="text"
-                  value={generationCategory}
-                  onChange={(event) => setGenerationCategory(event.target.value)}
-                  placeholder="Ex: Beaute, Fitness, Food..."
-                  maxLength={80}
-                  disabled={isWorking}
-                />
+                <div className="tiktok-step-toolbar-select">
+                  <button
+                    type="button"
+                    className={`admin-product-toolbar-trigger tiktok-step-toolbar-trigger ${openListMenu === 'tiktok-category' ? 'is-open' : ''}`}
+                    onClick={() => setOpenListMenu((currentMenu) => (currentMenu === 'tiktok-category' ? null : 'tiktok-category'))}
+                    aria-haspopup="listbox"
+                    aria-expanded={openListMenu === 'tiktok-category'}
+                    aria-controls={openListMenu === 'tiktok-category' ? 'tiktok-category-menu' : undefined}
+                    disabled={isWorking}
+                  >
+                    <strong>{generationCategory}</strong>
+                    <span className="admin-toolbar-icon" aria-hidden="true"><ChevronDownIcon /></span>
+                  </button>
+
+                  {openListMenu === 'tiktok-category' ? (
+                    <div
+                      id="tiktok-category-menu"
+                      className="admin-product-toolbar-menu tiktok-step-toolbar-menu"
+                      role="listbox"
+                      aria-label="Choix de categorie TikTok"
+                    >
+                      <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
+                        {TIKTOK_CATEGORY_OPTIONS.map((category) => (
+                          <button
+                            key={category}
+                            type="button"
+                            className={`admin-product-toolbar-option ${generationCategory === category ? 'is-selected' : ''}`}
+                            onClick={() => {
+                              setGenerationCategory(category)
+                              setOpenListMenu(null)
+                            }}
+                          >
+                            <span>{category}</span>
+                            {generationCategory === category ? <strong>•</strong> : null}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </label>
               <label className="tiktok-step-field">
-                <span>Nombre d idees</span>
+                <span>Count</span>
                 <input
                   type="number"
                   min="1"
                   max={MAX_IDEA_BATCH_SIZE}
+                  step="1"
                   value={generationCount}
-                  onChange={(event) => setGenerationCount(event.target.value)}
+                  onChange={(event) => {
+                    const rawValue = String(event.target.value || '').replace(/\D/g, '').slice(0, 1)
+                    if (!rawValue) {
+                      setGenerationCount('')
+                      return
+                    }
+
+                    const nextValue = Math.max(1, Math.min(MAX_IDEA_BATCH_SIZE, Number(rawValue)))
+                    setGenerationCount(String(nextValue))
+                  }}
                   disabled={isWorking}
                 />
-                <small>Maximum {MAX_IDEA_BATCH_SIZE} idees par generation.</small>
               </label>
             </div>
-            <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isWorking}>
-              {displayedGeneratedIdeas.length ? 'Regenerer' : 'Generer'}
-            </button>
+            {isGeneratingIdeas ? (
+              <div
+                className="tiktok-generate-loading"
+                role="progressbar"
+                aria-label="Generation des idees en cours"
+                aria-valuetext="Generation des idees en cours"
+              >
+                <span className="tiktok-generate-loading-bar" aria-hidden="true" />
+                <strong>Generation en cours...</strong>
+              </div>
+            ) : (
+              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isWorking}>
+                {displayedGeneratedIdeas.length ? 'Regenerer des idees' : 'Generer'}
+              </button>
+            )}
             <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isWorking || !selectedGeneratedIdea}>
               Valider
             </button>
@@ -877,10 +1012,20 @@ export default function TikTokJourneyPage() {
         ),
         result: (
           <div className="tiktok-step-result">
+            {isGeneratingIdeas ? (
+              <div className="tiktok-loading-state" aria-live="polite" aria-label="Generation des idees en cours">
+                <div className="tiktok-loading-state-spinner" aria-hidden="true" />
+                <div className="tiktok-loading-state-copy">
+                  <strong>Generation en cours</strong>
+                  <span>Preparation des nouvelles idees...</span>
+                </div>
+              </div>
+            ) : null}
             {displayedGeneratedIdeas.length ? (
               <div className="tiktok-ideas-list">
-                {displayedGeneratedIdeas.map((idea) => {
+                {displayedGeneratedIdeas.map((idea, index) => {
                   const isSelected = Number(idea.id) === Number(selectedGeneratedIdea?.id)
+                  const previewText = idea.caption || idea.script
 
                   return (
                     <button
@@ -889,39 +1034,64 @@ export default function TikTokJourneyPage() {
                       className={`tiktok-idea-preview ${isSelected ? 'is-selected' : ''}`}
                       onClick={() => setSelectedGeneratedIdeaId(idea.id)}
                     >
-                      <span className="tiktok-idea-preview-kicker">{isSelected ? 'Idee selectionnee' : 'Idee generee'}</span>
+                      <div className="tiktok-idea-preview-head">
+                        <span className="tiktok-idea-preview-kicker">{isSelected ? 'Selectionnee' : `Idee ${index + 1}`}</span>
+                        <span className={`tiktok-idea-preview-indicator ${isSelected ? 'is-selected' : ''}`} aria-hidden="true" />
+                      </div>
                       <strong>{idea.topic || `Video #${idea.id}`}</strong>
+                      {previewText ? <p>{previewText}</p> : null}
                     </button>
                   )
                 })}
               </div>
-            ) : (
-              <div className="tiktok-step-empty-state">
-                <span className="tiktok-step-empty-kicker">Resultat en attente</span>
-                <strong>Aucune idee generee pour le moment</strong>
-                <p>Choisis une categorie, indique un volume de 1 a 5, puis lance la generation.</p>
-              </div>
-            )}
+            ) : null}
           </div>
         ),
       }
     }
 
-    if (currentStep.id === 'render') {
+    if (currentStep.id === 'script') {
       return {
         actions: (
           <div className="tiktok-step-actions">
-            <button type="button" className="video-action-btn" onClick={() => void handleRegenerateRender()} disabled={isWorking}>
-              Regenerer render
+            <button type="button" className="video-action-btn" onClick={() => void handleRegenerateScript()} disabled={isWorking}>
+              Regenerer script
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateRender()} disabled={isWorking || !renderedIdea}>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateScript()} disabled={isWorking || !scriptedIdea}>
               Valider
             </button>
           </div>
         ),
         result: (
           <div className="tiktok-step-result">
-            <VideoPreview url={renderedIdea?.shotstackUrl} />
+            {isGeneratingScript && !scriptedIdea ? (
+              <div className="tiktok-loading-state" aria-live="polite" aria-label="Generation du script en cours">
+                <div className="tiktok-loading-state-spinner" aria-hidden="true" />
+                <div className="tiktok-loading-state-copy">
+                  <strong>Generation script en cours</strong>
+                  <span>Le resultat de l idee selectionnee apparaitra ici des qu il sera pret.</span>
+                </div>
+              </div>
+            ) : (
+              <div className="video-preview-stack">
+                <div className="video-preview-block">
+                  <span>Topic</span>
+                  <p>{scriptedIdea?.topic || '-'}</p>
+                </div>
+                <div className="video-preview-block">
+                  <span>Script</span>
+                  <p>{scriptedIdea?.script || 'En attente'}</p>
+                </div>
+                <div className="video-preview-block">
+                  <span>Caption</span>
+                  <p>{scriptedIdea?.caption || 'En attente'}</p>
+                </div>
+                <div className="video-preview-block">
+                  <span>Keyword</span>
+                  <p>{scriptedIdea?.keyword || 'En attente'}</p>
+                </div>
+              </div>
+            )}
           </div>
         ),
       }

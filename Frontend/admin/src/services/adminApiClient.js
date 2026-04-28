@@ -4,7 +4,7 @@ import {
   isAdminAccessTokenExpired,
 } from './adminSessionStore.js'
 import { refreshAdminSession } from './adminAuthService.js'
-import { attachAdminCsrfHeader } from './adminCsrfService.js'
+import { attachAdminCsrfHeader, clearAdminCsrfTokenCache } from './adminCsrfService.js'
 
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
 const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 5000
@@ -108,10 +108,12 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
     skipAuth = false,
     skipAuthRefresh = false,
     retryOnUnauthorized = true,
+    retryOnForbiddenWithFreshCsrf = true,
     suppressConsoleError = false,
   } = requestOptions
 
   const shouldTryRefresh = !skipAuth && !skipAuthRefresh && !shouldBypassRefresh(endpoint)
+  const shouldRetryCsrf = shouldAttachCsrfHeader(options.method)
 
   try {
     if (shouldTryRefresh && isAdminAccessTokenExpired(ACCESS_TOKEN_EXPIRY_BUFFER_MS)) {
@@ -126,6 +128,15 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
       && shouldTryRefresh
     ) {
       await refreshAdminSession()
+      parsed = await performFetch(endpoint, options, { skipAuth, suppressConsoleError })
+    }
+
+    if (
+      parsed.status === 403
+      && retryOnForbiddenWithFreshCsrf
+      && shouldRetryCsrf
+    ) {
+      clearAdminCsrfTokenCache()
       parsed = await performFetch(endpoint, options, { skipAuth, suppressConsoleError })
     }
 

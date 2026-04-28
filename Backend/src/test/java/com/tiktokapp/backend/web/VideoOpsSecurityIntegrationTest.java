@@ -60,7 +60,21 @@ class VideoOpsSecurityIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         when(videoOpsService.fetchContentIdeas()).thenReturn(List.of(
-                new VideoContentIdeaResponse(42L, "Idea", "Script", "Caption", "Keyword", "done", "draft", "ready", "https://shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com/video.mp4", "", "render_ready", null)
+                new VideoContentIdeaResponse(
+                        42L,
+                        "Fitness",
+                        "Idea",
+                        "Script",
+                        "Caption",
+                        "Keyword",
+                        "done",
+                        "draft",
+                        "ready",
+                        "https://shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com/video.mp4",
+                        "",
+                        "render_ready",
+                        null
+                )
         ));
         when(videoOpsService.triggerCheckShotstack(any(), eq("admin@tiktokapp.local"))).thenReturn(
                 new VideoWorkflowActionResponse(7L, 42L, "CHECK_SHOTSTACK", "ACCEPTED", "ok", false)
