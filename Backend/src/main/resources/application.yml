@@ -21,9 +21,20 @@ app:
     admin-email: ${APP_ADMIN_EMAIL:admin@tiktokapp.local}
     admin-password: ${APP_ADMIN_PASSWORD:admin123}
     admin-name: ${APP_ADMIN_NAME:Video Ops Admin}
+    bootstrap-admin-on-startup: ${APP_BOOTSTRAP_ADMIN_ON_STARTUP:true}
     jwt-secret: ${APP_JWT_SECRET:change-this-secret-before-production-1234567890}
     access-minutes: ${APP_ACCESS_MINUTES:30}
     refresh-days: ${APP_REFRESH_DAYS:14}
     refresh-cookie-name: ${APP_REFRESH_COOKIE_NAME:tiktok_app_admin_refresh}
     secure-cookies: ${APP_SECURE_COOKIES:false}
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.11.100:5174}
+  video-ops:
+    supabase-url: ${APP_VIDEO_OPS_SUPABASE_URL:}
+    supabase-service-role-key: ${APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY:}
+    n8n-main-pipeline-webhook: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK:}
+    n8n-check-shotstack-webhook: ${APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK:}
+    n8n-publish-tiktok-webhook: ${APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK:}
+    query-limit: ${APP_VIDEO_OPS_QUERY_LIMIT:50}
+    idempotency-window-seconds: ${APP_VIDEO_OPS_IDEMPOTENCY_WINDOW_SECONDS:90}
+    allowed-shotstack-hosts: ${APP_VIDEO_OPS_ALLOWED_SHOTSTACK_HOSTS:shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com}
+    allowed-upload-hosts: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:open-upload.tiktokapis.com,open.tiktokapis.com,business-api.tiktok.com}

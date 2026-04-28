@@ -3,9 +3,8 @@ import AdminShell from '../components/AdminShell'
 import {
   fetchManualActions,
   markPublishComplete,
-  markUploadDone,
+  uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
-import { uploadTikTokMedia } from '../services/tiktokUploadApi'
 
 function isHttpUrl(value) {
   if (!value) return false
@@ -43,8 +42,7 @@ export default function ManualActionsPage() {
   })
   const markUploadMutation = useMutation({
     mutationFn: async ({ id, shotstackUrl, uploadUrl }) => {
-      await uploadTikTokMedia({ shotstackUrl, uploadUrl })
-      await markUploadDone(id)
+      await uploadTikTokMedia({ id, shotstackUrl, uploadUrl })
     },
     onSuccess: async () => {
       await Promise.all([
@@ -95,8 +93,8 @@ export default function ManualActionsPage() {
                 </div>
                 <p className="video-inline-state">
                   Aucune ligne exploitable n a ete renvoyee. Verifie que `publish tiktok`
-                  a bien enregistre `tiktok_upload_url` et que `content_ideas` est lisible
-                  depuis le backoffice.
+                  a bien enregistre `tiktok_upload_url` et que le backend video ops
+                  est correctement configure vers Supabase.
                 </p>
               </article>
             ) : null}

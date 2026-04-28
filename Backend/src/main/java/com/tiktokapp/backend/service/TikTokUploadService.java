@@ -1,5 +1,6 @@
 package com.tiktokapp.backend.service;
 
+import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,18 +12,28 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 @Service
 public class TikTokUploadService {
 
+    private final VideoOpsProperties videoOpsProperties;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
             .connectTimeout(Duration.ofSeconds(30))
             .build();
 
+    public TikTokUploadService(VideoOpsProperties videoOpsProperties) {
+        this.videoOpsProperties = videoOpsProperties;
+    }
+
     public TikTokUploadResponse uploadFromShotstack(String shotstackUrl, String uploadUrl) {
         URI shotstackUri = parseHttpUri(shotstackUrl, "shotstackUrl");
         URI uploadUri = parseHttpUri(uploadUrl, "uploadUrl");
+        validateAllowedHost(shotstackUri, videoOpsProperties.getAllowedShotstackHosts(), "shotstackUrl");
+        validateAllowedHost(uploadUri, videoOpsProperties.getAllowedUploadHosts(), "uploadUrl");
 
         try {
             byte[] videoBytes = downloadVideo(shotstackUri);
@@ -95,19 +106,34 @@ public class TikTokUploadService {
         try {
             URI uri = URI.create(rawValue);
             String scheme = uri.getScheme();
-            if (scheme == null || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
+            if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        fieldName + " doit etre une URL HTTP(S) valide."
+                        fieldName + " doit etre une URL HTTPS valide."
                 );
             }
             return uri;
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    fieldName + " doit etre une URL HTTP(S) valide.",
-                    exception
+                HttpStatus.BAD_REQUEST,
+                fieldName + " doit etre une URL HTTPS valide.",
+                exception
             );
         }
+    }
+
+    private void validateAllowedHost(URI uri, List<String> allowedHosts, String fieldName) {
+        String host = normalize(uri.getHost());
+        boolean allowed = allowedHosts.stream()
+                .filter(Objects::nonNull)
+                .map(this::normalize)
+                .anyMatch(allowedHost -> host.equals(allowedHost) || host.endsWith("." + allowedHost));
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " utilise un host non autorise.");
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
     }
 }

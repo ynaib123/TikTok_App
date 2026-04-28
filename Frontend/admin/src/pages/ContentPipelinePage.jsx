@@ -40,8 +40,8 @@ export default function ContentPipelinePage() {
                 <div className="video-empty-state">
                   <p>Aucune ligne n est visible depuis le backoffice.</p>
                   <p>
-                    Si `content_ideas` contient deja des donnees dans Supabase, verifie les policies RLS
-                    et la permission `SELECT` pour le role `anon` sur `public.content_ideas`.
+                    Si `content_ideas` contient deja des donnees dans Supabase, verifie que le backend
+                    video ops est configure avec l URL Supabase et la service role key.
                   </p>
                 </div>
               ) : null}

@@ -10,10 +10,19 @@
   padding-left: var(--admin-shell-static-content-offset-collapsed);
 }
 
+.admin-page-tiktok .admin-console-page.with-side-nav,
+.admin-page-tiktok .admin-console-page.with-side-nav.sidebar-collapsed {
+  padding-top: calc(var(--admin-nav-height) + 12px);
+}
+
 .video-ops-shell {
   display: grid;
   gap: 28px;
   padding: 28px 28px 36px;
+}
+
+.admin-page-tiktok .video-ops-shell {
+  padding-top: 8px;
 }
 
 .video-ops-hero,
@@ -313,6 +322,860 @@
   transform: translateY(-1px);
 }
 
+.video-journey-form {
+  display: grid;
+  gap: 1px;
+}
+
+.admin-page-tiktok .admin-product-active-filters {
+  margin-bottom: 2px;
+}
+
+.admin-page-tiktok .admin-product-active-filters-list {
+  gap: 1px;
+}
+
+.admin-page-tiktok .admin-product-active-filters + .tiktok-page-toolbar {
+  margin-top: -28px;
+}
+
+.tiktok-page-toolbar {
+  position: sticky;
+  top: 96px;
+  z-index: 24;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  background: transparent;
+}
+
+.admin-page-tiktok .tiktok-page-toolbar > .admin-product-toolbar {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+}
+
+.tiktok-flow-topbar {
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  padding: 18px 20px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(10, 10, 11, 0.98) 0%, rgba(18, 18, 19, 0.92) 100%);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.tiktok-step-back-btn {
+  width: 52px;
+  min-height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 14px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #eff4fb;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.tiktok-step-back-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  transform: translateX(-1px);
+}
+
+.tiktok-step-back-btn:hover:enabled {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(34, 34, 34, 0.9) 0%, rgba(22, 22, 22, 0.82) 100%);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.24);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.tiktok-step-back-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-page-tiktok .admin-product-toolbar {
+  box-shadow: none;
+}
+
+.tiktok-page-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.tiktok-page-heading .video-ops-kicker {
+  margin: 0;
+}
+
+.tiktok-library {
+  display: grid;
+  gap: 24px;
+}
+
+.tiktok-library-toolbar-search {
+  position: relative;
+}
+
+.tiktok-library-toolbar-search .admin-toolbar-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(217, 223, 230, 0.52);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.tiktok-library-toolbar-search input {
+  padding-left: 40px;
+}
+
+.tiktok-library-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tiktok-library-meta .video-inline-state {
+  margin: 0;
+}
+
+.tiktok-library-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.tiktok-library-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(217, 223, 230, 0.72);
+  font-size: 0.86rem;
+}
+
+.tiktok-library-legend i,
+.tiktok-status-light {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.tiktok-library-legend i.is-online,
+.tiktok-status-light.is-online {
+  background: #62e7a4;
+  box-shadow:
+    0 0 0 4px rgba(98, 231, 164, 0.12),
+    0 0 14px rgba(98, 231, 164, 0.32);
+}
+
+.tiktok-library-legend i.is-offline,
+.tiktok-status-light.is-offline {
+  background: #71717a;
+  box-shadow:
+    0 0 0 4px rgba(113, 113, 122, 0.12),
+    0 0 12px rgba(113, 113, 122, 0.18);
+}
+
+.tiktok-card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.tiktok-video-card {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.tiktok-video-card-media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tiktok-video-card-media video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.tiktok-video-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.tiktok-video-card-placeholder span {
+  color: rgba(217, 223, 230, 0.72);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tiktok-video-card .tiktok-status-light {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.tiktok-video-card-body {
+  display: grid;
+  gap: 6px;
+}
+
+.tiktok-video-card-body strong {
+  color: #f4f7fb;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.tiktok-video-card-body p {
+  margin: 0;
+  color: rgba(217, 223, 230, 0.68);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tiktok-video-card-body span {
+  color: rgba(217, 223, 230, 0.82);
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.tiktok-table-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tiktok-library-section {
+  padding-bottom: 4px;
+}
+
+.tiktok-video-list {
+  display: grid;
+  gap: 0;
+}
+
+.tiktok-video-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tiktok-video-row strong {
+  min-width: 0;
+  color: #f4f7fb;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.tiktok-video-row span {
+  color: rgba(217, 223, 230, 0.7);
+  font-size: 0.86rem;
+  text-transform: capitalize;
+}
+
+.tiktok-flow {
+  display: grid;
+  gap: 24px;
+}
+
+.tiktok-flow-progress {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+}
+
+.tiktok-flow-progress-bar {
+  width: 100%;
+  height: 10px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.04);
+}
+
+.tiktok-flow-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #050505 0%, #111111 48%, #242424 100%);
+  box-shadow:
+    0 0 18px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: width 220ms ease;
+}
+
+.tiktok-flow-progress-steps-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.tiktok-flow-progress-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tiktok-flow-progress-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.tiktok-flow-progress-step span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(217, 223, 230, 0.76);
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.tiktok-flow-progress-step-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.tiktok-flow-progress-step strong {
+  color: rgba(239, 244, 251, 0.88);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tiktok-flow-progress-step p {
+  margin: 0;
+  color: rgba(217, 223, 230, 0.5);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tiktok-flow-progress-step.is-current span,
+.tiktok-flow-progress-step.is-done span {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #f7fbff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tiktok-flow-progress-step.is-current {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(34, 34, 34, 0.9) 0%, rgba(22, 22, 22, 0.82) 100%);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.24);
+  transform: translateY(-1px);
+}
+
+.tiktok-flow-progress-step.is-done {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(28, 28, 28, 0.72) 0%, rgba(20, 20, 20, 0.48) 100%);
+}
+
+.tiktok-flow-progress-step.is-current strong,
+.tiktok-flow-progress-step.is-done strong,
+.tiktok-flow-progress-step.is-current p,
+.tiktok-flow-progress-step.is-done p {
+  color: rgba(244, 248, 253, 0.96);
+}
+
+.tiktok-step-screen {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.tiktok-step-pane {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+  padding: 22px 22px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(14, 14, 15, 0.9) 0%, rgba(17, 17, 18, 0.8) 100%);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.tiktok-step-actions,
+.tiktok-step-result {
+  display: grid;
+  gap: 14px;
+}
+
+.tiktok-step-actions {
+  align-content: start;
+}
+
+.tiktok-step-form,
+.tiktok-ideas-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tiktok-step-intro,
+.tiktok-step-empty-state,
+.tiktok-idea-preview,
+.video-preview-block {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.tiktok-step-intro {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+}
+
+.tiktok-step-intro strong,
+.tiktok-step-empty-state strong,
+.tiktok-idea-preview > strong {
+  color: #f4f7fb;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.tiktok-step-intro p,
+.tiktok-step-empty-state p {
+  margin: 0;
+  color: rgba(217, 223, 230, 0.72);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.tiktok-step-field {
+  display: grid;
+  gap: 8px;
+}
+
+.tiktok-step-field span,
+.tiktok-step-field small {
+  color: rgba(217, 223, 230, 0.64);
+}
+
+.tiktok-step-field span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tiktok-step-field small {
+  font-size: 0.78rem;
+}
+
+.tiktok-step-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #edf2f8;
+}
+
+.tiktok-step-field input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.tiktok-step-actions .video-action-btn {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 16px;
+  font-size: 0.9rem;
+}
+
+.tiktok-step-actions .video-action-btn:not(.ghost) {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(44, 44, 46, 0.96) 0%, rgba(22, 22, 23, 0.96) 100%);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.2);
+}
+
+.tiktok-step-actions .video-action-btn.ghost {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tiktok-step-actions .video-action-btn:disabled {
+  opacity: 0.48;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.tiktok-step-empty-state {
+  display: grid;
+  gap: 10px;
+  padding: 22px 20px;
+}
+
+.tiktok-step-empty-kicker,
+.tiktok-idea-preview-kicker {
+  color: rgba(217, 223, 230, 0.54);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tiktok-idea-preview {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.tiktok-idea-preview:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+}
+
+.tiktok-idea-preview.is-selected {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, rgba(40, 40, 42, 0.92) 0%, rgba(22, 22, 24, 0.88) 100%);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.18);
+}
+
+.tiktok-idea-preview > strong {
+  margin: 0;
+  color: #edf2f8;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tiktok-flow-video {
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 9 / 16;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.video-journey-progress-shell {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.video-journey-progress-track {
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+.video-journey-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7ec8ff 0%, #6be4ad 100%);
+  transition: width 280ms ease;
+}
+
+.video-journey-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.video-journey-progress-meta strong {
+  color: #f4f7fb;
+  font-size: 1.05rem;
+}
+
+.video-journey-progress-meta span {
+  color: rgba(217, 223, 230, 0.74);
+  font-size: 0.92rem;
+}
+
+.video-journey-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.78fr) minmax(0, 1.22fr);
+  gap: 30px;
+  align-items: start;
+}
+
+.video-journey-workspace-column {
+  min-width: 0;
+}
+
+.video-journey-workspace-column.is-control,
+.video-journey-workspace-column.is-result {
+  padding-bottom: 8px;
+}
+
+.video-journey-label,
+.video-journey-step-kicker {
+  color: rgba(204, 213, 222, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.video-journey-textarea {
+  width: 100%;
+  min-height: 148px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #edf2f8;
+  resize: vertical;
+}
+
+.video-journey-textarea:focus {
+  outline: none;
+  border-color: rgba(139, 188, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(139, 188, 255, 0.25);
+}
+
+.video-journey-steps {
+  display: grid;
+  gap: 20px;
+}
+
+.video-journey-screen {
+  display: grid;
+  gap: 24px;
+  min-height: 360px;
+  padding: 6px 0 10px;
+}
+
+.video-journey-screen-hero {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.video-journey-screen-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.video-journey-screen-progress {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.video-journey-progress-node {
+  display: grid;
+  gap: 8px;
+  padding: 14px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.video-journey-progress-node span {
+  color: #f4f7fb;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.video-journey-progress-node small {
+  color: rgba(217, 223, 230, 0.72);
+  font-size: 0.8rem;
+}
+
+.video-journey-progress-node.is-current {
+  border-color: rgba(139, 188, 255, 0.35);
+  background: rgba(139, 188, 255, 0.08);
+}
+
+.video-journey-progress-node.is-done {
+  border-color: rgba(107, 228, 173, 0.26);
+}
+
+.video-journey-progress-node.is-error {
+  border-color: rgba(255, 120, 120, 0.28);
+}
+
+.video-journey-step {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 18px;
+  padding: 0 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.video-journey-step-marker {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.video-journey-step-marker span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.video-journey-step.is-active .video-journey-step-marker span {
+  border-color: rgba(139, 188, 255, 0.4);
+  background: rgba(139, 188, 255, 0.14);
+}
+
+.video-journey-step.is-done .video-journey-step-marker span {
+  border-color: rgba(107, 228, 173, 0.35);
+  background: rgba(107, 228, 173, 0.16);
+}
+
+.video-journey-step.is-error .video-journey-step-marker span {
+  border-color: rgba(255, 120, 120, 0.35);
+  background: rgba(255, 120, 120, 0.14);
+}
+
+.video-journey-step-copy {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.video-journey-step-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.video-journey-step-head h3 {
+  margin: 4px 0 0;
+  color: #f4f7fb;
+  font-size: 1.08rem;
+}
+
+.video-journey-step-description,
+.video-journey-step-detail {
+  margin: 0;
+  color: rgba(217, 223, 230, 0.78);
+}
+
+.video-step-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(237, 242, 248, 0.84);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.video-step-badge.is-active {
+  border-color: rgba(139, 188, 255, 0.4);
+  color: #b9d7ff;
+}
+
+.video-step-badge.is-done {
+  border-color: rgba(107, 228, 173, 0.35);
+  color: #84edbf;
+}
+
+.video-step-badge.is-error {
+  border-color: rgba(255, 120, 120, 0.35);
+  color: #ff9d9d;
+}
+
 .tone-success,
 .tone-warning,
 .tone-accent,
@@ -331,4 +1194,45 @@
   .video-console-grid {
     grid-template-columns: 1fr;
   }
+
+  .video-journey-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .video-journey-screen-progress {
+    grid-template-columns: 1fr;
+  }
+
+  .tiktok-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tiktok-library-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tiktok-flow-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tiktok-flow-progress-steps-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tiktok-flow-progress-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .tiktok-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tiktok-step-screen {
+    grid-template-columns: 1fr;
+  }
+
 }

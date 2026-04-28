@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react'
 import '../styles/components/feedback.css'
+
+const AUTO_DISMISS_MS = 3000
 
 export default function AdminFeedbackBanner({
   type = 'error',
@@ -6,7 +9,29 @@ export default function AdminFeedbackBanner({
   onClose,
   placement = 'floating',
 }) {
-  if (!message) return null
+  const [isVisible, setIsVisible] = useState(true)
+
+  useEffect(() => {
+    if (!message) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setIsVisible(false)
+      if (typeof onClose === 'function') {
+        onClose()
+      }
+    }, AUTO_DISMISS_MS)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [message, onClose, type])
+
+  const handleClose = () => {
+    setIsVisible(false)
+    if (typeof onClose === 'function') {
+      onClose()
+    }
+  }
+
+  if (!message || !isVisible) return null
 
   const variantClassName = (
     type === 'error'
@@ -26,8 +51,8 @@ export default function AdminFeedbackBanner({
   return (
     <div className={className} role={role} aria-live={ariaLive}>
       <span>{message}</span>
-      <button type="button" className="alert-close-btn" onClick={onClose} aria-label="Fermer le message">
-        ×
+      <button type="button" className="alert-close-btn" onClick={handleClose} aria-label="Fermer le message">
+        x
       </button>
     </div>
   )

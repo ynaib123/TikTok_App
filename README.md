@@ -48,20 +48,30 @@ Fichier local : `Frontend/admin/.env.local`
 Configuration actuelle recommandee :
 
 ```properties
-VITE_SUPABASE_URL=https://tsigpydyxddbqckeeush.supabase.co
-VITE_SUPABASE_ANON_KEY=...
 VITE_API_BASE_URL=/api
 VITE_BACKEND_PROXY_TARGET=http://127.0.0.1:8080
 VITE_USE_MOCK_ADMIN_AUTH=false
-VITE_N8N_MAIN_PIPELINE_WEBHOOK=...
-VITE_N8N_CHECK_SHOTSTACK_WEBHOOK=...
-VITE_N8N_PUBLISH_TIKTOK_WEBHOOK=...
 ```
 
 Notes importantes :
 
 - `VITE_API_BASE_URL=/api` permet d utiliser le proxy Vite et evite les problemes CSRF en local
 - `VITE_BACKEND_PROXY_TARGET` doit pointer vers le backend Spring local
+- le frontend admin ne doit plus appeler directement Supabase ou les webhooks `n8n`
+
+## Configuration backend video ops
+
+Variables backend recommandees pour un fonctionnement complet :
+
+```properties
+APP_VIDEO_OPS_SUPABASE_URL=https://<project>.supabase.co
+APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY=...
+APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK=...
+APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK=...
+APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK=...
+APP_VIDEO_OPS_ALLOWED_SHOTSTACK_HOSTS=shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com
+APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS=open-upload.tiktokapis.com,open.tiktokapis.com,business-api.tiktok.com
+```
 
 ## Auth admin
 
@@ -80,12 +90,16 @@ Le backend utilise :
 
 ## Video Ops et Supabase
 
-Le backoffice lit directement :
+Le backoffice passe maintenant par le backend Spring pour :
 
 - `public.content_ideas`
 - `public.tiktok_accounts`
+- les mises a jour de pipeline
+- les declenchements `n8n`
 
-Si les tables contiennent des donnees mais que le backoffice affiche `0 rows`, execute le script :
+Le backend utilise la `service role key` Supabase pour lire et mettre a jour ces donnees cote serveur.
+
+Si tu veux simplement debloquer un ancien front qui lisait Supabase directement, il reste un script legacy :
 
 - `supabase/rls_video_ops_read_access.sql`
 
@@ -93,8 +107,8 @@ Ce script ouvre la lecture `anon` pour ces deux tables afin que le frontend puis
 
 Attention :
 
-- cette solution est pratique pour le local et le backoffice actuel
-- pour une version plus securisee, il faudra faire transiter ces lectures par le backend Spring
+- cette solution est uniquement legacy / secours local
+- pour une version securisee, garde le mode actuel `frontend -> backend Spring -> Supabase/n8n`
 
 ## Endpoints backend utiles
 
@@ -109,6 +123,18 @@ TikTok upload :
 
 - `POST /api/tiktok/upload`
 
+Video ops :
+
+- `GET /api/video-ops/dashboard`
+- `GET /api/video-ops/content-ideas`
+- `GET /api/video-ops/manual-actions`
+- `GET /api/video-ops/tiktok-accounts`
+- `POST /api/video-ops/workflows/main-pipeline`
+- `POST /api/video-ops/workflows/check-shotstack`
+- `POST /api/video-ops/workflows/init-publish`
+- `POST /api/video-ops/content-ideas/{id}/upload`
+- `POST /api/video-ops/content-ideas/{id}/publish`
+
 ## Scripts frontend admin
 
 Depuis `Frontend/admin` :
@@ -117,6 +143,7 @@ Depuis `Frontend/admin` :
 npm run dev
 npm run build
 npm run test
+npm run lint
 ```
 
 ## Structure du projet

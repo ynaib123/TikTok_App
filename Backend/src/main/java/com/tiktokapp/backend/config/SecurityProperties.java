@@ -11,6 +11,7 @@ public class SecurityProperties {
     private String adminEmail = "admin@tiktokapp.local";
     private String adminPassword = "admin123";
     private String adminName = "Video Ops Admin";
+    private boolean bootstrapAdminOnStartup = true;
     private String jwtSecret = "change-this-secret-before-production-1234567890";
     private long accessMinutes = 30;
     private long refreshDays = 14;
@@ -46,6 +47,14 @@ public class SecurityProperties {
 
     public void setAdminName(String adminName) {
         this.adminName = adminName;
+    }
+
+    public boolean isBootstrapAdminOnStartup() {
+        return bootstrapAdminOnStartup;
+    }
+
+    public void setBootstrapAdminOnStartup(boolean bootstrapAdminOnStartup) {
+        this.bootstrapAdminOnStartup = bootstrapAdminOnStartup;
     }
 
     public String getJwtSecret() {

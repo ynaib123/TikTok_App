@@ -3,11 +3,12 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const rootDir = fileURLToPath(new URL('./', import.meta.url))
+  const env = loadEnv(mode, rootDir, '')
   const backendProxyTarget = env.VITE_BACKEND_PROXY_TARGET || 'http://127.0.0.1:8080'
 
   return {
-    root: fileURLToPath(new URL('./', import.meta.url)),
+    root: rootDir,
     plugins: [react()],
     resolve: {
       alias: {

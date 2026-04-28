@@ -72,6 +72,16 @@ public class JwtService {
                 .getPayload();
     }
 
+    public Claims parseAccessToken(String token) {
+        Claims claims = parseToken(token);
+        String tokenType = claims.get("tokenType", String.class);
+        String role = claims.get("role", String.class);
+        if (!"ACCESS".equalsIgnoreCase(tokenType) || role == null || role.isBlank()) {
+            throw new IllegalArgumentException("Invalid admin access token");
+        }
+        return claims;
+    }
+
     public long getAccessTokenTtlSeconds() {
         return ChronoUnit.MINUTES.getDuration().getSeconds() * accessMinutes;
     }

@@ -1,178 +1,53 @@
-import {
-  contentIdeas as mockContentIdeas,
-  dashboardStats as mockDashboardStats,
-  manualActions as mockManualActions,
-  statusGroups as mockStatusGroups,
-  tiktokAccounts as mockTikTokAccounts,
-} from './videoOpsData'
-import { isSupabaseConfigured, supabase } from './supabaseClient'
-
-function mapContentIdea(row) {
-  return {
-    id: row.id,
-    topic: row.topic || '',
-    script: row.scripts || '',
-    caption: row.caption || '',
-    keyword: row.background_keyword || '',
-    shotstackStatus: row.shotstack_status || 'unknown',
-    tiktokStatus: row.publish_status || 'draft',
-    finalVideoStatus: row.final_video_status || 'unknown',
-    shotstackUrl: row.shotstack_url || '',
-    uploadUrl: row.tiktok_upload_url || '',
-  }
-}
+import { apiGet, apiPost } from './adminApiClient.js'
 
 export async function fetchContentIdeas() {
-  if (!isSupabaseConfigured || !supabase) {
-    return mockContentIdeas
-  }
-
-  const { data, error } = await supabase
-    .from('content_ideas')
-    .select('id, topic, scripts, caption, background_keyword, shotstack_status, publish_status, final_video_status, shotstack_url, tiktok_upload_url')
-    .order('id', { ascending: false })
-    .limit(50)
-
-  if (error) throw error
-
-  return (data || []).map(mapContentIdea)
+  return apiGet('/video-ops/content-ideas')
 }
 
 export async function fetchTikTokAccounts() {
-  if (!isSupabaseConfigured || !supabase) {
-    return mockTikTokAccounts
-  }
-
-  const { data, error } = await supabase
-    .from('tiktok_accounts')
-    .select('id, open_id, scope')
-    .order('id', { ascending: true })
-
-  if (error) throw error
-
-  return (data || []).map((row) => ({
-    id: row.id,
-    nickname: row.open_id ? `account-${row.id}` : `account-${row.id}`,
-    openId: row.open_id || '',
-    scope: row.scope || '',
-    environment: 'sandbox',
-    status: 'connected',
-  }))
+  return apiGet('/video-ops/tiktok-accounts')
 }
 
 export async function fetchDashboardData() {
-  const ideas = await fetchContentIdeas()
-
-  if (!ideas.length) {
-    return {
-      stats: isSupabaseConfigured && supabase
-        ? [
-            { label: 'Content Ideas', value: '0', tone: 'neutral' },
-            { label: 'Renders In Progress', value: '0', tone: 'accent' },
-            { label: 'Ready To Publish', value: '0', tone: 'success' },
-            { label: 'Manual Upload Queue', value: '0', tone: 'warning' },
-          ]
-        : mockDashboardStats,
-      groups: isSupabaseConfigured && supabase
-        ? [
-            { label: 'Queued', value: 0 },
-            { label: 'Rendering', value: 0 },
-            { label: 'Ready', value: 0 },
-            { label: 'Published', value: 0 },
-          ]
-        : mockStatusGroups,
-    }
-  }
-
-  const renderingCount = ideas.filter((item) => ['queued', 'rendering', 'preprocessing'].includes(item.shotstackStatus)).length
-  const readyCount = ideas.filter((item) => item.finalVideoStatus === 'ready').length
-  const uploadQueueCount = ideas.filter((item) => item.tiktokStatus === 'uploading' || item.uploadUrl).length
-  const publishedCount = ideas.filter((item) => item.tiktokStatus === 'published').length
-
-  return {
-    stats: [
-      { label: 'Content Ideas', value: String(ideas.length), tone: 'neutral' },
-      { label: 'Renders In Progress', value: String(renderingCount), tone: 'accent' },
-      { label: 'Ready To Publish', value: String(readyCount), tone: 'success' },
-      { label: 'Manual Upload Queue', value: String(uploadQueueCount), tone: 'warning' },
-    ],
-    groups: [
-      { label: 'Queued', value: ideas.filter((item) => item.shotstackStatus === 'queued').length },
-      { label: 'Rendering', value: ideas.filter((item) => ['rendering', 'preprocessing'].includes(item.shotstackStatus)).length },
-      { label: 'Ready', value: readyCount },
-      { label: 'Published', value: publishedCount },
-    ],
-  }
+  return apiGet('/video-ops/dashboard')
 }
 
 export async function fetchManualActions() {
-  if (!isSupabaseConfigured || !supabase) {
-    return mockManualActions
-  }
-
-  const { data, error } = await supabase
-    .from('content_ideas')
-    .select('id, topic, shotstack_url, tiktok_upload_url, tiktok_upload_status, publish_status, final_video_status, shotstack_status')
-    .order('id', { ascending: false })
-    .limit(50)
-
-  if (error) throw error
-
-  const rows = (data || [])
-    .filter((row) => (
-      Boolean(row.shotstack_url)
-      || Boolean(row.tiktok_upload_url)
-      || row.final_video_status === 'ready'
-      || row.publish_status === 'uploading'
-      || row.publish_status === 'published'
-    ))
-    .map((row) => ({
-    id: row.id,
-    topic: row.topic || '',
-    shotstackUrl: row.shotstack_url || '',
-    uploadUrl: row.tiktok_upload_url || '',
-    uploadStatus: row.tiktok_upload_status || (row.tiktok_upload_url ? 'init_done' : 'pending_init_publish'),
-    publishStatus: row.publish_status || 'draft',
-    finalVideoStatus: row.final_video_status || 'unknown',
-    shotstackStatus: row.shotstack_status || 'unknown',
-  }))
-
-  // If Supabase is configured, surface the real state instead of falling back
-  // to placeholder rows that can never be uploaded successfully.
-  return rows.length ? rows : []
+  return apiGet('/video-ops/manual-actions')
 }
 
-function ensureSupabaseAvailable() {
-  if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase n est pas configure dans le backoffice.')
-  }
+export async function triggerMainContentPipeline(payload = {}) {
+  return apiPost('/video-ops/workflows/main-pipeline', payload)
 }
 
-export async function markUploadDone(contentIdeaId) {
-  ensureSupabaseAvailable()
+export async function triggerCheckShotstackWorkflow(payload = {}) {
+  return apiPost('/video-ops/workflows/check-shotstack', payload)
+}
 
-  const { error } = await supabase
-    .from('content_ideas')
-    .update({
-      tiktok_upload_status: 'uploaded',
-      publish_status: 'uploading',
-    })
-    .eq('id', contentIdeaId)
+export async function triggerPublishTikTokWorkflow(payload = {}) {
+  return apiPost('/video-ops/workflows/init-publish', payload)
+}
 
-  if (error) throw error
+export async function uploadTikTokMedia({ id, shotstackUrl, uploadUrl, force = false }) {
+  if (!id) {
+    throw new Error('L identifiant de content_idea est obligatoire pour l upload TikTok.')
+  }
+
+  return apiPost(`/video-ops/content-ideas/${id}/upload`, {
+    shotstackUrl,
+    uploadUrl,
+    force,
+  })
+}
+
+export async function markUploadDone() {
+  return null
 }
 
 export async function markPublishComplete(contentIdeaId) {
-  ensureSupabaseAvailable()
+  if (!contentIdeaId) {
+    throw new Error('L identifiant de content_idea est obligatoire pour finaliser la publication.')
+  }
 
-  const { error } = await supabase
-    .from('content_ideas')
-    .update({
-      publish_status: 'published',
-      tiktok_check_status: 'PUBLISH_COMPLETE',
-      published_at: new Date().toISOString(),
-    })
-    .eq('id', contentIdeaId)
-
-  if (error) throw error
+  return apiPost(`/video-ops/content-ideas/${contentIdeaId}/publish`, {})
 }

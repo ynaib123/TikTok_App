@@ -1,0 +1,1051 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useLocation, useNavigate } from 'react-router-dom'
+import AdminShell from '../components/AdminShell'
+import AdminToolbarMenuButton from './admin-dashboard/AdminToolbarMenuButton'
+import {
+  triggerCheckShotstackWorkflow,
+  triggerMainContentPipeline,
+  triggerPublishTikTokWorkflow,
+} from '../services/n8nClient'
+import {
+  fetchContentIdeas,
+  fetchManualActions,
+  markPublishComplete,
+  uploadTikTokMedia,
+} from '../services/videoOpsSupabase'
+import '../styles/features/catalog-shared.css'
+import '../styles/features/products.css'
+import '../styles/themes/products-dark.css'
+
+const STEPS = [
+  { id: 'creation', label: 'Creation' },
+  { id: 'render', label: 'Render' },
+  { id: 'init-publish', label: 'Init publish' },
+  { id: 'upload', label: 'Upload' },
+  { id: 'publish', label: 'Publish' },
+]
+const TIKTOK_BASE_ROUTE = '/tiktok'
+const TIKTOK_STEP_ROUTES = STEPS.map((step) => `${TIKTOK_BASE_ROUTE}/${step.id}`)
+
+const LIST_FILTER_OPTIONS = [
+  { value: 'all', label: 'Toutes' },
+  { value: 'published', label: 'Publiees' },
+  { value: 'unpublished', label: 'Non publiees' },
+  { value: 'ready', label: 'Rendues' },
+]
+
+const LIST_SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus recentes' },
+  { value: 'oldest', label: 'Plus anciennes' },
+  { value: 'topic_asc', label: 'Topic A-Z' },
+  { value: 'topic_desc', label: 'Topic Z-A' },
+  { value: 'published_first', label: 'Publiees d abord' },
+]
+const MAX_IDEA_BATCH_SIZE = 5
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function isRenderReady(idea) {
+  return Boolean(idea?.shotstackUrl)
+    || idea?.finalVideoStatus === 'ready'
+    || idea?.shotstackStatus === 'done'
+}
+
+function isPublished(idea) {
+  return String(idea?.tiktokStatus || '').toLowerCase() === 'published'
+}
+
+function normalizeUrl(value) {
+  const url = String(value || '').trim()
+  return url || null
+}
+
+function getIdeaStatusLabel(idea) {
+  if (isPublished(idea)) return 'publiee'
+  if (idea?.uploadUrl) return 'prete upload'
+  if (isRenderReady(idea)) return 'rendue'
+  if (idea?.shotstackStatus === 'rendering') return 'rendering'
+  return idea?.tiktokStatus || 'draft'
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4.5 4.5" />
+    </svg>
+  )
+}
+
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </svg>
+  )
+}
+
+function SortIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6h10" />
+      <path d="M8 12h7" />
+      <path d="M8 18h4" />
+      <path d="m4 8 2-2 2 2" />
+      <path d="M6 6v12" />
+    </svg>
+  )
+}
+
+function GridIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="6" height="6" rx="1.2" />
+      <rect x="14" y="4" width="6" height="6" rx="1.2" />
+      <rect x="4" y="14" width="6" height="6" rx="1.2" />
+      <rect x="14" y="14" width="6" height="6" rx="1.2" />
+    </svg>
+  )
+}
+
+function TableIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+      <path d="M3.5 10h17" />
+      <path d="M9 5v14" />
+    </svg>
+  )
+}
+
+function AddIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  )
+}
+
+function BackChevronIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m14.5 6.5-5.5 5.5 5.5 5.5" />
+    </svg>
+  )
+}
+
+function StepProgress({ currentStepIndex, onBack, isWorking }) {
+  const progressPercent = Math.round((currentStepIndex / (STEPS.length - 1)) * 100)
+
+  return (
+    <div className="tiktok-flow-progress" aria-label="Progression">
+      <div className="tiktok-flow-progress-bar">
+        <span style={{ width: `${progressPercent}%` }} />
+      </div>
+      <div className="tiktok-flow-progress-steps-row">
+        <button
+          type="button"
+          className="tiktok-step-back-btn"
+          onClick={onBack}
+          disabled={isWorking}
+          aria-label="Revenir en arriere"
+          title="Revenir en arriere"
+        >
+          <BackChevronIcon />
+        </button>
+        <div className="tiktok-flow-progress-steps">
+          {STEPS.map((step, index) => (
+            <div
+              key={step.id}
+              className={`tiktok-flow-progress-step ${index < currentStepIndex ? 'is-done' : ''} ${index === currentStepIndex ? 'is-current' : ''}`}
+            >
+              <span>{index + 1}</span>
+              <div className="tiktok-flow-progress-step-copy">
+                <strong>{step.label}</strong>
+                <p>Etape {index + 1}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function VideoPreview({ url }) {
+  const resolvedUrl = normalizeUrl(url)
+  if (!resolvedUrl) {
+    return <p className="video-inline-state">Aucune video disponible pour cette etape.</p>
+  }
+
+  return (
+    <video className="tiktok-flow-video" src={resolvedUrl} controls playsInline />
+  )
+}
+
+export default function TikTokJourneyPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const queryClient = useQueryClient()
+  const { data: contentIdeas = [], isLoading } = useQuery({
+    queryKey: ['content-ideas'],
+    queryFn: fetchContentIdeas,
+  })
+  const [isWorking, setIsWorking] = useState(false)
+  const [generatedIdeas, setGeneratedIdeas] = useState([])
+  const [selectedGeneratedIdeaId, setSelectedGeneratedIdeaId] = useState(null)
+  const [generationCount, setGenerationCount] = useState(1)
+  const [generationCategory, setGenerationCategory] = useState('')
+  const [lastGenerationBaselineId, setLastGenerationBaselineId] = useState(null)
+  const [lastGenerationExpectedCount, setLastGenerationExpectedCount] = useState(0)
+  const [renderedIdea, setRenderedIdea] = useState(null)
+  const [manualAction, setManualAction] = useState(null)
+  const [uploadResult, setUploadResult] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [listSearch, setListSearch] = useState('')
+  const [listFilter, setListFilter] = useState('all')
+  const [listSort, setListSort] = useState('recent')
+  const [listViewMode, setListViewMode] = useState('grid')
+  const [openListMenu, setOpenListMenu] = useState(null)
+  const currentStepIndex = useMemo(
+    () => TIKTOK_STEP_ROUTES.findIndex((route) => location.pathname === route),
+    [location.pathname],
+  )
+  const isFlowRoute = currentStepIndex >= 0
+
+  const filteredIdeas = useMemo(() => {
+    const normalizedSearch = String(listSearch || '').trim().toLowerCase()
+    const nextIdeas = contentIdeas.filter((idea) => {
+      if (listFilter === 'published' && !isPublished(idea)) return false
+      if (listFilter === 'unpublished' && isPublished(idea)) return false
+      if (listFilter === 'ready' && !isRenderReady(idea)) return false
+
+      if (!normalizedSearch) return true
+
+      return [
+        idea.id,
+        idea.topic,
+        idea.script,
+        idea.caption,
+        getIdeaStatusLabel(idea),
+      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
+    })
+
+    const sortedIdeas = [...nextIdeas]
+    if (listSort === 'oldest') {
+      sortedIdeas.sort((left, right) => Number(left?.id || 0) - Number(right?.id || 0))
+    } else if (listSort === 'topic_asc') {
+      sortedIdeas.sort((left, right) => String(left?.topic || '').localeCompare(String(right?.topic || ''), 'fr', { sensitivity: 'base' }))
+    } else if (listSort === 'topic_desc') {
+      sortedIdeas.sort((left, right) => String(right?.topic || '').localeCompare(String(left?.topic || ''), 'fr', { sensitivity: 'base' }))
+    } else if (listSort === 'published_first') {
+      sortedIdeas.sort((left, right) => {
+        const publishedDelta = Number(isPublished(right)) - Number(isPublished(left))
+        if (publishedDelta !== 0) return publishedDelta
+        return Number(right?.id || 0) - Number(left?.id || 0)
+      })
+    } else {
+      sortedIdeas.sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+    }
+
+    return sortedIdeas
+  }, [contentIdeas, listFilter, listSearch, listSort])
+  const currentStep = isFlowRoute ? STEPS[currentStepIndex] : STEPS[0]
+  const displayedGeneratedIdeas = useMemo(() => {
+    if (generatedIdeas.length) return generatedIdeas
+    if (lastGenerationBaselineId == null) return []
+
+    return contentIdeas
+      .filter((idea) => Number(idea?.id || 0) > Number(lastGenerationBaselineId))
+      .filter((idea) => String(idea?.category || '').trim().toLowerCase() === String(generationCategory || '').trim().toLowerCase())
+      .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+      .slice(0, lastGenerationExpectedCount || MAX_IDEA_BATCH_SIZE)
+  }, [contentIdeas, generatedIdeas, generationCategory, lastGenerationBaselineId, lastGenerationExpectedCount])
+  const selectedGeneratedIdea = useMemo(
+    () => displayedGeneratedIdeas.find((idea) => Number(idea.id) === Number(selectedGeneratedIdeaId)) || displayedGeneratedIdeas[0] || null,
+    [displayedGeneratedIdeas, selectedGeneratedIdeaId],
+  )
+  const activeIdea = renderedIdea || selectedGeneratedIdea
+  const selectedListFilter = LIST_FILTER_OPTIONS.find((option) => option.value === listFilter) || LIST_FILTER_OPTIONS[0]
+  const selectedListSort = LIST_SORT_OPTIONS.find((option) => option.value === listSort) || LIST_SORT_OPTIONS[0]
+  const catalogTags = [
+    listSearch
+      ? {
+          id: 'search',
+          label: `Recherche: ${listSearch}`,
+          isClearable: true,
+          onClear: () => setListSearch(''),
+        }
+      : null,
+    {
+      id: 'filter',
+      label: `Filtre: ${selectedListFilter.label}`,
+      isClearable: listFilter !== 'all',
+      onClear: () => setListFilter('all'),
+    },
+    {
+      id: 'sort',
+      label: `Tri: ${selectedListSort.label}`,
+      isClearable: listSort !== 'recent',
+      onClear: () => setListSort('recent'),
+    },
+  ].filter(Boolean)
+  const hasClearableCatalogTags = catalogTags.some((tag) => tag.isClearable)
+  const handleResetAllCatalogTags = () => {
+    setListSearch('')
+    setListFilter('all')
+    setListSort('recent')
+  }
+
+  const showSuccess = (message) => {
+    setErrorMessage(null)
+    setSuccessMessage(message)
+  }
+
+  const showError = (error, fallback) => {
+    setSuccessMessage(null)
+    setErrorMessage(error?.message || fallback)
+  }
+
+  const waitForNewIdeas = async (baselineMaxId, expectedCount, requestedCategory) => {
+    const timeoutAt = Date.now() + 3 * 60 * 1000
+
+    while (Date.now() < timeoutAt) {
+      const ideas = await fetchContentIdeas()
+      const nextIdeas = ideas
+        .filter((idea) => Number(idea.id) > baselineMaxId)
+        .filter((idea) => String(idea?.category || '').trim().toLowerCase() === String(requestedCategory || '').trim().toLowerCase())
+        .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+
+      if (nextIdeas.length >= expectedCount) return nextIdeas.slice(0, expectedCount)
+      await sleep(4000)
+    }
+
+    const ideas = await fetchContentIdeas()
+    const partialIdeas = ideas
+      .filter((idea) => Number(idea.id) > baselineMaxId)
+      .filter((idea) => String(idea?.category || '').trim().toLowerCase() === String(requestedCategory || '').trim().toLowerCase())
+      .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+
+    if (partialIdeas.length) return partialIdeas.slice(0, expectedCount)
+
+    throw new Error("Les nouvelles idees n'ont pas ete trouvees dans content_ideas.")
+  }
+
+  const waitForRenderedIdea = async (ideaId) => {
+    const timeoutAt = Date.now() + 15 * 60 * 1000
+
+    while (Date.now() < timeoutAt) {
+      const ideas = await fetchContentIdeas()
+      const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
+      if (nextIdea && isRenderReady(nextIdea)) return nextIdea
+      await sleep(5000)
+    }
+
+    throw new Error("Le render n'a pas fini dans le temps attendu.")
+  }
+
+  const waitForUploadPreparation = async (ideaId) => {
+    const timeoutAt = Date.now() + 5 * 60 * 1000
+
+    while (Date.now() < timeoutAt) {
+      const manualActions = await fetchManualActions()
+      const action = manualActions.find((item) => Number(item.id) === Number(ideaId))
+      if (action?.shotstackUrl && action?.uploadUrl) return action
+      await sleep(4000)
+    }
+
+    throw new Error("L'upload URL TikTok n'a pas ete generee.")
+  }
+
+  const refreshPipelineData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
+      queryClient.invalidateQueries({ queryKey: ['manual-actions'] }),
+      queryClient.invalidateQueries({ queryKey: ['video-dashboard'] }),
+    ])
+  }
+
+  const resetFlowState = () => {
+    setGeneratedIdeas([])
+    setSelectedGeneratedIdeaId(null)
+    setLastGenerationBaselineId(null)
+    setLastGenerationExpectedCount(0)
+    setRenderedIdea(null)
+    setManualAction(null)
+    setUploadResult(null)
+    setErrorMessage(null)
+    setSuccessMessage(null)
+  }
+
+  useEffect(() => {
+    if (isFlowRoute) return
+    resetFlowState()
+  }, [isFlowRoute])
+
+  const goToStep = (stepId) => {
+    navigate(`${TIKTOK_BASE_ROUTE}/${stepId}`)
+  }
+
+  const startAddFlow = () => {
+    resetFlowState()
+    goToStep('creation')
+  }
+
+  const closeAddFlow = () => {
+    resetFlowState()
+    navigate(TIKTOK_BASE_ROUTE)
+  }
+
+  const goBackInFlow = () => {
+    if (!isFlowRoute) {
+      navigate(TIKTOK_BASE_ROUTE)
+      return
+    }
+
+    if (currentStepIndex <= 0) {
+      closeAddFlow()
+      return
+    }
+
+    navigate(TIKTOK_STEP_ROUTES[currentStepIndex - 1])
+  }
+
+  const handleGenerateIdea = async () => {
+    const requestedCount = Math.max(1, Math.min(MAX_IDEA_BATCH_SIZE, Number(generationCount) || 1))
+    const requestedCategory = String(generationCategory || '').trim()
+    const shouldForceGeneration = displayedGeneratedIdeas.length > 0 || requestedCount > 1
+
+    if (!requestedCategory) {
+      setErrorMessage('Renseigne une categorie avant de lancer la generation.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      const ideas = await fetchContentIdeas()
+      const baselineMaxId = ideas.reduce((maxId, idea) => Math.max(maxId, Number(idea?.id) || 0), 0)
+      setLastGenerationBaselineId(baselineMaxId)
+      setLastGenerationExpectedCount(requestedCount)
+      const generationRequests = Array.from({ length: requestedCount }, (_, index) => (
+        triggerMainContentPipeline({
+          source: `backoffice-tiktok-step-creation-${index + 1}`,
+          ideaCount: 1,
+          category: requestedCategory,
+          force: shouldForceGeneration,
+        })
+      ))
+
+      await Promise.all(generationRequests)
+      const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
+      setGeneratedIdeas(nextIdeas)
+      setSelectedGeneratedIdeaId(nextIdeas[0]?.id || null)
+      setRenderedIdea(null)
+      setManualAction(null)
+      setUploadResult(null)
+      await refreshPipelineData()
+      showSuccess(`${nextIdeas.length} idee(s) generee(s). Choisis-en une puis valide pour lancer le render.`)
+    } catch (error) {
+      showError(error, "La generation n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const handleValidateCreation = async () => {
+    if (!selectedGeneratedIdea?.id) {
+      setErrorMessage('Genere puis selectionne une idee avant de valider cette etape.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      await triggerCheckShotstackWorkflow({
+        source: 'backoffice-tiktok-step-render',
+        contentIdeaId: selectedGeneratedIdea.id,
+        topic: selectedGeneratedIdea.topic,
+      })
+      const nextRenderedIdea = await waitForRenderedIdea(selectedGeneratedIdea.id)
+      setRenderedIdea(nextRenderedIdea)
+      setGeneratedIdeas((currentIdeas) => currentIdeas.map((idea) => (
+        Number(idea.id) === Number(nextRenderedIdea.id) ? nextRenderedIdea : idea
+      )))
+      goToStep('render')
+      await refreshPipelineData()
+      showSuccess('Render termine. Verifie la video avant de valider.')
+    } catch (error) {
+      showError(error, "Le render n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const handleRegenerateRender = async () => {
+    const idea = renderedIdea || selectedGeneratedIdea
+    if (!idea?.id) {
+      setErrorMessage('Aucune idee disponible pour relancer le render.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      await triggerCheckShotstackWorkflow({
+        source: 'backoffice-tiktok-step-render-regenerate',
+        contentIdeaId: idea.id,
+        topic: idea.topic,
+        force: true,
+      })
+      const nextRenderedIdea = await waitForRenderedIdea(idea.id)
+      setRenderedIdea(nextRenderedIdea)
+      setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
+        Number(currentIdea.id) === Number(nextRenderedIdea.id) ? nextRenderedIdea : currentIdea
+      )))
+      await refreshPipelineData()
+      showSuccess('Render regenere. Tu peux valider si la video te convient.')
+    } catch (error) {
+      showError(error, "La regeneration du render n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const handleValidateRender = async () => {
+    const idea = renderedIdea || selectedGeneratedIdea
+    if (!idea?.id) {
+      setErrorMessage('Aucune video rendue a valider.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      await triggerPublishTikTokWorkflow({
+        source: 'backoffice-tiktok-step-init-publish',
+        contentIdeaId: idea.id,
+        topic: idea.topic,
+      })
+      const nextManualAction = await waitForUploadPreparation(idea.id)
+      setManualAction(nextManualAction)
+      goToStep('init-publish')
+      await refreshPipelineData()
+      showSuccess('Init publish termine. Upload URL disponible.')
+    } catch (error) {
+      showError(error, "L'initialisation publish n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const handleRetryInitPublish = async () => {
+    await handleValidateRender()
+  }
+
+  const handleValidateInitPublish = () => {
+    if (!manualAction?.uploadUrl) {
+      setErrorMessage('Aucune upload URL disponible.')
+      return
+    }
+
+    goToStep('upload')
+    showSuccess('Etape init publish validee. Tu peux lancer l upload.')
+  }
+
+  const handleUploadVideo = async () => {
+    const idea = renderedIdea || selectedGeneratedIdea
+    if (!idea?.id || !manualAction?.shotstackUrl || !manualAction?.uploadUrl) {
+      setErrorMessage('Il manque la video ou l upload URL pour lancer l upload.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      const result = await uploadTikTokMedia({
+        id: idea.id,
+        shotstackUrl: manualAction.shotstackUrl,
+        uploadUrl: manualAction.uploadUrl,
+      })
+      setUploadResult(result || { ok: true })
+      await refreshPipelineData()
+      showSuccess('Upload termine. Tu peux passer a la publication finale.')
+    } catch (error) {
+      showError(error, "L'upload TikTok n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const handleValidateUpload = () => {
+    if (!uploadResult) {
+      setErrorMessage('Lance l upload avant de valider cette etape.')
+      return
+    }
+
+    goToStep('publish')
+    showSuccess('Upload valide. Derniere etape: publication.')
+  }
+
+  const handlePublishVideo = async () => {
+    const idea = renderedIdea || selectedGeneratedIdea
+    if (!idea?.id) {
+      setErrorMessage('Aucune video disponible pour finaliser la publication.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      await markPublishComplete(idea.id)
+      await refreshPipelineData()
+      showSuccess('Video publiee avec succes.')
+    } catch (error) {
+      showError(error, "La publication finale n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const renderListView = () => (
+    <>
+      {catalogTags.length > 0 ? (
+        <div className="admin-product-active-filters" aria-label="Filtres et tri actifs">
+          <div className="admin-product-active-filters-list">
+            {catalogTags.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                className={`admin-product-active-filter-tag ${tag.isClearable ? 'is-clearable' : 'is-default'}`}
+                onClick={tag.isClearable ? tag.onClear : undefined}
+                title={tag.isClearable ? `Retirer ${tag.label}` : tag.label}
+                disabled={!tag.isClearable}
+              >
+                <span>{tag.label}</span>
+                {tag.isClearable ? <strong aria-hidden="true">×</strong> : null}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="admin-product-active-filters-reset"
+            onClick={handleResetAllCatalogTags}
+            disabled={!hasClearableCatalogTags}
+          >
+            Reinitialiser tout
+          </button>
+        </div>
+      ) : null}
+
+      <section className="tiktok-page-toolbar">
+        <div className="admin-product-toolbar">
+          <div className="admin-product-toolbar-controls">
+            <div className="admin-product-toolbar-actions">
+              <button
+                type="button"
+                className="admin-console-btn admin-console-btn-muted admin-product-toolbar-action admin-product-toolbar-icon-btn"
+                onClick={startAddFlow}
+                aria-label="Ajouter une video"
+                title="Ajouter"
+              >
+                <span className="admin-toolbar-icon" aria-hidden="true"><AddIcon /></span>
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-product-toolbar-search tiktok-library-toolbar-search">
+            <span className="admin-toolbar-icon" aria-hidden="true"><SearchIcon /></span>
+            <input
+              type="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              value={listSearch}
+              onChange={(event) => setListSearch(event.target.value)}
+              placeholder="Rechercher ..."
+              aria-label="Rechercher une video TikTok"
+            />
+          </div>
+
+          <div className="admin-product-toolbar-filters">
+            <button
+              type="button"
+              className="admin-console-btn admin-console-btn-muted admin-product-toolbar-action admin-product-toolbar-icon-btn"
+              onClick={() => setListViewMode(listViewMode === 'grid' ? 'table' : 'grid')}
+              aria-label={`Basculer vers l affichage ${listViewMode === 'grid' ? 'tableau' : 'grille'}`}
+              title={`Affichage actuel: ${listViewMode === 'grid' ? 'Grille' : 'Tableau'}`}
+            >
+              <span className="admin-toolbar-icon" aria-hidden="true">
+                {listViewMode === 'grid' ? <TableIcon /> : <GridIcon />}
+              </span>
+            </button>
+
+            <AdminToolbarMenuButton
+              ariaLabel={`Filtrer les videos, filtre actuel ${selectedListFilter.label}`}
+              icon={<FilterIcon />}
+              menuAriaLabel="Filtres des videos TikTok"
+              menuId="tiktok-filter"
+              openCatalogMenu={openListMenu}
+              setOpenCatalogMenu={setOpenListMenu}
+              title={`Filtre: ${selectedListFilter.label}`}
+            >
+              {({ closeMenu }) => (
+                <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
+                  {LIST_FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`admin-product-toolbar-option ${listFilter === option.value ? 'is-selected' : ''}`}
+                      onClick={() => {
+                        setListFilter(option.value)
+                        closeMenu()
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      {listFilter === option.value ? <strong>•</strong> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AdminToolbarMenuButton>
+
+            <AdminToolbarMenuButton
+              ariaLabel={`Trier les videos, tri actuel ${selectedListSort.label}`}
+              icon={<SortIcon />}
+              menuAriaLabel="Tri des videos TikTok"
+              menuClassName="admin-product-toolbar-menu-sort"
+              menuId="tiktok-sort"
+              openCatalogMenu={openListMenu}
+              setOpenCatalogMenu={setOpenListMenu}
+              title={`Tri: ${selectedListSort.label}`}
+            >
+              {({ closeMenu }) => (
+                <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
+                  {LIST_SORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`admin-product-toolbar-option ${listSort === option.value ? 'is-selected' : ''}`}
+                      onClick={() => {
+                        setListSort(option.value)
+                        closeMenu()
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      {listSort === option.value ? <strong>•</strong> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AdminToolbarMenuButton>
+          </div>
+        </div>
+      </section>
+
+      <section className="tiktok-library-meta">
+        <p className="video-inline-state">
+          {filteredIdeas.length} video(s) affichee(s) sur {contentIdeas.length}
+        </p>
+        <div className="tiktok-library-legend" aria-label="Legende des statuts">
+          <span><i className="is-online" aria-hidden="true" /> Publiee</span>
+          <span><i className="is-offline" aria-hidden="true" /> Non publiee</span>
+        </div>
+      </section>
+
+      {isLoading ? <p className="video-inline-state">Chargement...</p> : null}
+      {!isLoading && !filteredIdeas.length ? <p className="video-inline-state">Aucune video ne correspond a cette recherche.</p> : null}
+
+      {!isLoading && filteredIdeas.length ? (
+        listViewMode === 'grid' ? (
+          <section className="tiktok-card-grid">
+            {filteredIdeas.map((idea) => (
+              <article key={idea.id} className={`tiktok-video-card ${isPublished(idea) ? 'is-published' : 'is-unpublished'}`}>
+                <div className="tiktok-video-card-media">
+                  {normalizeUrl(idea.shotstackUrl) ? (
+                    <video src={idea.shotstackUrl} muted playsInline preload="metadata" />
+                  ) : (
+                    <div className="tiktok-video-card-placeholder">
+                      <span>Video #{idea.id}</span>
+                    </div>
+                  )}
+                  <span
+                    className={`tiktok-status-light ${isPublished(idea) ? 'is-online' : 'is-offline'}`}
+                    title={isPublished(idea) ? 'Publiee' : 'Non publiee'}
+                    aria-label={isPublished(idea) ? 'Video publiee' : 'Video non publiee'}
+                  />
+                </div>
+                <div className="tiktok-video-card-body">
+                  <strong>{idea.topic || `Video #${idea.id}`}</strong>
+                  <p>{idea.caption || idea.script || 'Aucune description disponible.'}</p>
+                  <span>{getIdeaStatusLabel(idea)}</span>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : (
+          <div className="video-table-wrap">
+            <table className="video-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Topic</th>
+                  <th>Statut</th>
+                  <th>Render</th>
+                  <th>Caption</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredIdeas.map((idea) => (
+                  <tr key={idea.id}>
+                    <td>#{idea.id}</td>
+                    <td>{idea.topic || `Video #${idea.id}`}</td>
+                    <td>
+                      <span className="tiktok-table-status">
+                        <i className={`tiktok-status-light ${isPublished(idea) ? 'is-online' : 'is-offline'}`} aria-hidden="true" />
+                        {getIdeaStatusLabel(idea)}
+                      </span>
+                    </td>
+                    <td>{isRenderReady(idea) ? 'Pret' : idea.shotstackStatus || 'En attente'}</td>
+                    <td>{idea.caption || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : null}
+    </>
+  )
+
+  const renderStepScreen = () => {
+    if (currentStep.id === 'creation') {
+      return {
+        actions: (
+          <div className="tiktok-step-actions">
+            <div className="tiktok-step-intro">
+              <strong>Genere une nouvelle idee TikTok</strong>
+              <p>Choisis une categorie, indique combien d idees generer jusqu a 5, puis valide celle a garder pour le render.</p>
+            </div>
+            <div className="tiktok-step-form">
+              <label className="tiktok-step-field">
+                <span>Categorie</span>
+                <input
+                  type="text"
+                  value={generationCategory}
+                  onChange={(event) => setGenerationCategory(event.target.value)}
+                  placeholder="Ex: Beaute, Fitness, Food..."
+                  maxLength={80}
+                  disabled={isWorking}
+                />
+              </label>
+              <label className="tiktok-step-field">
+                <span>Nombre d idees</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={MAX_IDEA_BATCH_SIZE}
+                  value={generationCount}
+                  onChange={(event) => setGenerationCount(event.target.value)}
+                  disabled={isWorking}
+                />
+                <small>Maximum {MAX_IDEA_BATCH_SIZE} idees par generation.</small>
+              </label>
+            </div>
+            <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isWorking}>
+              {displayedGeneratedIdeas.length ? 'Regenerer' : 'Generer'}
+            </button>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isWorking || !selectedGeneratedIdea}>
+              Valider
+            </button>
+          </div>
+        ),
+        result: (
+          <div className="tiktok-step-result">
+            {displayedGeneratedIdeas.length ? (
+              <div className="tiktok-ideas-list">
+                {displayedGeneratedIdeas.map((idea) => {
+                  const isSelected = Number(idea.id) === Number(selectedGeneratedIdea?.id)
+
+                  return (
+                    <button
+                      key={idea.id}
+                      type="button"
+                      className={`tiktok-idea-preview ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => setSelectedGeneratedIdeaId(idea.id)}
+                    >
+                      <span className="tiktok-idea-preview-kicker">{isSelected ? 'Idee selectionnee' : 'Idee generee'}</span>
+                      <strong>{idea.topic || `Video #${idea.id}`}</strong>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="tiktok-step-empty-state">
+                <span className="tiktok-step-empty-kicker">Resultat en attente</span>
+                <strong>Aucune idee generee pour le moment</strong>
+                <p>Choisis une categorie, indique un volume de 1 a 5, puis lance la generation.</p>
+              </div>
+            )}
+          </div>
+        ),
+      }
+    }
+
+    if (currentStep.id === 'render') {
+      return {
+        actions: (
+          <div className="tiktok-step-actions">
+            <button type="button" className="video-action-btn" onClick={() => void handleRegenerateRender()} disabled={isWorking}>
+              Regenerer render
+            </button>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateRender()} disabled={isWorking || !renderedIdea}>
+              Valider
+            </button>
+          </div>
+        ),
+        result: (
+          <div className="tiktok-step-result">
+            <VideoPreview url={renderedIdea?.shotstackUrl} />
+          </div>
+        ),
+      }
+    }
+
+    if (currentStep.id === 'init-publish') {
+      return {
+        actions: (
+          <div className="tiktok-step-actions">
+            <button type="button" className="video-action-btn" onClick={() => void handleRetryInitPublish()} disabled={isWorking}>
+              Relancer init publish
+            </button>
+            <button type="button" className="video-action-btn ghost" onClick={handleValidateInitPublish} disabled={isWorking || !manualAction?.uploadUrl}>
+              Valider
+            </button>
+          </div>
+        ),
+        result: (
+          <div className="tiktok-step-result">
+            <div className="video-preview-stack">
+              <div className="video-preview-block">
+                <span>Shotstack URL</span>
+                <p>{manualAction?.shotstackUrl || 'En attente'}</p>
+              </div>
+              <div className="video-preview-block">
+                <span>Upload URL</span>
+                <p>{manualAction?.uploadUrl || 'En attente'}</p>
+              </div>
+            </div>
+          </div>
+        ),
+      }
+    }
+
+    if (currentStep.id === 'upload') {
+      return {
+        actions: (
+          <div className="tiktok-step-actions">
+            <button type="button" className="video-action-btn" onClick={() => void handleUploadVideo()} disabled={isWorking}>
+              Uploader
+            </button>
+            <button type="button" className="video-action-btn ghost" onClick={handleValidateUpload} disabled={isWorking || !uploadResult}>
+              Valider
+            </button>
+          </div>
+        ),
+        result: (
+          <div className="tiktok-step-result">
+            <div className="video-preview-block">
+              <span>Resultat upload</span>
+              <p>{uploadResult ? 'Upload termine.' : 'Aucun upload lance.'}</p>
+            </div>
+          </div>
+        ),
+      }
+    }
+
+    return {
+      actions: (
+        <div className="tiktok-step-actions">
+          <button type="button" className="video-action-btn" onClick={() => void handlePublishVideo()} disabled={isWorking}>
+            Publier
+          </button>
+          <button type="button" className="video-action-btn ghost" onClick={closeAddFlow} disabled={isWorking}>
+            Terminer
+          </button>
+        </div>
+      ),
+      result: (
+        <div className="tiktok-step-result">
+          <div className="video-preview-stack">
+            <div className="video-preview-block">
+              <span>Video</span>
+              <p>{activeIdea?.topic || 'Publication en attente.'}</p>
+            </div>
+            <div className="video-preview-block">
+              <span>Status</span>
+              <p>{successMessage || 'Pret pour publication finale.'}</p>
+            </div>
+          </div>
+        </div>
+      ),
+    }
+  }
+
+  const stepScreen = renderStepScreen()
+
+  return (
+    <div className="admin-page admin-page-products admin-page-tiktok video-ops-page">
+      <AdminShell
+        activeNavId="tiktok"
+        feedbackItems={[
+          { type: 'error', message: errorMessage },
+          { type: 'success', message: successMessage },
+        ]}
+      >
+        <div className="video-ops-shell">
+          {!isFlowRoute ? renderListView() : (
+            <section className="tiktok-flow">
+              <div className="tiktok-page-toolbar tiktok-flow-topbar">
+                <StepProgress currentStepIndex={currentStepIndex} onBack={goBackInFlow} isWorking={isWorking} />
+              </div>
+
+              <div className="tiktok-step-screen">
+                <section className="tiktok-step-pane is-left">
+                  <div className="video-panel-head">
+                    <h2>Actions</h2>
+                    <span>Etape {currentStepIndex + 1}</span>
+                  </div>
+                  {stepScreen.actions}
+                </section>
+
+                <section className="tiktok-step-pane is-right">
+                  <div className="video-panel-head">
+                    <h2>Resultat</h2>
+                    <span>{currentStep.label}</span>
+                  </div>
+                  {stepScreen.result}
+                </section>
+              </div>
+            </section>
+          )}
+        </div>
+      </AdminShell>
+    </div>
+  )
+}

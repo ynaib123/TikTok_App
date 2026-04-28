@@ -25,6 +25,10 @@ public class AdminBootstrapRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        if (!securityProperties.isBootstrapAdminOnStartup()) {
+            return;
+        }
+
         String email = normalize(securityProperties.getAdminEmail());
         adminAccountRepository.findByEmailIgnoreCase(email).ifPresentOrElse(existing -> {
             boolean changed = false;

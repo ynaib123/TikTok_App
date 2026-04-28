@@ -35,8 +35,8 @@ export default function TikTokAccountsPage() {
                 <div className="video-empty-state">
                   <p>Aucun compte n est visible depuis le backoffice.</p>
                   <p>
-                    Si la table n est pas vide dans Supabase, verifie les policies RLS et la permission
-                    `SELECT` pour le role `anon` sur `public.tiktok_accounts`.
+                    Si la table n est pas vide dans Supabase, verifie que le backend video ops
+                    est configure avec la lecture serveur des donnees TikTok.
                   </p>
                 </div>
               ) : null}

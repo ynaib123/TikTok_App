@@ -10,6 +10,7 @@ import '../styles/themes/shell-openai.css'
 const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
 const PREFETCH_ROUTE_HANDLERS = {
   '/dashboard': () => import('../pages/VideoDashboardPage'),
+  '/tiktok': () => import('../pages/TikTokJourneyPage'),
   '/content-pipeline': () => import('../pages/ContentPipelinePage'),
   '/tiktok-accounts': () => import('../pages/TikTokAccountsPage'),
   '/manual-actions': () => import('../pages/ManualActionsPage'),
@@ -80,6 +81,15 @@ function ActionsIcon() {
   )
 }
 
+function TikTokIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 4v8.2a4.2 4.2 0 1 1-3.4-4.1" />
+      <path d="M14 4c1.1 2.4 2.8 3.8 5 4.2" />
+    </svg>
+  )
+}
+
 function LogoutIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -92,6 +102,7 @@ function LogoutIcon() {
 
 const ADMIN_NAV_ICONS = {
   dashboard: DashboardIcon,
+  tiktok: TikTokIcon,
   'content-pipeline': PipelineIcon,
   'tiktok-accounts': AccountsIcon,
   'manual-actions': ActionsIcon,
@@ -152,7 +163,7 @@ export default function AdminShell({
       {
         id: 'operations',
         label: 'Operations',
-        items: ['dashboard', 'content-pipeline'].map((id) => navItemsById[id]).filter(Boolean),
+        items: ['dashboard', 'tiktok', 'content-pipeline'].map((id) => navItemsById[id]).filter(Boolean),
       },
       {
         id: 'distribution',
