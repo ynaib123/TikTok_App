@@ -422,6 +422,7 @@ public class VideoOpsService {
         payload.put("script", trimToNull(request.getScript()));
         payload.put("caption", trimToNull(request.getCaption()));
         payload.put("keyword", trimToNull(request.getKeyword()));
+        payload.put("tiktokAccountOpenId", trimToNull(request.getTiktokAccountOpenId()));
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);

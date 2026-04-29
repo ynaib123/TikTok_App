@@ -17,6 +17,7 @@ public class WorkflowTriggerRequest {
     private String caption;
     private String keyword;
     private String source;
+    private String tiktokAccountOpenId;
     private Boolean force;
 
     public Long getContentIdeaId() {
@@ -81,6 +82,14 @@ public class WorkflowTriggerRequest {
 
     public void setSource(String source) {
         this.source = source;
+    }
+
+    public String getTiktokAccountOpenId() {
+        return tiktokAccountOpenId;
+    }
+
+    public void setTiktokAccountOpenId(String tiktokAccountOpenId) {
+        this.tiktokAccountOpenId = tiktokAccountOpenId;
     }
 
     public Boolean getForce() {

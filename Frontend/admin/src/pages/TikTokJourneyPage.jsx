@@ -491,6 +491,34 @@ export default function TikTokJourneyPage() {
     throw new Error("L'upload URL TikTok n'a pas ete generee.")
   }
 
+  const raceWorkflowRunAndUploadPreparation = async (runId, ideaId) => {
+    const settled = await Promise.race([
+      (async () => {
+        const run = await waitForWorkflowRunCompletion(runId, 60 * 1000)
+        return { type: 'run', run }
+      })(),
+      (async () => {
+        const action = await waitForUploadPreparation(ideaId)
+        return { type: 'manualAction', action }
+      })(),
+    ])
+
+    if (settled?.type === 'manualAction') {
+      return settled.action
+    }
+
+    const completedRun = settled?.run || null
+    if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
+      const manualActions = await fetchManualActions()
+      const action = manualActions.find((item) => Number(item.id) === Number(ideaId)) || null
+      if (action?.uploadUrl) {
+        return action
+      }
+    }
+
+    return waitForUploadPreparation(ideaId)
+  }
+
   const waitForWorkflowRunCompletion = async (runId, timeoutMs = 2 * 60 * 1000) => {
     if (!runId) return null
 
@@ -619,14 +647,15 @@ export default function TikTokJourneyPage() {
       resetGeneratedIdeasState()
       setLastGenerationBaselineId(baselineMaxId)
       setLastGenerationExpectedCount(requestedCount)
-      const generationRequests = Array.from({ length: requestedCount }, (_, index) => (
-        triggerMainContentPipeline({
-          source: `backoffice-tiktok-step-creation-${Date.now()}-${index + 1}`,
-          ideaCount: 1,
-          category: requestedCategory,
-          force: shouldForceGeneration,
-        })
-      ))
+        const generationRequests = Array.from({ length: requestedCount }, (_, index) => (
+          triggerMainContentPipeline({
+            source: `backoffice-tiktok-step-creation-${Date.now()}-${index + 1}`,
+            ideaCount: 1,
+            category: requestedCategory,
+            tiktokAccountOpenId: String(connectedTikTokAccount?.openId || '').trim() || null,
+            force: shouldForceGeneration,
+          })
+        ))
       await Promise.all(generationRequests)
       const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
       setGeneratedIdeas(nextIdeas)
@@ -824,17 +853,7 @@ export default function TikTokJourneyPage() {
         contentIdeaId: idea.id,
         topic: idea.topic,
       })
-      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
-      let nextManualAction = null
-
-      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-        const manualActions = await fetchManualActions()
-        nextManualAction = manualActions.find((item) => Number(item.id) === Number(idea.id)) || null
-      }
-
-      if (!nextManualAction?.uploadUrl) {
-        nextManualAction = await waitForUploadPreparation(idea.id)
-      }
+      const nextManualAction = await raceWorkflowRunAndUploadPreparation(workflowRun?.runId, idea.id)
 
       setManualAction((currentAction) => ({
         ...currentAction,
