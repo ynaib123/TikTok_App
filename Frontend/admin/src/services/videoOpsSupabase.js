@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './adminApiClient.js'
+import { apiDelete, apiGet, apiPost, apiPut } from './adminApiClient.js'
 
 export async function fetchContentIdeas() {
   return apiGet('/video-ops/content-ideas')
@@ -14,6 +14,38 @@ export async function fetchContentIdeaStatus(contentIdeaId) {
 
 export async function fetchTikTokAccounts() {
   return apiGet('/video-ops/tiktok-accounts')
+}
+
+export async function fetchAccountsOverview() {
+  return apiGet('/video-ops/accounts')
+}
+
+export async function fetchAccountsReadiness() {
+  return apiGet('/video-ops/accounts/readiness')
+}
+
+export async function saveServiceConnection(providerKey, payload = {}) {
+  if (!providerKey) {
+    throw new Error('Le providerKey est obligatoire.')
+  }
+
+  return apiPut(`/video-ops/accounts/services/${providerKey}`, payload)
+}
+
+export async function disconnectServiceConnection(providerKey) {
+  if (!providerKey) {
+    throw new Error('Le providerKey est obligatoire.')
+  }
+
+  return apiDelete(`/video-ops/accounts/services/${providerKey}`)
+}
+
+export async function disconnectTikTokAccount(accountId) {
+  if (!accountId) {
+    throw new Error('Le compte TikTok est obligatoire.')
+  }
+
+  return apiDelete(`/video-ops/tiktok-accounts/${accountId}`)
 }
 
 export async function fetchDashboardData() {

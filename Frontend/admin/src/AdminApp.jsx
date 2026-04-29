@@ -116,13 +116,14 @@ export default function AdminApp() {
           )}
         />
         <Route
-          path="/tiktok-accounts"
+          path="/accounts"
           element={(
             <AdminOnlyRoute>
               <TikTokAccountsPage />
             </AdminOnlyRoute>
           )}
         />
+        <Route path="/tiktok-accounts" element={<Navigate to="/accounts" replace />} />
         <Route
           path="/manual-actions"
           element={(

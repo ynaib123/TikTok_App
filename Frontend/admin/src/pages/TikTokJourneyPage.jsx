@@ -10,6 +10,7 @@ import {
   triggerPublishTikTokWorkflow,
 } from '../services/n8nClient'
 import {
+  fetchAccountsReadiness,
   fetchContentIdeas,
   fetchContentIdeaStatus,
   fetchManualActions,
@@ -19,7 +20,6 @@ import {
   markPublishComplete,
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
-import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi'
 import WorkflowStatusPanel from './tiktok-journey/WorkflowStatusPanel'
 import WorkflowObservabilityPanel from './tiktok-journey/WorkflowObservabilityPanel'
 import { useActionState } from './tiktok-journey/useActionState'
@@ -268,13 +268,17 @@ export default function TikTokJourneyPage() {
     queryKey: ['tiktok-accounts'],
     queryFn: fetchTikTokAccounts,
   })
+  const { data: accountsReadiness = { ready: false, missingItems: [] } } = useQuery({
+    queryKey: ['accounts-readiness'],
+    queryFn: fetchAccountsReadiness,
+    refetchInterval: 15_000,
+  })
   const { data: observability = null } = useQuery({
     queryKey: ['video-ops-observability'],
     queryFn: fetchVideoOpsObservability,
     refetchInterval: 10_000,
   })
   const { busyActions, isBusy, runAction } = useActionState()
-  const [isConnectingTikTok, setIsConnectingTikTok] = useState(false)
   const [generatedIdeas, setGeneratedIdeas] = useState([])
   const [selectedGeneratedIdeaId, setSelectedGeneratedIdeaId] = useState(null)
   const [generationCount, setGenerationCount] = useState(1)
@@ -301,6 +305,7 @@ export default function TikTokJourneyPage() {
     [tiktokAccounts],
   )
   const hasConnectedTikTokAccount = Boolean(connectedTikTokAccount)
+  const isJourneyReady = Boolean(accountsReadiness?.ready && hasConnectedTikTokAccount)
   const isWorking = isBusy
   const isGeneratingIdeas = Boolean(busyActions.generateIdea)
   const isGeneratingScript = Boolean(busyActions.generateScript)
@@ -438,8 +443,13 @@ export default function TikTokJourneyPage() {
   }, [isFlowRoute])
 
   useEffect(() => {
-    if (!location.state?.tiktokOAuthSuccess) return
-    setSuccessMessage(location.state.tiktokOAuthSuccess)
+    if (!location.state?.tiktokOAuthSuccess && !location.state?.accountsWarning) return
+    if (location.state?.tiktokOAuthSuccess) {
+      setSuccessMessage(location.state.tiktokOAuthSuccess)
+    }
+    if (location.state?.accountsWarning) {
+      setErrorMessage(location.state.accountsWarning)
+    }
     window.history.replaceState({}, document.title)
   }, [location.state])
 
@@ -448,8 +458,17 @@ export default function TikTokJourneyPage() {
   }
 
   const startAddFlow = () => {
-    if (!hasConnectedTikTokAccount) {
-      setErrorMessage('Connecte d abord un compte TikTok avant de lancer la generation.')
+    if (!isJourneyReady) {
+      const missingItems = accountsReadiness?.missingItems?.length
+        ? accountsReadiness.missingItems.join(', ')
+        : 'des comptes requis'
+      const message = `Connecte d abord ${missingItems} dans Accounts avant de lancer la generation.`
+      setErrorMessage(message)
+      navigate('/accounts', {
+        state: {
+          accountsWarning: message,
+        },
+      })
       return
     }
     resetFlowState()
@@ -473,19 +492,6 @@ export default function TikTokJourneyPage() {
     }
 
     navigate(TIKTOK_STEP_ROUTES[currentStepIndex - 1])
-  }
-
-  const handleConnectTikTok = async (redirectPath = '/tiktok/creation') => {
-    setIsConnectingTikTok(true)
-    setErrorMessage(null)
-    setSuccessMessage(null)
-    try {
-      const response = await createTikTokAuthorizationUrl(redirectPath)
-      window.location.assign(response.authUrl)
-    } catch (error) {
-      showError(error, 'Impossible de lancer la connexion TikTok.')
-      setIsConnectingTikTok(false)
-    }
   }
 
   const handleValidateInitPublish = () => {
@@ -646,31 +652,19 @@ export default function TikTokJourneyPage() {
 
       <section className="tiktok-page-toolbar">
         <div className="admin-product-toolbar">
-          <div className="admin-product-toolbar-controls">
-            <div className="admin-product-toolbar-actions">
-              {!hasConnectedTikTokAccount ? (
+            <div className="admin-product-toolbar-controls">
+              <div className="admin-product-toolbar-actions">
                 <button
                   type="button"
-                  className="video-action-btn"
-                  onClick={() => void handleConnectTikTok('/tiktok/creation')}
-                  disabled={isConnectingTikTok}
-                  title="Connecter un compte TikTok avant de demarrer"
+                  className="admin-console-btn admin-console-btn-muted admin-product-toolbar-action admin-product-toolbar-icon-btn"
+                  onClick={startAddFlow}
+                  aria-label="Ajouter une video"
+                  title="Ajouter"
                 >
-                  {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
+                  <span className="admin-toolbar-icon" aria-hidden="true"><AddIcon /></span>
                 </button>
-              ) : null}
-              <button
-                type="button"
-                className="admin-console-btn admin-console-btn-muted admin-product-toolbar-action admin-product-toolbar-icon-btn"
-                onClick={startAddFlow}
-                aria-label="Ajouter une video"
-                title="Ajouter"
-                disabled={!hasConnectedTikTokAccount}
-              >
-                <span className="admin-toolbar-icon" aria-hidden="true"><AddIcon /></span>
-              </button>
+              </div>
             </div>
-          </div>
 
           <div className="admin-product-toolbar-search tiktok-library-toolbar-search">
             <span className="admin-toolbar-icon" aria-hidden="true"><SearchIcon /></span>
@@ -772,10 +766,10 @@ export default function TikTokJourneyPage() {
         </div>
       </section>
 
-      {!hasConnectedTikTokAccount ? (
+      {!isJourneyReady ? (
         <section className="tiktok-step-empty-state" aria-live="polite">
-          <strong>Connexion TikTok requise</strong>
-          <p>Relie un compte TikTok avant de generer une nouvelle video et de lancer `init-publish-tiktok`.</p>
+          <strong>Accounts incomplets</strong>
+          <p>Connecte TikTok, Supabase, n8n, Groq, Shotstack et Pexels dans l onglet Accounts avant de lancer un nouveau parcours.</p>
         </section>
       ) : null}
 
@@ -849,10 +843,10 @@ export default function TikTokJourneyPage() {
       return {
         actions: (
           <div className="tiktok-step-actions">
-            {!hasConnectedTikTokAccount ? (
+            {!isJourneyReady ? (
               <div className="tiktok-step-intro">
-                <strong>Compte TikTok requis</strong>
-                <p>La generation est verrouillee tant qu aucun compte TikTok n est connecte au backoffice.</p>
+                <strong>Accounts requis</strong>
+                <p>Le parcours est verrouille tant que tous les comptes necessaires ne sont pas connectes dans Accounts.</p>
               </div>
             ) : null}
             <div className="tiktok-step-form">
@@ -874,7 +868,7 @@ export default function TikTokJourneyPage() {
                     aria-haspopup="listbox"
                     aria-expanded={openListMenu === 'tiktok-category'}
                     aria-controls={openListMenu === 'tiktok-category' ? 'tiktok-category-menu' : undefined}
-                    disabled={isBusy || !hasConnectedTikTokAccount}
+                    disabled={isBusy || !isJourneyReady}
                   >
                     <strong>{generationCategory}</strong>
                     <span className="admin-toolbar-icon" aria-hidden="true"><ChevronDownIcon /></span>
@@ -925,7 +919,7 @@ export default function TikTokJourneyPage() {
                     const nextValue = Math.max(1, Math.min(MAX_IDEA_BATCH_SIZE, Number(rawValue)))
                     setGenerationCount(String(nextValue))
                   }}
-                  disabled={isBusy || !hasConnectedTikTokAccount}
+                  disabled={isBusy || !isJourneyReady}
                 />
               </label>
             </div>
@@ -940,16 +934,16 @@ export default function TikTokJourneyPage() {
                 <strong>Generation en cours...</strong>
               </div>
             ) : (
-              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isBusy || !hasConnectedTikTokAccount}>
+              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isBusy || !isJourneyReady}>
                 {displayedGeneratedIdeas.length ? 'Regenerer des idees' : 'Generer'}
               </button>
             )}
-            {!hasConnectedTikTokAccount ? (
-              <button type="button" className="video-action-btn ghost" onClick={() => void handleConnectTikTok('/tiktok/creation')} disabled={isConnectingTikTok}>
-                {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
+            {!isJourneyReady ? (
+              <button type="button" className="video-action-btn ghost" onClick={() => navigate('/accounts')}>
+                Ouvrir Accounts
               </button>
             ) : null}
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isBusy || !selectedGeneratedIdea || !hasConnectedTikTokAccount}>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isBusy || !selectedGeneratedIdea || !isJourneyReady}>
               Valider
             </button>
           </div>
@@ -1084,11 +1078,11 @@ export default function TikTokJourneyPage() {
         actions: (
           <div className="tiktok-step-actions">
             <div className="tiktok-step-intro">
-              <strong>{hasConnectedTikTokAccount ? 'Compte TikTok connecte' : 'Connexion TikTok requise'}</strong>
+              <strong>{isJourneyReady ? 'Accounts verifies' : 'Accounts requis'}</strong>
               <p>
-                {hasConnectedTikTokAccount
-                  ? 'Tu peux reconnecter ou changer le compte TikTok avant l upload.'
-                  : 'Connecte un compte TikTok ici avant d autoriser l upload.'}
+                {isJourneyReady
+                  ? 'Le compte TikTok cible et les services requis sont deja verifies pour l upload.'
+                  : 'Connecte tous les comptes requis dans Accounts avant d autoriser l upload.'}
               </p>
             </div>
             {hasConnectedTikTokAccount ? (
@@ -1100,19 +1094,15 @@ export default function TikTokJourneyPage() {
                 <p>Status: {connectedTikTokAccount?.status || '-'}</p>
               </div>
             ) : null}
-            {hasConnectedTikTokAccount ? (
-              <button type="button" className="video-action-btn ghost" onClick={() => void handleConnectTikTok('/tiktok/upload')} disabled={isConnectingTikTok}>
-                {isConnectingTikTok ? 'Connexion...' : 'Changer de compte'}
+            {!isJourneyReady ? (
+              <button type="button" className="video-action-btn ghost" onClick={() => navigate('/accounts')}>
+                Ouvrir Accounts
               </button>
-            ) : (
-              <button type="button" className="video-action-btn" onClick={() => void handleConnectTikTok('/tiktok/upload')} disabled={isConnectingTikTok}>
-                {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
-              </button>
-            )}
+            ) : null}
             <button type="button" className="video-action-btn" onClick={() => void handlePrepareUpload()} disabled={isBusy || Boolean(manualAction?.uploadUrl)}>
               {isPreparingUpload ? 'Preparation...' : 'Preparer upload'}
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleUploadVideo()} disabled={isBusy || !manualAction?.uploadUrl || !hasConnectedTikTokAccount}>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleUploadVideo()} disabled={isBusy || !manualAction?.uploadUrl || !isJourneyReady}>
               {isUploadingVideo ? 'Upload...' : 'Uploader'}
             </button>
             <button type="button" className="video-action-btn ghost" onClick={handleValidateUpload} disabled={isBusy || !uploadResult}>

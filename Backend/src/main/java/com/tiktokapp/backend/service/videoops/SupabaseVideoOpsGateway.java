@@ -146,6 +146,16 @@ public class SupabaseVideoOpsGateway {
         }
     }
 
+    public void deleteTikTokAccount(long accountId) {
+        ensureConfigured();
+        String url = restBaseUrl() + "/tiktok_accounts?id=eq." + accountId;
+        sendJsonRequest(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .method("DELETE", HttpRequest.BodyPublishers.noBody())
+                .build(), "Impossible de supprimer le compte TikTok dans Supabase.");
+    }
+
     private JsonNode sendJsonRequest(HttpRequest request, String fallbackMessage) {
         try {
             HttpRequest enrichedRequest = withSupabaseHeaders(request);

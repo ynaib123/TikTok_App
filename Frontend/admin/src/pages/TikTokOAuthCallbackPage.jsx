@@ -34,7 +34,7 @@ export default function TikTokOAuthCallbackPage() {
         if (!isActive) return
 
         setMessage(response?.message || 'Compte TikTok connecte.')
-        const redirectPath = response?.redirectPath || '/tiktok-accounts'
+        const redirectPath = response?.redirectPath || '/accounts'
         window.setTimeout(() => navigate(redirectPath, {
           replace: true,
           state: {

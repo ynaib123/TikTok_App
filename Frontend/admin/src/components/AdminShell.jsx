@@ -12,7 +12,7 @@ const PREFETCH_ROUTE_HANDLERS = {
   '/dashboard': () => import('../pages/VideoDashboardPage'),
   '/tiktok': () => import('../pages/TikTokJourneyPage'),
   '/content-pipeline': () => import('../pages/ContentPipelinePage'),
-  '/tiktok-accounts': () => import('../pages/TikTokAccountsPage'),
+  '/accounts': () => import('../pages/TikTokAccountsPage'),
   '/manual-actions': () => import('../pages/ManualActionsPage'),
 }
 const ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS = 5000
@@ -104,7 +104,7 @@ const ADMIN_NAV_ICONS = {
   dashboard: DashboardIcon,
   tiktok: TikTokIcon,
   'content-pipeline': PipelineIcon,
-  'tiktok-accounts': AccountsIcon,
+  accounts: AccountsIcon,
   'manual-actions': ActionsIcon,
 }
 
@@ -168,7 +168,7 @@ export default function AdminShell({
       {
         id: 'distribution',
         label: 'Distribution',
-        items: ['tiktok-accounts', 'manual-actions'].map((id) => navItemsById[id]).filter(Boolean),
+        items: ['accounts', 'manual-actions'].map((id) => navItemsById[id]).filter(Boolean),
       },
     ]
   }, [])

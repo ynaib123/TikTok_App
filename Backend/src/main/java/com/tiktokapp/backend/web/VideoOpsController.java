@@ -1,6 +1,10 @@
 package com.tiktokapp.backend.web;
 
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
+import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
+import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
+import com.tiktokapp.backend.dto.videoops.ServiceConnectionRequest;
+import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
@@ -21,6 +25,7 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
@@ -32,10 +37,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +54,7 @@ import java.util.List;
 public class VideoOpsController {
 
     private final VideoOpsService videoOpsService;
+    private final AccountsService accountsService;
     private final TikTokOAuthService tikTokOAuthService;
     private final TikTokInternalAccountContextService tikTokInternalAccountContextService;
     private final TikTokInitPublishContextService tikTokInitPublishContextService;
@@ -55,6 +63,7 @@ public class VideoOpsController {
 
     public VideoOpsController(
             VideoOpsService videoOpsService,
+            AccountsService accountsService,
             TikTokOAuthService tikTokOAuthService,
             TikTokInternalAccountContextService tikTokInternalAccountContextService,
             TikTokInitPublishContextService tikTokInitPublishContextService,
@@ -62,6 +71,7 @@ public class VideoOpsController {
             ObjectMapper objectMapper
     ) {
         this.videoOpsService = videoOpsService;
+        this.accountsService = accountsService;
         this.tikTokOAuthService = tikTokOAuthService;
         this.tikTokInternalAccountContextService = tikTokInternalAccountContextService;
         this.tikTokInitPublishContextService = tikTokInitPublishContextService;
@@ -99,6 +109,36 @@ public class VideoOpsController {
     @GetMapping("/tiktok-accounts")
     public ResponseEntity<List<TikTokAccountResponse>> getTikTokAccounts() {
         return ResponseEntity.ok(videoOpsService.fetchTikTokAccounts());
+    }
+
+    @GetMapping("/accounts")
+    public ResponseEntity<AccountsOverviewResponse> getAccountsOverview() {
+        return ResponseEntity.ok(accountsService.fetchOverview());
+    }
+
+    @GetMapping("/accounts/readiness")
+    public ResponseEntity<AccountsReadinessResponse> getAccountsReadiness() {
+        return ResponseEntity.ok(accountsService.fetchReadiness());
+    }
+
+    @PutMapping("/accounts/services/{providerKey}")
+    public ResponseEntity<ServiceConnectionResponse> upsertServiceConnection(
+            @PathVariable String providerKey,
+            @Valid @RequestBody ServiceConnectionRequest request
+    ) {
+        return ResponseEntity.ok(accountsService.upsertServiceConnection(providerKey, request));
+    }
+
+    @DeleteMapping("/accounts/services/{providerKey}")
+    public ResponseEntity<Void> disconnectServiceConnection(@PathVariable String providerKey) {
+        accountsService.disconnectServiceConnection(providerKey);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/tiktok-accounts/{accountId}")
+    public ResponseEntity<Void> disconnectTikTokAccount(@PathVariable long accountId) {
+        accountsService.disconnectTikTokAccount(accountId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/workflow-runs/{runId}")

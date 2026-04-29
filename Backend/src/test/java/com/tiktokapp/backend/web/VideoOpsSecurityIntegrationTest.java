@@ -1,6 +1,9 @@
 package com.tiktokapp.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
+import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
+import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
@@ -9,6 +12,7 @@ import com.tiktokapp.backend.dto.videoops.VideoPipelineEventResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
+import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
@@ -61,6 +65,9 @@ class VideoOpsSecurityIntegrationTest {
 
     @MockBean
     private VideoOpsService videoOpsService;
+
+    @MockBean
+    private AccountsService accountsService;
 
     @MockBean
     private TikTokInitPublishContextService tikTokInitPublishContextService;
@@ -116,6 +123,16 @@ class VideoOpsSecurityIntegrationTest {
                         List.of(new VideoPipelineEventResponse(42L, 99L, "ERROR", "workflow_failed", "boom", "2026-04-29T00:00:03Z")),
                         List.of()
                 )
+        );
+        when(accountsService.fetchOverview()).thenReturn(
+                new AccountsOverviewResponse(
+                        List.of(new com.tiktokapp.backend.dto.videoops.TikTokAccountResponse(1L, "Demo", "open-id-demo", "video.publish", "production", "connected")),
+                        List.of(new ServiceConnectionResponse(10L, "GROQ", "Groq Prod", "https://api.groq.com", "team@groq.local", true, "CONNECTED", "2026-04-29T00:00:00Z", "2026-04-29T00:01:00Z")),
+                        new AccountsReadinessResponse(true, 1, List.of())
+                )
+        );
+        when(accountsService.fetchReadiness()).thenReturn(
+                new AccountsReadinessResponse(false, 1, List.of("Shotstack"))
         );
         when(tikTokInitPublishContextService.buildContext(any())).thenReturn(
                 new TikTokInitPublishContextResponse(
@@ -184,6 +201,25 @@ class VideoOpsSecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recentRuns[0].id").value(99))
                 .andExpect(jsonPath("$.recentErrors[0].severity").value("ERROR"));
+    }
+
+    @Test
+    void allowsAuthenticatedAdminToReadAccountsOverview() throws Exception {
+        mockMvc.perform(get("/api/video-ops/accounts")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tiktokAccounts[0].openId").value("open-id-demo"))
+                .andExpect(jsonPath("$.serviceConnections[0].providerKey").value("GROQ"))
+                .andExpect(jsonPath("$.readiness.ready").value(true));
+    }
+
+    @Test
+    void allowsAuthenticatedAdminToReadAccountsReadiness() throws Exception {
+        mockMvc.perform(get("/api/video-ops/accounts/readiness")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ready").value(false))
+                .andExpect(jsonPath("$.missingItems[0]").value("Shotstack"));
     }
 
     @Test

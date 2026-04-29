@@ -1,6 +1,6 @@
 import { apiPost } from './adminApiClient.js'
 
-export async function createTikTokAuthorizationUrl(redirectPath = '/tiktok-accounts') {
+export async function createTikTokAuthorizationUrl(redirectPath = '/accounts') {
   return apiPost('/video-ops/tiktok-oauth/authorize', { redirectPath })
 }
 

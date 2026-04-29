@@ -231,7 +231,7 @@ public class TikTokOAuthService {
     }
 
     private String normalizeRedirectPath(String redirectPath) {
-        String fallback = "/tiktok-accounts";
+        String fallback = "/accounts";
         if (redirectPath == null || redirectPath.isBlank()) {
             return fallback;
         }
