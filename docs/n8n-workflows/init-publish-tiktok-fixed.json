@@ -1,0 +1,406 @@
+{
+  "name": "init-publish-tiktok-fixed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "init-publish-tiktok",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1180, 120]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "contentIdeaId",
+              "value": "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+              "type": "number"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-input",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-940, 120]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "content_ideas",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contentIdeaId }}"
+            },
+            {
+              "keyName": "platform",
+              "condition": "eq",
+              "keyValue": "tiktok"
+            },
+            {
+              "keyName": "final_video_status",
+              "condition": "eq",
+              "keyValue": "ready"
+            }
+          ]
+        }
+      },
+      "id": "get-idea",
+      "name": "Supabase Get Content Idea",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-700, 120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "replace-me",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "tiktok_accounts",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "open_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.tiktok_account_open_id }}"
+            },
+            {
+              "keyName": "refresh_token",
+              "condition": "neq"
+            }
+          ]
+        }
+      },
+      "id": "get-account",
+      "name": "Supabase Get TikTok Account",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-460, 120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "replace-me",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/oauth/token/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_key",
+              "value": "={{ $env.APP_VIDEO_OPS_TIKTOK_CLIENT_KEY }}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{ $env.APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET }}"
+            },
+            {
+              "name": "grant_type",
+              "value": "refresh_token"
+            },
+            {
+              "name": "refresh_token",
+              "value": "={{ $json.refresh_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "refresh-token",
+      "name": "HTTP Request Refresh Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-220, 120]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "tiktok_accounts",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Supabase Get TikTok Account').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "access_token",
+              "fieldValue": "={{ $json.access_token }}"
+            },
+            {
+              "fieldId": "refresh_token",
+              "fieldValue": "={{ $json.refresh_token }}"
+            },
+            {
+              "fieldId": "open_id",
+              "fieldValue": "={{ $json.open_id }}"
+            },
+            {
+              "fieldId": "scope",
+              "fieldValue": "={{ $json.scope }}"
+            },
+            {
+              "fieldId": "token_type",
+              "fieldValue": "={{ $json.token_type }}"
+            }
+          ]
+        }
+      },
+      "id": "update-account",
+      "name": "Supabase Update TikTok Account",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [20, 120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "replace-me",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/creator_info/query/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('HTTP Request Refresh Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "creator-info",
+      "name": "HTTP Request Creator Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [260, 120]
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $('Supabase Get Content Idea').item.json.shotstack_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "video-head",
+      "name": "HTTP Request Video Head",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [500, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('HTTP Request Refresh Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json; charset=UTF-8",
+        "body": "={{ JSON.stringify({ post_info: { title: String($('Supabase Get Content Idea').item.json.caption || '').trim().slice(0, 150), privacy_level: ($('HTTP Request Creator Info').item.json.data?.privacy_level_options || ['SELF_ONLY']).includes('SELF_ONLY') ? 'SELF_ONLY' : ($('HTTP Request Creator Info').item.json.data?.privacy_level_options || ['SELF_ONLY'])[0], disable_duet: true, disable_comment: false, disable_stitch: true, video_cover_timestamp_ms: 1000 }, source_info: { source: 'FILE_UPLOAD', video_size: Number($('HTTP Request Video Head').item.json.headers['content-length'] || 0), chunk_size: Number($('HTTP Request Video Head').item.json.headers['content-length'] || 0), total_chunk_count: 1 } }) }}",
+        "options": {}
+      },
+      "id": "init-publish",
+      "name": "HTTP Request Init Publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [740, 120]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Supabase Get Content Idea').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "tiktok_publish_id",
+              "fieldValue": "={{ $json.data?.publish_id }}"
+            },
+            {
+              "fieldId": "tiktok_upload_url",
+              "fieldValue": "={{ $json.data?.upload_url }}"
+            },
+            {
+              "fieldId": "tiktok_upload_status",
+              "fieldValue": "init_done"
+            },
+            {
+              "fieldId": "publish_status",
+              "fieldValue": "draft"
+            }
+          ]
+        }
+      },
+      "id": "update-idea",
+      "name": "Supabase Update Content Idea",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [980, 120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "replace-me",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/workflow-runs/' + $('Set Input').item.json.workflowRunId + '/complete' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Secret",
+              "value": "={{ $env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: 'SUCCEEDED', message: 'Init publish TikTok termine.', responsePayload: JSON.stringify({ contentIdeaId: $('Supabase Get Content Idea').item.json.id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url }) } }}",
+        "options": {}
+      },
+      "id": "callback",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1220, 120]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, contentIdeaId: $('Supabase Get Content Idea').item.json.id, publishId: $('HTTP Request Init Publish').item.json.data?.publish_id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url, status: 'init_done' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1460, 120]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Input", "type": "main", "index": 0 }]]
+    },
+    "Set Input": {
+      "main": [[{ "node": "Supabase Get Content Idea", "type": "main", "index": 0 }]]
+    },
+    "Supabase Get Content Idea": {
+      "main": [[{ "node": "Supabase Get TikTok Account", "type": "main", "index": 0 }]]
+    },
+    "Supabase Get TikTok Account": {
+      "main": [[{ "node": "HTTP Request Refresh Token", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request Refresh Token": {
+      "main": [[{ "node": "Supabase Update TikTok Account", "type": "main", "index": 0 }]]
+    },
+    "Supabase Update TikTok Account": {
+      "main": [[{ "node": "HTTP Request Creator Info", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request Creator Info": {
+      "main": [[{ "node": "HTTP Request Video Head", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request Video Head": {
+      "main": [[{ "node": "HTTP Request Init Publish", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request Init Publish": {
+      "main": [[{ "node": "Supabase Update Content Idea", "type": "main", "index": 0 }]]
+    },
+    "Supabase Update Content Idea": {
+      "main": [[{ "node": "Callback Success", "type": "main", "index": 0 }]]
+    },
+    "Callback Success": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

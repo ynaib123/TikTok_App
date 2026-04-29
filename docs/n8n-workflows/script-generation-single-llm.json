@@ -1,0 +1,255 @@
+{
+  "name": "script-generation-single-llm",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "script-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-script",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-840, 120]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "contentIdeaId",
+              "value": "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+              "type": "number"
+            },
+            {
+              "name": "topic",
+              "value": "={{ String($json.body.topic || $json.topic || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "category",
+              "value": "={{ String($json.body.category || $json.category || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-input",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-600, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GROQ_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.7, messages: [ { role: 'system', content: 'Tu generes du contenu TikTok. Retourne uniquement un JSON valide avec les cles script, caption, background_keyword.' }, { role: 'user', content: 'Categorie: ' + $json.category + '\\nTopic: ' + $json.topic + '\\nContraintes:\\n- script: francais, naturel, court, pret pour une video TikTok\\n- caption: concise avec hashtags\\n- background_keyword: un seul mot-cle visuel exploitable\\nRetourne uniquement le JSON.' } ] }) }}",
+        "options": {}
+      },
+      "id": "http-groq",
+      "name": "HTTP Request Groq",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-320, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.choices?.[0]?.message?.content || '').trim();\nconst cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (error) {\n  throw new Error('Reponse LLM non parseable en JSON: ' + cleaned);\n}\nreturn [{ json: {\n  contentIdeaId: Number($('Set Input').item.json.contentIdeaId || 0),\n  workflowRunId: Number($('Set Input').item.json.workflowRunId || 0),\n  script: String(parsed.script || '').trim(),\n  caption: String(parsed.caption || '').trim(),\n  background_keyword: String(parsed.background_keyword || '').trim()\n}}];"
+      },
+      "id": "code-parse",
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-40, 120]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contentIdeaId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "scripts",
+              "fieldValue": "={{ $json.script }}"
+            },
+            {
+              "fieldId": "script_status",
+              "fieldValue": "done"
+            },
+            {
+              "fieldId": "caption",
+              "fieldValue": "={{ $json.caption }}"
+            },
+            {
+              "fieldId": "background_keyword",
+              "fieldValue": "={{ $json.background_keyword }}"
+            },
+            {
+              "fieldId": "pipeline_status",
+              "fieldValue": "script_ready"
+            }
+          ]
+        }
+      },
+      "id": "supabase-update",
+      "name": "Supabase Update",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [240, 120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "replace-me",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/workflow-runs/' + $json.workflowRunId + '/complete' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Secret",
+              "value": "={{ $env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: 'SUCCEEDED', message: 'Script workflow termine.', responsePayload: JSON.stringify({ contentIdeaId: $json.contentIdeaId }) } }}",
+        "options": {}
+      },
+      "id": "callback-success",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [520, 120]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, contentIdeaId: $json.contentIdeaId, workflowRunId: $json.workflowRunId, status: 'script_ready' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [780, 120]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Groq": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Supabase Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Update": {
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
