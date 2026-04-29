@@ -210,3 +210,13 @@ Quand un callback HMAC passe:
 - le backend repond `200`
 - `video_workflow_runs.status = SUCCEEDED`
 - le front n attend plus longtemps qu avant
+
+## Etape suivante recommandee
+
+Une fois `init-publish-tiktok` migre vers l'endpoint backend interne:
+
+- n8n n'a plus besoin de lire `refresh_token` ou `access_token` depuis Supabase
+- tu peux definir `APP_VIDEO_OPS_INTERNAL_API_SECRET`
+- puis activer `APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY`
+
+Le backend rechiffre automatiquement au demarrage les anciens tokens TikTok encore en clair dans `tiktok_accounts`.

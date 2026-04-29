@@ -54,6 +54,17 @@ public class SupabaseVideoOpsGateway {
                 .build(), "Impossible de lire la content_idea depuis Supabase.");
     }
 
+    public JsonNode fetchInitPublishContentIdea(long contentIdeaId) {
+        ensureConfigured();
+        String select = "id,platform,caption,shotstack_url,final_video_status,publish_status,tiktok_account_open_id";
+        String url = restBaseUrl() + "/content_ideas?select=" + encode(select) + "&id=eq." + contentIdeaId + "&limit=1";
+        return sendJsonRequest(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build(), "Impossible de lire le contexte init publish depuis Supabase.");
+    }
+
     public JsonNode fetchTikTokAccounts() {
         ensureConfigured();
         String select = "id,open_id,scope,token_type";
@@ -63,6 +74,17 @@ public class SupabaseVideoOpsGateway {
                 .timeout(Duration.ofSeconds(30))
                 .GET()
                 .build(), "Impossible de lire tiktok_accounts depuis Supabase.");
+    }
+
+    public JsonNode fetchTikTokAccountsForEncryptionMigration() {
+        ensureConfigured();
+        String select = "id,open_id,access_token,refresh_token";
+        String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&order=id.asc&limit=" + properties.getQueryLimit();
+        return sendJsonRequest(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build(), "Impossible de lire tiktok_accounts pour la migration de chiffrement.");
     }
 
     public JsonNode findTikTokAccountsByOpenId(String openId) {

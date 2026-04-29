@@ -19,7 +19,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -112,6 +114,47 @@ public class TikTokOAuthService {
                 scope,
                 displayName
         );
+    }
+
+    public JsonNode refreshAccessToken(String refreshToken) {
+        ensureConfigured();
+        String body = formBody(Map.of(
+                "client_key", properties.getTiktokClientKey(),
+                "client_secret", properties.getTiktokClientSecret(),
+                "grant_type", "refresh_token",
+                "refresh_token", refreshToken
+        ));
+        return sendTikTokRequest(HttpRequest.newBuilder()
+                .uri(URI.create(TIKTOK_TOKEN_URL))
+                .timeout(Duration.ofSeconds(30))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build(), "Impossible de rafraichir le token TikTok.");
+    }
+
+    public JsonNode fetchCreatorInfo(String accessToken) {
+        ensureConfigured();
+        return sendTikTokRequest(HttpRequest.newBuilder()
+                .uri(URI.create("https://open.tiktokapis.com/v2/post/publish/creator_info/query/"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .header("Authorization", "Bearer " + accessToken)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(), "Impossible de lire creator_info TikTok.");
+    }
+
+    public List<String> extractPrivacyLevelOptions(JsonNode creatorInfoPayload) {
+        List<String> options = new ArrayList<>();
+        JsonNode optionNodes = creatorInfoPayload.path("data").path("privacy_level_options");
+        if (optionNodes.isArray()) {
+            optionNodes.forEach(node -> {
+                String value = node.asText("");
+                if (value != null && !value.isBlank()) {
+                    options.add(value.trim());
+                }
+            });
+        }
+        return options;
     }
 
     private JsonNode exchangeAuthorizationCode(String code) {

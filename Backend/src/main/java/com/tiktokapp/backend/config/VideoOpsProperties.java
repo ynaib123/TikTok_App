@@ -14,6 +14,7 @@ public class VideoOpsProperties {
     private String n8nCheckShotstackWebhook = "";
     private String n8nRenderTemplateWebhook = "";
     private String n8nPublishTikTokWebhook = "";
+    private String internalApiSecret = "";
     private String workflowCallbackSecret = "";
     private String workflowCallbackHmacSecret = "";
     private long workflowCallbackMaxSkewSeconds = 300;
@@ -88,6 +89,14 @@ public class VideoOpsProperties {
 
     public String getWorkflowCallbackSecret() {
         return workflowCallbackSecret;
+    }
+
+    public String getInternalApiSecret() {
+        return internalApiSecret;
+    }
+
+    public void setInternalApiSecret(String internalApiSecret) {
+        this.internalApiSecret = internalApiSecret;
     }
 
     public void setWorkflowCallbackSecret(String workflowCallbackSecret) {

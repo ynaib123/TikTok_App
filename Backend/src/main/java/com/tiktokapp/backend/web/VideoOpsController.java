@@ -6,6 +6,8 @@ import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackResponse;
+import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextRequest;
+import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
@@ -18,6 +20,8 @@ import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
+import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
+import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -40,11 +44,21 @@ public class VideoOpsController {
 
     private final VideoOpsService videoOpsService;
     private final TikTokOAuthService tikTokOAuthService;
+    private final TikTokInitPublishContextService tikTokInitPublishContextService;
+    private final VideoOpsInternalAuthService internalAuthService;
     private final ObjectMapper objectMapper;
 
-    public VideoOpsController(VideoOpsService videoOpsService, TikTokOAuthService tikTokOAuthService, ObjectMapper objectMapper) {
+    public VideoOpsController(
+            VideoOpsService videoOpsService,
+            TikTokOAuthService tikTokOAuthService,
+            TikTokInitPublishContextService tikTokInitPublishContextService,
+            VideoOpsInternalAuthService internalAuthService,
+            ObjectMapper objectMapper
+    ) {
         this.videoOpsService = videoOpsService;
         this.tikTokOAuthService = tikTokOAuthService;
+        this.tikTokInitPublishContextService = tikTokInitPublishContextService;
+        this.internalAuthService = internalAuthService;
         this.objectMapper = objectMapper;
     }
 
@@ -101,6 +115,15 @@ public class VideoOpsController {
                 request.getCode(),
                 request.getState()
         ));
+    }
+
+    @PostMapping("/internal/tiktok/init-publish-context")
+    public ResponseEntity<TikTokInitPublishContextResponse> buildInitPublishContext(
+            @Valid @RequestBody TikTokInitPublishContextRequest request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(tikTokInitPublishContextService.buildContext(request));
     }
 
     @PostMapping("/workflows/main-pipeline")

@@ -39,7 +39,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers("/api/video-ops/workflow-runs/*/complete")
+                        .ignoringRequestMatchers(
+                                "/api/video-ops/workflow-runs/*/complete",
+                                "/api/video-ops/internal/tiktok/init-publish-context"
+                        )
                 )
                 .cors(Customizer.withDefaults())
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -56,7 +59,8 @@ public class SecurityConfig {
                                 "/api/admins/login",
                                 "/api/admins/refresh",
                                 "/api/admins/logout",
-                                "/api/video-ops/workflow-runs/*/complete"
+                                "/api/video-ops/workflow-runs/*/complete",
+                                "/api/video-ops/internal/tiktok/init-publish-context"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()

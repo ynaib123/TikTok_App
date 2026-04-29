@@ -2,9 +2,11 @@ package com.tiktokapp.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
+import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
+import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.security.admin-name=Video Ops Admin",
         "app.security.jwt-secret=integration-test-secret-12345678901234567890",
         "app.security.secure-cookies=false",
-        "app.security.bootstrap-admin-on-startup=true"
+        "app.security.bootstrap-admin-on-startup=true",
+        "app.video-ops.internal-api-secret=internal-test-secret"
 })
 @AutoConfigureMockMvc
 class VideoOpsSecurityIntegrationTest {
@@ -54,6 +57,9 @@ class VideoOpsSecurityIntegrationTest {
 
     @MockBean
     private VideoOpsService videoOpsService;
+
+    @MockBean
+    private TikTokInitPublishContextService tikTokInitPublishContextService;
 
     private String accessToken;
     private Cookie csrfCookie;
@@ -94,6 +100,18 @@ class VideoOpsSecurityIntegrationTest {
                         "{}",
                         "2026-04-29T00:00:00Z",
                         "2026-04-29T00:00:02Z"
+                )
+        );
+        when(tikTokInitPublishContextService.buildContext(any())).thenReturn(
+                new TikTokInitPublishContextResponse(
+                        42L,
+                        "open-id-demo",
+                        "access-token-demo",
+                        "Bearer",
+                        "Caption",
+                        "https://shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com/video.mp4",
+                        List.of("SELF_ONLY"),
+                        "SELF_ONLY"
                 )
         );
 
@@ -179,5 +197,19 @@ class VideoOpsSecurityIntegrationTest {
                 eq("video-ops-callback-123")
         );
         verify(videoOpsService).completeWorkflowRun(eq(99L), any(VideoWorkflowRunCompletionRequest.class));
+    }
+
+    @Test
+    void acceptsInternalInitPublishContextRequestWithInternalSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/tiktok/init-publish-context")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"contentIdeaId":42,"tiktokAccountOpenId":"open-id-demo"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contentIdeaId").value(42))
+                .andExpect(jsonPath("$.tiktokAccountOpenId").value("open-id-demo"))
+                .andExpect(jsonPath("$.selectedPrivacyLevel").value("SELF_ONLY"));
     }
 }
