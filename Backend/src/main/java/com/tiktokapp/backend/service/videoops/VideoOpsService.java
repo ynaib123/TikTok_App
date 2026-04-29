@@ -12,6 +12,8 @@ import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoStatCardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoStatusGroupResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.tiktokapp.backend.model.VideoPipelineEvent;
@@ -215,6 +217,24 @@ public class VideoOpsService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public VideoWorkflowRunDetailResponse fetchWorkflowRun(long runId) {
+        VideoWorkflowRun run = workflowRunRepository.findById(runId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
+
+        return new VideoWorkflowRunDetailResponse(
+                run.getId(),
+                run.getContentIdeaId(),
+                run.getWorkflowType().name(),
+                run.getStatus().name(),
+                run.getAttemptNumber(),
+                run.getErrorMessage(),
+                run.getResponsePayload(),
+                run.getCreatedAt() == null ? null : run.getCreatedAt().toString(),
+                run.getCompletedAt() == null ? null : run.getCompletedAt().toString()
+        );
+    }
+
     @Transactional
     public VideoWorkflowActionResponse triggerMainPipeline(WorkflowTriggerRequest request, String requestedByEmail) {
         validateMainPipelineRequest(request);
@@ -311,6 +331,65 @@ public class VideoOpsService {
             syncPipelineState(contentIdeaId, VideoPipelineStage.FAILED, exception.getMessage(), run);
             recordEvent(contentIdeaId, run, "ERROR", "publish_failed", "La finalisation de publication a echoue.", payloadOf("error", exception.getMessage()));
             throw exception;
+        }
+    }
+
+    @Transactional
+    public VideoWorkflowRunDetailResponse completeWorkflowRun(long runId, VideoWorkflowRunCompletionRequest request) {
+        VideoWorkflowRun run = workflowRunRepository.findById(runId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
+
+        VideoWorkflowRunStatus nextStatus;
+        try {
+            nextStatus = VideoWorkflowRunStatus.valueOf(String.valueOf(request.getStatus()).trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow invalide.");
+        }
+
+        if (nextStatus != VideoWorkflowRunStatus.SUCCEEDED && nextStatus != VideoWorkflowRunStatus.FAILED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow doit etre SUCCEEDED ou FAILED.");
+        }
+
+        run.setStatus(nextStatus);
+        run.setCompletedAt(Instant.now());
+        if (request.getResponsePayload() != null && !request.getResponsePayload().isBlank()) {
+            run.setResponsePayload(trimToNull(request.getResponsePayload()));
+        }
+        if (nextStatus == VideoWorkflowRunStatus.FAILED) {
+            String errorMessage = trimToNull(request.getErrorMessage());
+            run.setErrorMessage(errorMessage == null ? "Workflow externe en echec." : errorMessage);
+            syncPipelineState(run.getContentIdeaId(), VideoPipelineStage.FAILED, run.getErrorMessage(), run);
+            recordEvent(
+                    run.getContentIdeaId(),
+                    run,
+                    "ERROR",
+                    "workflow_callback_failed",
+                    request.getMessage() == null || request.getMessage().isBlank() ? "Workflow externe signale en echec." : request.getMessage(),
+                    payloadOf("error", run.getErrorMessage())
+            );
+        } else {
+            run.setErrorMessage(null);
+            recordEvent(
+                    run.getContentIdeaId(),
+                    run,
+                    "INFO",
+                    "workflow_callback_succeeded",
+                    request.getMessage() == null || request.getMessage().isBlank() ? "Workflow externe termine avec succes." : request.getMessage(),
+                    Map.of("runId", run.getId())
+            );
+        }
+        workflowRunRepository.save(run);
+
+        return fetchWorkflowRun(runId);
+    }
+
+    public void validateWorkflowCallbackSecret(String providedSecret) {
+        String configuredSecret = trimToNull(properties.getWorkflowCallbackSecret());
+        if (configuredSecret == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Le secret de callback workflow n'est pas configure.");
+        }
+        if (!configuredSecret.equals(providedSecret == null ? "" : providedSecret.trim())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Callback workflow refuse.");
         }
     }
 

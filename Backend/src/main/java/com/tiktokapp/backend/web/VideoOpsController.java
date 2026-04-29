@@ -11,6 +11,8 @@ import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoUploadRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
@@ -56,6 +59,13 @@ public class VideoOpsController {
     @GetMapping("/tiktok-accounts")
     public ResponseEntity<List<TikTokAccountResponse>> getTikTokAccounts() {
         return ResponseEntity.ok(videoOpsService.fetchTikTokAccounts());
+    }
+
+    @GetMapping("/workflow-runs/{runId}")
+    public ResponseEntity<VideoWorkflowRunDetailResponse> getWorkflowRun(
+            @PathVariable long runId
+    ) {
+        return ResponseEntity.ok(videoOpsService.fetchWorkflowRun(runId));
     }
 
     @PostMapping("/tiktok-oauth/authorize")
@@ -132,5 +142,15 @@ public class VideoOpsController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(videoOpsService.markPublishComplete(contentIdeaId, authentication.getName()));
+    }
+
+    @PostMapping("/workflow-runs/{runId}/complete")
+    public ResponseEntity<VideoWorkflowRunDetailResponse> completeWorkflowRun(
+            @PathVariable long runId,
+            @Valid @RequestBody VideoWorkflowRunCompletionRequest request,
+            @RequestHeader(name = "X-Video-Ops-Callback-Secret", required = false) String callbackSecret
+    ) {
+        videoOpsService.validateWorkflowCallbackSecret(callbackSecret);
+        return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
     }
 }

@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .ignoringRequestMatchers("/api/video-ops/workflow-runs/*/complete")
                 )
                 .cors(Customizer.withDefaults())
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -54,7 +55,8 @@ public class SecurityConfig {
                                 "/api/admins/csrf-token",
                                 "/api/admins/login",
                                 "/api/admins/refresh",
-                                "/api/admins/logout"
+                                "/api/admins/logout",
+                                "/api/video-ops/workflow-runs/*/complete"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()

@@ -14,6 +14,7 @@ public class VideoOpsProperties {
     private String n8nCheckShotstackWebhook = "";
     private String n8nRenderTemplateWebhook = "";
     private String n8nPublishTikTokWebhook = "";
+    private String workflowCallbackSecret = "";
     private String tiktokClientKey = "";
     private String tiktokClientSecret = "";
     private String tiktokRedirectUri = "";
@@ -79,6 +80,14 @@ public class VideoOpsProperties {
 
     public String getTiktokClientKey() {
         return tiktokClientKey;
+    }
+
+    public String getWorkflowCallbackSecret() {
+        return workflowCallbackSecret;
+    }
+
+    public void setWorkflowCallbackSecret(String workflowCallbackSecret) {
+        this.workflowCallbackSecret = workflowCallbackSecret;
     }
 
     public void setTiktokClientKey(String tiktokClientKey) {

@@ -13,6 +13,7 @@ import {
   fetchContentIdeas,
   fetchManualActions,
   fetchTikTokAccounts,
+  fetchWorkflowRun,
   markPublishComplete,
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
@@ -50,6 +51,11 @@ const MAX_IDEA_BATCH_SIZE = 5
 
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function isWorkflowRunTerminal(run) {
+  const status = String(run?.status || '').toUpperCase()
+  return status === 'SUCCEEDED' || status === 'FAILED'
 }
 
 function isRenderReady(idea) {
@@ -485,6 +491,30 @@ export default function TikTokJourneyPage() {
     throw new Error("L'upload URL TikTok n'a pas ete generee.")
   }
 
+  const waitForWorkflowRunCompletion = async (runId, timeoutMs = 2 * 60 * 1000) => {
+    if (!runId) return null
+
+    const timeoutAt = Date.now() + timeoutMs
+    let lastRun = null
+
+    while (Date.now() < timeoutAt) {
+      const run = await fetchWorkflowRun(runId)
+      lastRun = run
+
+      if (String(run?.status || '').toUpperCase() === 'FAILED') {
+        throw new Error(run?.errorMessage || `Le workflow ${run?.workflowType || runId} a echoue.`)
+      }
+
+      if (isWorkflowRunTerminal(run)) {
+        return run
+      }
+
+      await sleep(3000)
+    }
+
+    return lastRun
+  }
+
   const refreshPipelineData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
@@ -625,14 +655,25 @@ export default function TikTokJourneyPage() {
     setErrorMessage(null)
 
     try {
-      await triggerScriptGenerationWorkflow({
+      const workflowRun = await triggerScriptGenerationWorkflow({
         source: 'backoffice-tiktok-step-script',
         contentIdeaId: selectedGeneratedIdea.id,
         topic: selectedGeneratedIdea.topic,
       })
       goToStep('script')
       showSuccess('Workflow script lance. Les resultats apparaitront ici des qu ils seront prets.')
-      const nextScriptedIdea = await waitForScriptGeneration(selectedGeneratedIdea.id, selectedGeneratedIdea)
+      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
+      let nextScriptedIdea = null
+
+      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
+        const ideas = await fetchContentIdeas()
+        nextScriptedIdea = ideas.find((idea) => Number(idea.id) === Number(selectedGeneratedIdea.id)) || null
+      }
+
+      if (!nextScriptedIdea || !hasScriptGenerationResult(nextScriptedIdea)) {
+        nextScriptedIdea = await waitForScriptGeneration(selectedGeneratedIdea.id, selectedGeneratedIdea)
+      }
+
       setScriptedIdea(nextScriptedIdea)
       setGeneratedIdeas((currentIdeas) => currentIdeas.map((idea) => (
         Number(idea.id) === Number(nextScriptedIdea.id) ? nextScriptedIdea : idea
@@ -659,13 +700,24 @@ export default function TikTokJourneyPage() {
     setErrorMessage(null)
 
     try {
-      await triggerScriptGenerationWorkflow({
+      const workflowRun = await triggerScriptGenerationWorkflow({
         source: 'backoffice-tiktok-step-script-regenerate',
         contentIdeaId: idea.id,
         topic: idea.topic,
         force: true,
       })
-      const nextScriptedIdea = await waitForScriptGeneration(idea.id, idea)
+      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
+      let nextScriptedIdea = null
+
+      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
+        const ideas = await fetchContentIdeas()
+        nextScriptedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
+      }
+
+      if (!nextScriptedIdea || !hasScriptGenerationResult(nextScriptedIdea)) {
+        nextScriptedIdea = await waitForScriptGeneration(idea.id, idea)
+      }
+
       setScriptedIdea(nextScriptedIdea)
       setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
         Number(currentIdea.id) === Number(nextScriptedIdea.id) ? nextScriptedIdea : currentIdea
@@ -693,7 +745,7 @@ export default function TikTokJourneyPage() {
 
     try {
       goToStep('init-publish')
-      await triggerRenderTemplateWorkflow({
+      const workflowRun = await triggerRenderTemplateWorkflow({
         source: 'backoffice-tiktok-step-video-render',
         contentIdeaId: idea.id,
         topic: idea.topic,
@@ -703,7 +755,18 @@ export default function TikTokJourneyPage() {
       })
       showSuccess('Generation video lancee. La video apparaitra ici des qu elle sera prete.')
 
-      const renderedIdea = await waitForRenderedVideo(idea.id)
+      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 90 * 1000)
+      let renderedIdea = null
+
+      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
+        const ideas = await fetchContentIdeas()
+        renderedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
+      }
+
+      if (!renderedIdea || !isRenderReady(renderedIdea)) {
+        renderedIdea = await waitForRenderedVideo(idea.id)
+      }
+
       setScriptedIdea(renderedIdea)
       setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
         Number(currentIdea.id) === Number(renderedIdea.id) ? renderedIdea : currentIdea
@@ -756,12 +819,23 @@ export default function TikTokJourneyPage() {
     setErrorMessage(null)
 
     try {
-      await triggerPublishTikTokWorkflow({
+      const workflowRun = await triggerPublishTikTokWorkflow({
         source: 'backoffice-tiktok-step-upload-prepare',
         contentIdeaId: idea.id,
         topic: idea.topic,
       })
-      const nextManualAction = await waitForUploadPreparation(idea.id)
+      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
+      let nextManualAction = null
+
+      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
+        const manualActions = await fetchManualActions()
+        nextManualAction = manualActions.find((item) => Number(item.id) === Number(idea.id)) || null
+      }
+
+      if (!nextManualAction?.uploadUrl) {
+        nextManualAction = await waitForUploadPreparation(idea.id)
+      }
+
       setManualAction((currentAction) => ({
         ...currentAction,
         ...nextManualAction,

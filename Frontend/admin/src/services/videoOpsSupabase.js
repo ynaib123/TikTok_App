@@ -16,6 +16,14 @@ export async function fetchManualActions() {
   return apiGet('/video-ops/manual-actions')
 }
 
+export async function fetchWorkflowRun(runId) {
+  if (!runId) {
+    throw new Error('Le workflowRunId est obligatoire.')
+  }
+
+  return apiGet(`/video-ops/workflow-runs/${runId}`)
+}
+
 export async function triggerMainContentPipeline(payload = {}) {
   return apiPost('/video-ops/workflows/main-pipeline', payload)
 }

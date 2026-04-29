@@ -35,6 +35,7 @@ app:
     n8n-check-shotstack-webhook: ${APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK:}
     n8n-render-template-webhook: ${APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK:}
     n8n-publish-tiktok-webhook: ${APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK:}
+    workflow-callback-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET:}
     tiktok-client-key: ${APP_VIDEO_OPS_TIKTOK_CLIENT_KEY:}
     tiktok-client-secret: ${APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET:}
     tiktok-redirect-uri: ${APP_VIDEO_OPS_TIKTOK_REDIRECT_URI:}
