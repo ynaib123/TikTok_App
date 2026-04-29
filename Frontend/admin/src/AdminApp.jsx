@@ -11,6 +11,7 @@ import './styles/features/video-ops.css'
 const AdminLogin = lazy(() => import('./pages/AdminLogin'))
 const VideoDashboardPage = lazy(() => import('./pages/VideoDashboardPage'))
 const TikTokJourneyPage = lazy(() => import('./pages/TikTokJourneyPage'))
+const TikTokOAuthCallbackPage = lazy(() => import('./pages/TikTokOAuthCallbackPage'))
 const ContentPipelinePage = lazy(() => import('./pages/ContentPipelinePage'))
 const TikTokAccountsPage = lazy(() => import('./pages/TikTokAccountsPage'))
 const ManualActionsPage = lazy(() => import('./pages/ManualActionsPage'))
@@ -95,6 +96,14 @@ export default function AdminApp() {
           element={(
             <AdminOnlyRoute>
               <TikTokJourneyPage />
+            </AdminOnlyRoute>
+          )}
+        />
+        <Route
+          path="/tiktok-callback"
+          element={(
+            <AdminOnlyRoute>
+              <TikTokOAuthCallbackPage />
             </AdminOnlyRoute>
           )}
         />

@@ -2,6 +2,10 @@ package com.tiktokapp.backend.web;
 
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
+import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeRequest;
+import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeResponse;
+import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackRequest;
+import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
@@ -9,6 +13,7 @@ import com.tiktokapp.backend.dto.videoops.VideoUploadRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
+import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,9 +31,11 @@ import java.util.List;
 public class VideoOpsController {
 
     private final VideoOpsService videoOpsService;
+    private final TikTokOAuthService tikTokOAuthService;
 
-    public VideoOpsController(VideoOpsService videoOpsService) {
+    public VideoOpsController(VideoOpsService videoOpsService, TikTokOAuthService tikTokOAuthService) {
         this.videoOpsService = videoOpsService;
+        this.tikTokOAuthService = tikTokOAuthService;
     }
 
     @GetMapping("/dashboard")
@@ -51,6 +58,27 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.fetchTikTokAccounts());
     }
 
+    @PostMapping("/tiktok-oauth/authorize")
+    public ResponseEntity<TikTokOAuthAuthorizeResponse> createTikTokAuthorizationUrl(
+            @RequestBody(required = false) TikTokOAuthAuthorizeRequest request,
+            Authentication authentication
+    ) {
+        String redirectPath = request == null ? null : request.getRedirectPath();
+        return ResponseEntity.ok(tikTokOAuthService.createAuthorizationUrl(authentication.getName(), redirectPath));
+    }
+
+    @PostMapping("/tiktok-oauth/callback")
+    public ResponseEntity<TikTokOAuthCallbackResponse> completeTikTokAuthorization(
+            @Valid @RequestBody TikTokOAuthCallbackRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(tikTokOAuthService.completeAuthorization(
+                authentication.getName(),
+                request.getCode(),
+                request.getState()
+        ));
+    }
+
     @PostMapping("/workflows/main-pipeline")
     public ResponseEntity<VideoWorkflowActionResponse> triggerMainPipeline(
             @Valid @RequestBody(required = false) WorkflowTriggerRequest request,
@@ -65,6 +93,14 @@ public class VideoOpsController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(videoOpsService.triggerCheckShotstack(request, authentication.getName()));
+    }
+
+    @PostMapping("/workflows/render-template")
+    public ResponseEntity<VideoWorkflowActionResponse> triggerRenderTemplate(
+            @Valid @RequestBody WorkflowTriggerRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(videoOpsService.triggerRenderTemplate(request, authentication.getName()));
     }
 
     @PostMapping("/workflows/init-publish")

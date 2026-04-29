@@ -13,6 +13,9 @@ public class WorkflowTriggerRequest {
     @Max(5)
     private Integer ideaCount;
     private String topic;
+    private String script;
+    private String caption;
+    private String keyword;
     private String source;
     private Boolean force;
 
@@ -46,6 +49,30 @@ public class WorkflowTriggerRequest {
 
     public void setTopic(String topic) {
         this.topic = topic;
+    }
+
+    public String getScript() {
+        return script;
+    }
+
+    public void setScript(String script) {
+        this.script = script;
+    }
+
+    public String getCaption() {
+        return caption;
+    }
+
+    public void setCaption(String caption) {
+        this.caption = caption;
+    }
+
+    public String getKeyword() {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword) {
+        this.keyword = keyword;
     }
 
     public String getSource() {

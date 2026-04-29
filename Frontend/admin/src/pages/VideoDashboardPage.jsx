@@ -1,28 +1,24 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import AdminShell from '../components/AdminShell'
 import { fetchDashboardData } from '../services/videoOpsSupabase'
 import {
-  triggerCheckShotstackWorkflow,
   triggerMainContentPipeline,
-  triggerPublishTikTokWorkflow,
 } from '../services/n8nClient'
 
 export default function VideoDashboardPage() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useQuery({
     queryKey: ['video-dashboard'],
     queryFn: fetchDashboardData,
   })
   const triggerMainMutation = useMutation({ mutationFn: triggerMainContentPipeline })
-  const triggerCheckMutation = useMutation({ mutationFn: triggerCheckShotstackWorkflow })
-  const triggerPublishMutation = useMutation({ mutationFn: triggerPublishTikTokWorkflow })
 
   const dashboardStats = data?.stats || []
   const statusGroups = data?.groups || []
   const feedbackMessage =
     error?.message
     || triggerMainMutation.error?.message
-    || triggerCheckMutation.error?.message
-    || triggerPublishMutation.error?.message
     || null
 
   return (
@@ -53,18 +49,18 @@ export default function VideoDashboardPage() {
               <button
                 type="button"
                 className="video-action-btn ghost"
-                onClick={() => triggerCheckMutation.mutate({ source: 'backoffice' })}
-                disabled={triggerCheckMutation.isPending}
+                onClick={() => navigate('/tiktok')}
+                title="Les actions script, rendu et init publish demandent une content idea precise."
               >
-                {triggerCheckMutation.isPending ? 'Verification...' : 'Verifier rendus'}
+                Ouvrir parcours TikTok
               </button>
               <button
                 type="button"
                 className="video-action-btn ghost"
-                onClick={() => triggerPublishMutation.mutate({ source: 'backoffice' })}
-                disabled={triggerPublishMutation.isPending}
+                onClick={() => navigate('/manual-actions')}
+                title="Les uploads et la publication finale se gerent depuis la file des actions manuelles."
               >
-                {triggerPublishMutation.isPending ? 'Publication...' : 'Init publish TikTok'}
+                Ouvrir actions manuelles
               </button>
             </div>
           </section>

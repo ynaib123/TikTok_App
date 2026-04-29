@@ -46,7 +46,6 @@ public class TikTokUploadService {
                     .uri(uploadUri)
                     .timeout(Duration.ofMinutes(5))
                     .header("Content-Type", "video/mp4")
-                    .header("Content-Length", String.valueOf(videoBytes.length))
                     .header("Content-Range", "bytes 0-" + lastByteIndex + "/" + videoBytes.length)
                     .PUT(HttpRequest.BodyPublishers.ofByteArray(videoBytes))
                     .build();

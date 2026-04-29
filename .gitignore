@@ -13,6 +13,8 @@ Frontend/admin/dist
 Frontend/admin/dist-ssr
 .vite
 *.local
+.env
+.env.*
 playwright-report
 test-results
 

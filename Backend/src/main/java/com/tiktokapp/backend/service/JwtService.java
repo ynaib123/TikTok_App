@@ -20,6 +20,7 @@ public class JwtService {
     private final SecretKey signingKey;
     private final long accessMinutes;
     private final long refreshDays;
+    private static final long TIKTOK_OAUTH_STATE_MINUTES = 10;
 
     public JwtService(SecurityProperties securityProperties) {
         String jwtSecret = securityProperties.getJwtSecret();
@@ -84,5 +85,27 @@ public class JwtService {
 
     public long getAccessTokenTtlSeconds() {
         return ChronoUnit.MINUTES.getDuration().getSeconds() * accessMinutes;
+    }
+
+    public String generateTikTokOauthState(String adminEmail, String redirectPath) {
+        Instant now = Instant.now();
+        Instant expiry = now.plus(TIKTOK_OAUTH_STATE_MINUTES, ChronoUnit.MINUTES);
+        return Jwts.builder()
+                .subject(adminEmail)
+                .claim("tokenType", "TIKTOK_OAUTH_STATE")
+                .claim("redirectPath", redirectPath)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    public Claims parseTikTokOauthState(String token) {
+        Claims claims = parseToken(token);
+        String tokenType = claims.get("tokenType", String.class);
+        if (!"TIKTOK_OAUTH_STATE".equalsIgnoreCase(tokenType)) {
+            throw new IllegalArgumentException("Invalid TikTok OAuth state token");
+        }
+        return claims;
     }
 }

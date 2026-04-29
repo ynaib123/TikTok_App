@@ -45,13 +45,24 @@ public class SupabaseVideoOpsGateway {
 
     public JsonNode fetchTikTokAccounts() {
         ensureConfigured();
-        String select = "id,open_id,scope";
+        String select = "id,open_id,scope,access_token,refresh_token,token_type";
         String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&order=id.asc&limit=" + properties.getQueryLimit();
         return sendJsonRequest(HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
                 .GET()
                 .build(), "Impossible de lire tiktok_accounts depuis Supabase.");
+    }
+
+    public JsonNode findTikTokAccountsByOpenId(String openId) {
+        ensureConfigured();
+        String select = "id,open_id,scope,access_token,refresh_token,token_type";
+        String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&open_id=eq." + encode(openId) + "&limit=1";
+        return sendJsonRequest(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build(), "Impossible de lire le compte TikTok depuis Supabase.");
     }
 
     public JsonNode updateContentIdea(long contentIdeaId, Map<String, Object> payload) {
@@ -67,6 +78,38 @@ public class SupabaseVideoOpsGateway {
                     .build(), "Impossible de mettre a jour content_ideas dans Supabase.");
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossible de serialiser la mise a jour Supabase.", exception);
+        }
+    }
+
+    public JsonNode createTikTokAccount(Map<String, Object> payload) {
+        ensureConfigured();
+        String url = restBaseUrl() + "/tiktok_accounts";
+        try {
+            String body = objectMapper.writeValueAsString(payload);
+            return sendJsonRequest(HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(30))
+                    .header("Prefer", "return=representation")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build(), "Impossible de creer le compte TikTok dans Supabase.");
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossible de serialiser la creation du compte TikTok.", exception);
+        }
+    }
+
+    public JsonNode updateTikTokAccount(long accountId, Map<String, Object> payload) {
+        ensureConfigured();
+        String url = restBaseUrl() + "/tiktok_accounts?id=eq." + accountId;
+        try {
+            String body = objectMapper.writeValueAsString(payload);
+            return sendJsonRequest(HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(30))
+                    .header("Prefer", "return=representation")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
+                    .build(), "Impossible de mettre a jour le compte TikTok dans Supabase.");
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossible de serialiser la mise a jour du compte TikTok.", exception);
         }
     }
 

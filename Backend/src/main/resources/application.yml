@@ -33,7 +33,12 @@ app:
     supabase-service-role-key: ${APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY:}
     n8n-main-pipeline-webhook: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK:}
     n8n-check-shotstack-webhook: ${APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK:}
+    n8n-render-template-webhook: ${APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK:}
     n8n-publish-tiktok-webhook: ${APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK:}
+    tiktok-client-key: ${APP_VIDEO_OPS_TIKTOK_CLIENT_KEY:}
+    tiktok-client-secret: ${APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET:}
+    tiktok-redirect-uri: ${APP_VIDEO_OPS_TIKTOK_REDIRECT_URI:}
+    tiktok-oauth-scopes: ${APP_VIDEO_OPS_TIKTOK_OAUTH_SCOPES:user.info.basic,video.publish}
     query-limit: ${APP_VIDEO_OPS_QUERY_LIMIT:50}
     idempotency-window-seconds: ${APP_VIDEO_OPS_IDEMPOTENCY_WINDOW_SECONDS:90}
     allowed-shotstack-hosts: ${APP_VIDEO_OPS_ALLOWED_SHOTSTACK_HOSTS:shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com}

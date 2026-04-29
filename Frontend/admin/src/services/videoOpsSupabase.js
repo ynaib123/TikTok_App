@@ -24,6 +24,10 @@ export async function triggerCheckShotstackWorkflow(payload = {}) {
   return apiPost('/video-ops/workflows/check-shotstack', payload)
 }
 
+export async function triggerRenderTemplateWorkflow(payload = {}) {
+  return apiPost('/video-ops/workflows/render-template', payload)
+}
+
 export async function triggerPublishTikTokWorkflow(payload = {}) {
   return apiPost('/video-ops/workflows/init-publish', payload)
 }

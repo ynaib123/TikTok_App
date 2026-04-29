@@ -6,14 +6,17 @@ import AdminToolbarMenuButton from './admin-dashboard/AdminToolbarMenuButton'
 import {
   triggerCheckShotstackWorkflow as triggerScriptGenerationWorkflow,
   triggerMainContentPipeline,
+  triggerRenderTemplateWorkflow,
   triggerPublishTikTokWorkflow,
 } from '../services/n8nClient'
 import {
   fetchContentIdeas,
   fetchManualActions,
+  fetchTikTokAccounts,
   markPublishComplete,
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
+import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
 import '../styles/themes/products-dark.css'
@@ -21,7 +24,7 @@ import '../styles/themes/products-dark.css'
 const STEPS = [
   { id: 'creation', label: 'Creation' },
   { id: 'script', label: 'Script' },
-  { id: 'init-publish', label: 'Init publish' },
+  { id: 'init-publish', label: 'Video' },
   { id: 'upload', label: 'Upload' },
   { id: 'publish', label: 'Publish' },
 ]
@@ -74,6 +77,13 @@ function normalizeUrl(value) {
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase()
+}
+
+function formatShortOpenId(value) {
+  const normalized = String(value || '').trim()
+  if (!normalized) return '-'
+  if (normalized.length <= 18) return normalized
+  return `${normalized.slice(0, 8)}...${normalized.slice(-6)}`
 }
 
 function mergeIdeasById(existingIdeas, incomingIdeas) {
@@ -213,7 +223,7 @@ function StepProgress({ currentStepIndex, onBack, isWorking }) {
 function VideoPreview({ url }) {
   const resolvedUrl = normalizeUrl(url)
   if (!resolvedUrl) {
-    return <p className="video-inline-state">Aucune video disponible pour cette etape.</p>
+    return null
   }
 
   return (
@@ -229,7 +239,12 @@ export default function TikTokJourneyPage() {
     queryKey: ['content-ideas'],
     queryFn: fetchContentIdeas,
   })
+  const { data: tiktokAccounts = [] } = useQuery({
+    queryKey: ['tiktok-accounts'],
+    queryFn: fetchTikTokAccounts,
+  })
   const [isWorking, setIsWorking] = useState(false)
+  const [isConnectingTikTok, setIsConnectingTikTok] = useState(false)
   const [generatedIdeas, setGeneratedIdeas] = useState([])
   const [selectedGeneratedIdeaId, setSelectedGeneratedIdeaId] = useState(null)
   const [generationCount, setGenerationCount] = useState(1)
@@ -238,6 +253,7 @@ export default function TikTokJourneyPage() {
   const [lastGenerationExpectedCount, setLastGenerationExpectedCount] = useState(0)
   const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false)
   const [isGeneratingScript, setIsGeneratingScript] = useState(false)
+  const [isPreparingVideo, setIsPreparingVideo] = useState(false)
   const [scriptedIdea, setScriptedIdea] = useState(null)
   const [manualAction, setManualAction] = useState(null)
   const [uploadResult, setUploadResult] = useState(null)
@@ -253,6 +269,11 @@ export default function TikTokJourneyPage() {
     [location.pathname],
   )
   const isFlowRoute = currentStepIndex >= 0
+  const connectedTikTokAccount = useMemo(
+    () => tiktokAccounts.find((account) => String(account?.openId || '').trim() || String(account?.scope || '').trim()) || null,
+    [tiktokAccounts],
+  )
+  const hasConnectedTikTokAccount = Boolean(connectedTikTokAccount)
 
   const filteredIdeas = useMemo(() => {
     const normalizedSearch = String(listSearch || '').trim().toLowerCase()
@@ -424,13 +445,34 @@ export default function TikTokJourneyPage() {
     throw new Error("La generation du script n'a pas fini dans le temps attendu.")
   }
 
+  const waitForRenderedVideo = async (ideaId) => {
+    const timeoutAt = Date.now() + 15 * 60 * 1000
+
+    while (Date.now() < timeoutAt) {
+      const ideas = await fetchContentIdeas()
+      const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
+      if (!nextIdea) {
+        await sleep(5000)
+        continue
+      }
+
+      if (isRenderReady(nextIdea)) {
+        return nextIdea
+      }
+
+      await sleep(5000)
+    }
+
+    throw new Error("La generation de la video n'a pas fini dans le temps attendu.")
+  }
+
   const waitForUploadPreparation = async (ideaId) => {
     const timeoutAt = Date.now() + 5 * 60 * 1000
 
     while (Date.now() < timeoutAt) {
       const manualActions = await fetchManualActions()
       const action = manualActions.find((item) => Number(item.id) === Number(ideaId))
-      if (action?.shotstackUrl && action?.uploadUrl) return action
+      if (action?.uploadUrl) return action
       await sleep(4000)
     }
 
@@ -449,6 +491,7 @@ export default function TikTokJourneyPage() {
     setGeneratedIdeas([])
     setSelectedGeneratedIdeaId(null)
     setIsGeneratingScript(false)
+    setIsPreparingVideo(false)
     setScriptedIdea(null)
     setManualAction(null)
     setUploadResult(null)
@@ -468,11 +511,21 @@ export default function TikTokJourneyPage() {
     resetFlowState()
   }, [isFlowRoute])
 
+  useEffect(() => {
+    if (!location.state?.tiktokOAuthSuccess) return
+    setSuccessMessage(location.state.tiktokOAuthSuccess)
+    window.history.replaceState({}, document.title)
+  }, [location.state])
+
   const goToStep = (stepId) => {
     navigate(`${TIKTOK_BASE_ROUTE}/${stepId}`)
   }
 
   const startAddFlow = () => {
+    if (!hasConnectedTikTokAccount) {
+      setErrorMessage('Connecte d abord un compte TikTok avant de lancer la generation.')
+      return
+    }
     resetFlowState()
     goToStep('creation')
   }
@@ -494,6 +547,19 @@ export default function TikTokJourneyPage() {
     }
 
     navigate(TIKTOK_STEP_ROUTES[currentStepIndex - 1])
+  }
+
+  const handleConnectTikTok = async (redirectPath = '/tiktok/creation') => {
+    setIsConnectingTikTok(true)
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    try {
+      const response = await createTikTokAuthorizationUrl(redirectPath)
+      window.location.assign(response.authUrl)
+    } catch (error) {
+      showError(error, 'Impossible de lancer la connexion TikTok.')
+      setIsConnectingTikTok(false)
+    }
   }
 
   const handleGenerateIdea = async () => {
@@ -616,22 +682,44 @@ export default function TikTokJourneyPage() {
     }
 
     setIsWorking(true)
+    setIsPreparingVideo(true)
     setErrorMessage(null)
 
     try {
-      await triggerPublishTikTokWorkflow({
-        source: 'backoffice-tiktok-step-init-publish',
+      goToStep('init-publish')
+      await triggerRenderTemplateWorkflow({
+        source: 'backoffice-tiktok-step-video-render',
         contentIdeaId: idea.id,
         topic: idea.topic,
+        script: idea.script,
+        caption: idea.caption,
+        keyword: idea.keyword,
       })
-      const nextManualAction = await waitForUploadPreparation(idea.id)
-      setManualAction(nextManualAction)
-      goToStep('init-publish')
+      showSuccess('Generation video lancee. La video apparaitra ici des qu elle sera prete.')
+
+      const renderedIdea = await waitForRenderedVideo(idea.id)
+      setScriptedIdea(renderedIdea)
+      setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
+        Number(currentIdea.id) === Number(renderedIdea.id) ? renderedIdea : currentIdea
+      )))
+      setManualAction((currentAction) => ({
+        id: renderedIdea.id,
+        topic: renderedIdea.topic,
+        shotstackUrl: renderedIdea.shotstackUrl || currentAction?.shotstackUrl || '',
+        uploadUrl: currentAction?.uploadUrl || '',
+        workflowStatus: currentAction?.workflowStatus || 'render_ready',
+        tiktokStatus: renderedIdea.tiktokStatus || currentAction?.tiktokStatus || '',
+        finalVideoStatus: renderedIdea.finalVideoStatus || currentAction?.finalVideoStatus || '',
+        shotstackStatus: renderedIdea.shotstackStatus || currentAction?.shotstackStatus || '',
+        pipelineStatus: renderedIdea.pipelineStatus || currentAction?.pipelineStatus || '',
+        lastError: renderedIdea.lastError || currentAction?.lastError || null,
+      }))
       await refreshPipelineData()
-      showSuccess('Init publish termine. Upload URL disponible.')
+      showSuccess('Video prete. Verifie le template avant de passer a l upload.')
     } catch (error) {
       showError(error, "L'initialisation publish n'a pas abouti.")
     } finally {
+      setIsPreparingVideo(false)
       setIsWorking(false)
     }
   }
@@ -641,13 +729,44 @@ export default function TikTokJourneyPage() {
   }
 
   const handleValidateInitPublish = () => {
-    if (!manualAction?.uploadUrl) {
-      setErrorMessage('Aucune upload URL disponible.')
+    const previewUrl = normalizeUrl(manualAction?.shotstackUrl || scriptedIdea?.shotstackUrl || selectedGeneratedIdea?.shotstackUrl)
+    if (!previewUrl) {
+      setErrorMessage('Aucune video generee disponible pour cette etape.')
       return
     }
 
     goToStep('upload')
-    showSuccess('Etape init publish validee. Tu peux lancer l upload.')
+    showSuccess('Template video valide. Tu peux preparer l upload.')
+  }
+
+  const handlePrepareUpload = async () => {
+    const idea = scriptedIdea || selectedGeneratedIdea
+    if (!idea?.id) {
+      setErrorMessage('Aucune video disponible pour preparer l upload.')
+      return
+    }
+
+    setIsWorking(true)
+    setErrorMessage(null)
+
+    try {
+      await triggerPublishTikTokWorkflow({
+        source: 'backoffice-tiktok-step-upload-prepare',
+        contentIdeaId: idea.id,
+        topic: idea.topic,
+      })
+      const nextManualAction = await waitForUploadPreparation(idea.id)
+      setManualAction((currentAction) => ({
+        ...currentAction,
+        ...nextManualAction,
+      }))
+      await refreshPipelineData()
+      showSuccess('Upload URL disponible. Tu peux lancer l upload.')
+    } catch (error) {
+      showError(error, "La preparation de l'upload n'a pas abouti.")
+    } finally {
+      setIsWorking(false)
+    }
   }
 
   const handleUploadVideo = async () => {
@@ -742,12 +861,24 @@ export default function TikTokJourneyPage() {
         <div className="admin-product-toolbar">
           <div className="admin-product-toolbar-controls">
             <div className="admin-product-toolbar-actions">
+              {!hasConnectedTikTokAccount ? (
+                <button
+                  type="button"
+                  className="video-action-btn"
+                  onClick={() => void handleConnectTikTok('/tiktok/creation')}
+                  disabled={isConnectingTikTok}
+                  title="Connecter un compte TikTok avant de demarrer"
+                >
+                  {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="admin-console-btn admin-console-btn-muted admin-product-toolbar-action admin-product-toolbar-icon-btn"
                 onClick={startAddFlow}
                 aria-label="Ajouter une video"
                 title="Ajouter"
+                disabled={!hasConnectedTikTokAccount}
               >
                 <span className="admin-toolbar-icon" aria-hidden="true"><AddIcon /></span>
               </button>
@@ -854,6 +985,13 @@ export default function TikTokJourneyPage() {
         </div>
       </section>
 
+      {!hasConnectedTikTokAccount ? (
+        <section className="tiktok-step-empty-state" aria-live="polite">
+          <strong>Connexion TikTok requise</strong>
+          <p>Relie un compte TikTok avant de generer une nouvelle video et de lancer `init-publish-tiktok`.</p>
+        </section>
+      ) : null}
+
       {isLoading ? <p className="video-inline-state">Chargement...</p> : null}
       {!isLoading && !filteredIdeas.length ? <p className="video-inline-state">Aucune video ne correspond a cette recherche.</p> : null}
 
@@ -924,6 +1062,12 @@ export default function TikTokJourneyPage() {
       return {
         actions: (
           <div className="tiktok-step-actions">
+            {!hasConnectedTikTokAccount ? (
+              <div className="tiktok-step-intro">
+                <strong>Compte TikTok requis</strong>
+                <p>La generation est verrouillee tant qu aucun compte TikTok n est connecte au backoffice.</p>
+              </div>
+            ) : null}
             <div className="tiktok-step-form">
               <label className="tiktok-step-field">
                 <span>Categorie</span>
@@ -935,7 +1079,7 @@ export default function TikTokJourneyPage() {
                     aria-haspopup="listbox"
                     aria-expanded={openListMenu === 'tiktok-category'}
                     aria-controls={openListMenu === 'tiktok-category' ? 'tiktok-category-menu' : undefined}
-                    disabled={isWorking}
+                    disabled={isWorking || !hasConnectedTikTokAccount}
                   >
                     <strong>{generationCategory}</strong>
                     <span className="admin-toolbar-icon" aria-hidden="true"><ChevronDownIcon /></span>
@@ -986,7 +1130,7 @@ export default function TikTokJourneyPage() {
                     const nextValue = Math.max(1, Math.min(MAX_IDEA_BATCH_SIZE, Number(rawValue)))
                     setGenerationCount(String(nextValue))
                   }}
-                  disabled={isWorking}
+                  disabled={isWorking || !hasConnectedTikTokAccount}
                 />
               </label>
             </div>
@@ -1001,11 +1145,16 @@ export default function TikTokJourneyPage() {
                 <strong>Generation en cours...</strong>
               </div>
             ) : (
-              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isWorking}>
+              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isWorking || !hasConnectedTikTokAccount}>
                 {displayedGeneratedIdeas.length ? 'Regenerer des idees' : 'Generer'}
               </button>
             )}
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isWorking || !selectedGeneratedIdea}>
+            {!hasConnectedTikTokAccount ? (
+              <button type="button" className="video-action-btn ghost" onClick={() => void handleConnectTikTok('/tiktok/creation')} disabled={isConnectingTikTok}>
+                {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
+              </button>
+            ) : null}
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isWorking || !selectedGeneratedIdea || !hasConnectedTikTokAccount}>
               Valider
             </button>
           </div>
@@ -1098,29 +1247,38 @@ export default function TikTokJourneyPage() {
     }
 
     if (currentStep.id === 'init-publish') {
+      const previewUrl = normalizeUrl(manualAction?.shotstackUrl || scriptedIdea?.shotstackUrl || selectedGeneratedIdea?.shotstackUrl)
+
       return {
         actions: (
           <div className="tiktok-step-actions">
             <button type="button" className="video-action-btn" onClick={() => void handleRetryInitPublish()} disabled={isWorking}>
-              Relancer init publish
+              Relancer la generation video
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={handleValidateInitPublish} disabled={isWorking || !manualAction?.uploadUrl}>
+            <button type="button" className="video-action-btn ghost" onClick={handleValidateInitPublish} disabled={isWorking || !previewUrl}>
               Valider
             </button>
           </div>
         ),
         result: (
           <div className="tiktok-step-result">
-            <div className="video-preview-stack">
-              <div className="video-preview-block">
-                <span>Shotstack URL</span>
-                <p>{manualAction?.shotstackUrl || 'En attente'}</p>
+            {isPreparingVideo && !previewUrl ? (
+              <div className="tiktok-loading-state" aria-live="polite" aria-label="Generation de la video en cours">
+                <div className="tiktok-loading-state-spinner" aria-hidden="true" />
+                <div className="tiktok-loading-state-copy">
+                  <strong>Generation video en cours</strong>
+                  <span>La preparation video est en cours.</span>
+                </div>
               </div>
-              <div className="video-preview-block">
-                <span>Upload URL</span>
-                <p>{manualAction?.uploadUrl || 'En attente'}</p>
+            ) : null}
+            {previewUrl ? (
+              <div className="video-preview-stack">
+                <div className="video-preview-block">
+                  <span>Apercu video</span>
+                  <VideoPreview url={previewUrl} />
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         ),
       }
@@ -1130,7 +1288,36 @@ export default function TikTokJourneyPage() {
       return {
         actions: (
           <div className="tiktok-step-actions">
-            <button type="button" className="video-action-btn" onClick={() => void handleUploadVideo()} disabled={isWorking}>
+            <div className="tiktok-step-intro">
+              <strong>{hasConnectedTikTokAccount ? 'Compte TikTok connecte' : 'Connexion TikTok requise'}</strong>
+              <p>
+                {hasConnectedTikTokAccount
+                  ? 'Tu peux reconnecter ou changer le compte TikTok avant l upload.'
+                  : 'Connecte un compte TikTok ici avant d autoriser l upload.'}
+              </p>
+            </div>
+            {hasConnectedTikTokAccount ? (
+              <div className="video-preview-block">
+                <span>Compte connecte</span>
+                <p>{connectedTikTokAccount?.nickname || '-'}</p>
+                <p>Open ID: {formatShortOpenId(connectedTikTokAccount?.openId)}</p>
+                <p>Scope: {connectedTikTokAccount?.scope || '-'}</p>
+                <p>Status: {connectedTikTokAccount?.status || '-'}</p>
+              </div>
+            ) : null}
+            {hasConnectedTikTokAccount ? (
+              <button type="button" className="video-action-btn ghost" onClick={() => void handleConnectTikTok('/tiktok/upload')} disabled={isConnectingTikTok}>
+                {isConnectingTikTok ? 'Connexion...' : 'Changer de compte'}
+              </button>
+            ) : (
+              <button type="button" className="video-action-btn" onClick={() => void handleConnectTikTok('/tiktok/upload')} disabled={isConnectingTikTok}>
+                {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
+              </button>
+            )}
+            <button type="button" className="video-action-btn" onClick={() => void handlePrepareUpload()} disabled={isWorking || Boolean(manualAction?.uploadUrl)}>
+              Preparer upload
+            </button>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleUploadVideo()} disabled={isWorking || !manualAction?.uploadUrl || !hasConnectedTikTokAccount}>
               Uploader
             </button>
             <button type="button" className="video-action-btn ghost" onClick={handleValidateUpload} disabled={isWorking || !uploadResult}>
@@ -1140,9 +1327,15 @@ export default function TikTokJourneyPage() {
         ),
         result: (
           <div className="tiktok-step-result">
-            <div className="video-preview-block">
-              <span>Resultat upload</span>
-              <p>{uploadResult ? 'Upload termine.' : 'Aucun upload lance.'}</p>
+            <div className="video-preview-stack">
+              <div className="video-preview-block">
+                <span>Upload URL</span>
+                <p>{manualAction?.uploadUrl || 'En attente'}</p>
+              </div>
+              <div className="video-preview-block">
+                <span>Resultat upload</span>
+                <p>{uploadResult ? 'Upload termine.' : 'Aucun upload lance.'}</p>
+              </div>
             </div>
           </div>
         ),

@@ -12,7 +12,12 @@ public class VideoOpsProperties {
     private String supabaseServiceRoleKey = "";
     private String n8nMainPipelineWebhook = "";
     private String n8nCheckShotstackWebhook = "";
+    private String n8nRenderTemplateWebhook = "";
     private String n8nPublishTikTokWebhook = "";
+    private String tiktokClientKey = "";
+    private String tiktokClientSecret = "";
+    private String tiktokRedirectUri = "";
+    private String tiktokOauthScopes = "user.info.basic,video.publish";
     private int queryLimit = 50;
     private long idempotencyWindowSeconds = 90;
     private List<String> allowedShotstackHosts = new ArrayList<>(List.of(
@@ -62,6 +67,46 @@ public class VideoOpsProperties {
 
     public void setN8nPublishTikTokWebhook(String n8nPublishTikTokWebhook) {
         this.n8nPublishTikTokWebhook = n8nPublishTikTokWebhook;
+    }
+
+    public String getN8nRenderTemplateWebhook() {
+        return n8nRenderTemplateWebhook;
+    }
+
+    public void setN8nRenderTemplateWebhook(String n8nRenderTemplateWebhook) {
+        this.n8nRenderTemplateWebhook = n8nRenderTemplateWebhook;
+    }
+
+    public String getTiktokClientKey() {
+        return tiktokClientKey;
+    }
+
+    public void setTiktokClientKey(String tiktokClientKey) {
+        this.tiktokClientKey = tiktokClientKey;
+    }
+
+    public String getTiktokClientSecret() {
+        return tiktokClientSecret;
+    }
+
+    public void setTiktokClientSecret(String tiktokClientSecret) {
+        this.tiktokClientSecret = tiktokClientSecret;
+    }
+
+    public String getTiktokRedirectUri() {
+        return tiktokRedirectUri;
+    }
+
+    public void setTiktokRedirectUri(String tiktokRedirectUri) {
+        this.tiktokRedirectUri = tiktokRedirectUri;
+    }
+
+    public String getTiktokOauthScopes() {
+        return tiktokOauthScopes;
+    }
+
+    public void setTiktokOauthScopes(String tiktokOauthScopes) {
+        this.tiktokOauthScopes = tiktokOauthScopes;
     }
 
     public int getQueryLimit() {

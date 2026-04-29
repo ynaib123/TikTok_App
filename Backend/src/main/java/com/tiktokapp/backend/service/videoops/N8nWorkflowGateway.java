@@ -61,6 +61,7 @@ public class N8nWorkflowGateway {
         String url = switch (workflowType) {
             case MAIN_PIPELINE -> properties.getN8nMainPipelineWebhook();
             case CHECK_SHOTSTACK -> properties.getN8nCheckShotstackWebhook();
+            case RENDER_TEMPLATE_VIDEO -> properties.getN8nRenderTemplateWebhook();
             case INIT_PUBLISH_TIKTOK -> properties.getN8nPublishTikTokWebhook();
             default -> "";
         };

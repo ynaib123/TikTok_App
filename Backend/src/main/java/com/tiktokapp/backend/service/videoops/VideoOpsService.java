@@ -118,14 +118,31 @@ public class VideoOpsService {
     public List<TikTokAccountResponse> fetchTikTokAccounts() {
         JsonNode rows = supabaseGateway.fetchTikTokAccounts();
         List<TikTokAccountResponse> accounts = new ArrayList<>();
-        rows.forEach(row -> accounts.add(new TikTokAccountResponse(
-                row.path("id").asLong(),
-                "account-" + row.path("id").asLong(),
-                text(row, "open_id", ""),
-                text(row, "scope", ""),
-                "sandbox",
-                "connected"
-        )));
+        rows.forEach(row -> {
+            String openId = text(row, "open_id", "");
+            String accessToken = text(row, "access_token", "");
+            String refreshToken = text(row, "refresh_token", "");
+            String tokenType = text(row, "token_type", "");
+            String scope = text(row, "scope", "");
+            boolean hasOauthData = !isBlank(openId)
+                    || !isBlank(accessToken)
+                    || !isBlank(refreshToken)
+                    || !isBlank(tokenType)
+                    || !isBlank(scope);
+
+            if (!hasOauthData) {
+                return;
+            }
+
+            accounts.add(new TikTokAccountResponse(
+                    row.path("id").asLong(),
+                    "account-" + row.path("id").asLong(),
+                    openId,
+                    scope,
+                    "sandbox",
+                    "connected"
+            ));
+        });
         return accounts;
     }
 
@@ -207,6 +224,12 @@ public class VideoOpsService {
     public VideoWorkflowActionResponse triggerCheckShotstack(WorkflowTriggerRequest request, String requestedByEmail) {
         Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour le render.");
         return triggerWorkflow(VideoWorkflowType.CHECK_SHOTSTACK, contentIdeaId, request, requestedByEmail, VideoPipelineStage.RENDERING_REQUESTED);
+    }
+
+    @Transactional
+    public VideoWorkflowActionResponse triggerRenderTemplate(WorkflowTriggerRequest request, String requestedByEmail) {
+        Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour le rendu video.");
+        return triggerWorkflow(VideoWorkflowType.RENDER_TEMPLATE_VIDEO, contentIdeaId, request, requestedByEmail, VideoPipelineStage.RENDERING_REQUESTED);
     }
 
     @Transactional
@@ -315,6 +338,9 @@ public class VideoOpsService {
         payload.put("category", trimToNull(request.getCategory()));
         payload.put("ideaCount", normalizeIdeaCount(request.getIdeaCount()));
         payload.put("topic", request.getTopic());
+        payload.put("script", trimToNull(request.getScript()));
+        payload.put("caption", trimToNull(request.getCaption()));
+        payload.put("keyword", trimToNull(request.getKeyword()));
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);
