@@ -70,6 +70,10 @@ function isPublished(idea) {
   return String(idea?.tiktokStatus || '').toLowerCase() === 'published'
 }
 
+function isUploadCompleted(idea) {
+  return ['uploaded', 'uploading', 'published'].includes(String(idea?.tiktokStatus || '').toLowerCase())
+}
+
 function normalizeUrl(value) {
   const url = String(value || '').trim()
   return url || null
@@ -99,6 +103,8 @@ function mergeIdeasById(existingIdeas, incomingIdeas) {
 
 function getIdeaStatusLabel(idea) {
   if (isPublished(idea)) return 'publiee'
+  if (String(idea?.tiktokStatus || '').toLowerCase() === 'uploaded') return 'uploadee'
+  if (String(idea?.tiktokStatus || '').toLowerCase() === 'uploading') return 'publication en cours'
   if (idea?.uploadUrl) return 'prete upload'
   if (isRenderReady(idea)) return 'rendue'
   if (idea?.shotstackStatus === 'rendering') return 'rendering'
@@ -789,6 +795,34 @@ export default function TikTokJourneyPage() {
       await refreshPipelineData()
       showSuccess('Upload termine. Tu peux passer a la publication finale.')
     } catch (error) {
+      try {
+        const [ideas, manualActions] = await Promise.all([
+          fetchContentIdeas(),
+          fetchManualActions(),
+        ])
+        const refreshedIdea = ideas.find((item) => Number(item?.id) === Number(idea.id)) || null
+        const refreshedAction = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
+
+        if (refreshedIdea && isUploadCompleted(refreshedIdea)) {
+          setScriptedIdea((currentIdea) => (Number(currentIdea?.id) === Number(refreshedIdea.id) ? refreshedIdea : currentIdea))
+          setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
+            Number(currentIdea.id) === Number(refreshedIdea.id) ? refreshedIdea : currentIdea
+          )))
+          setManualAction((currentAction) => ({
+            ...currentAction,
+            ...(refreshedAction || {}),
+          }))
+          setUploadResult({
+            ok: true,
+            recovered: true,
+          })
+          await refreshPipelineData()
+          showSuccess('Upload termine cote serveur. La reponse HTTP a probablement expire, mais la video est bien passee en statut upload.')
+          return
+        }
+      } catch {
+      }
+
       showError(error, "L'upload TikTok n'a pas abouti.")
     } finally {
       setIsWorking(false)

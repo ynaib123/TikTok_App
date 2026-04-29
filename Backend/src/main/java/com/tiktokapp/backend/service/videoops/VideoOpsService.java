@@ -152,6 +152,7 @@ public class VideoOpsService {
                 .filter(item -> !item.getShotstackUrl().isBlank()
                         || !item.getUploadUrl().isBlank()
                         || "ready".equalsIgnoreCase(item.getFinalVideoStatus())
+                        || "uploaded".equalsIgnoreCase(item.getTiktokStatus())
                         || "uploading".equalsIgnoreCase(item.getTiktokStatus())
                         || "published".equalsIgnoreCase(item.getTiktokStatus()))
                 .map(item -> new VideoManualActionResponse(
@@ -179,7 +180,7 @@ public class VideoOpsService {
                 .filter(item -> "ready".equalsIgnoreCase(item.getFinalVideoStatus()))
                 .count();
         int uploadQueueCount = (int) ideas.stream()
-                .filter(item -> "uploading".equalsIgnoreCase(item.getTiktokStatus()) || !item.getUploadUrl().isBlank())
+                .filter(item -> List.of("uploaded", "uploading").contains(lower(item.getTiktokStatus())) || !item.getUploadUrl().isBlank())
                 .count();
         int publishedCount = (int) ideas.stream()
                 .filter(item -> "published".equalsIgnoreCase(item.getTiktokStatus()))
@@ -269,7 +270,8 @@ public class VideoOpsService {
             TikTokUploadResponse response = tikTokUploadService.uploadFromShotstack(shotstackUrl, uploadUrl);
             supabaseGateway.updateContentIdea(contentIdeaId, Map.of(
                     "tiktok_upload_status", "uploaded",
-                    "publish_status", "uploading"
+                    "publish_status", "uploaded",
+                    "uploaded_at", Instant.now().toString()
             ));
             markRunSucceeded(run, responseBody(response));
             syncPipelineState(contentIdeaId, VideoPipelineStage.UPLOAD_COMPLETED, null, run);
