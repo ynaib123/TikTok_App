@@ -32,6 +32,10 @@ export async function fetchWorkflowRun(runId) {
   return apiGet(`/video-ops/workflow-runs/${runId}`)
 }
 
+export async function fetchVideoOpsObservability() {
+  return apiGet('/video-ops/observability')
+}
+
 export async function triggerMainContentPipeline(payload = {}) {
   return apiPost('/video-ops/workflows/main-pipeline', payload)
 }

@@ -152,6 +152,7 @@ Video ops :
 - `GET /api/video-ops/content-ideas`
 - `GET /api/video-ops/manual-actions`
 - `GET /api/video-ops/tiktok-accounts`
+- `GET /api/video-ops/observability`
 - `POST /api/video-ops/tiktok-oauth/authorize`
 - `POST /api/video-ops/tiktok-oauth/callback`
 - `POST /api/video-ops/workflows/main-pipeline`
@@ -160,6 +161,8 @@ Video ops :
 - `POST /api/video-ops/workflows/init-publish`
 - `GET /api/video-ops/workflow-runs/{id}`
 - `POST /api/video-ops/workflow-runs/{id}/complete`
+- `POST /api/video-ops/internal/tiktok/init-publish-context`
+- `POST /api/video-ops/internal/tiktok/account-context`
 - `POST /api/video-ops/content-ideas/{id}/upload`
 - `POST /api/video-ops/content-ideas/{id}/publish`
 

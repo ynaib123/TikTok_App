@@ -218,5 +218,6 @@ Une fois `init-publish-tiktok` migre vers l'endpoint backend interne:
 - n8n n'a plus besoin de lire `refresh_token` ou `access_token` depuis Supabase
 - tu peux definir `APP_VIDEO_OPS_INTERNAL_API_SECRET`
 - puis activer `APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY`
+- pour d'autres workflows sensibles, n8n peut aussi utiliser `POST /api/video-ops/internal/tiktok/account-context`
 
 Le backend rechiffre automatiquement au demarrage les anciens tokens TikTok encore en clair dans `tiktok_accounts`.

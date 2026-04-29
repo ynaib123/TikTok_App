@@ -10,6 +10,8 @@ import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
+import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
+import com.tiktokapp.backend.dto.videoops.VideoPipelineEventResponse;
 import com.tiktokapp.backend.dto.videoops.VideoStatCardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoStatusGroupResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
@@ -154,6 +156,23 @@ public class VideoOpsService {
             ));
         });
         return accounts;
+    }
+
+    @Transactional(readOnly = true)
+    public VideoObservabilityResponse fetchObservability() {
+        List<VideoWorkflowRunDetailResponse> recentRuns = workflowRunRepository.findTop8ByOrderByCreatedAtDesc().stream()
+                .map(this::toWorkflowRunDetail)
+                .toList();
+        List<VideoWorkflowRunDetailResponse> failedRuns = workflowRunRepository.findTop8ByStatusOrderByCreatedAtDesc(VideoWorkflowRunStatus.FAILED).stream()
+                .map(this::toWorkflowRunDetail)
+                .toList();
+        List<VideoPipelineEventResponse> recentErrors = eventRepository.findTop8BySeverityOrderByCreatedAtDesc("ERROR").stream()
+                .map(this::toEventResponse)
+                .toList();
+        List<VideoPipelineEventResponse> recentEvents = eventRepository.findTop8ByOrderByCreatedAtDesc().stream()
+                .map(this::toEventResponse)
+                .toList();
+        return new VideoObservabilityResponse(recentRuns, failedRuns, recentErrors, recentEvents);
     }
 
     @Transactional(readOnly = true)
@@ -728,6 +747,31 @@ public class VideoOpsService {
         payload.put("uploadedBytes", response.getUploadedBytes());
         payload.put("responseBody", response.getResponseBody());
         return json(payload);
+    }
+
+    private VideoWorkflowRunDetailResponse toWorkflowRunDetail(VideoWorkflowRun run) {
+        return new VideoWorkflowRunDetailResponse(
+                run.getId(),
+                run.getContentIdeaId(),
+                run.getWorkflowType() == null ? null : run.getWorkflowType().name(),
+                run.getStatus() == null ? null : run.getStatus().name(),
+                run.getAttemptNumber(),
+                run.getErrorMessage(),
+                run.getResponsePayload(),
+                run.getCreatedAt() == null ? null : run.getCreatedAt().toString(),
+                run.getCompletedAt() == null ? null : run.getCompletedAt().toString()
+        );
+    }
+
+    private VideoPipelineEventResponse toEventResponse(VideoPipelineEvent event) {
+        return new VideoPipelineEventResponse(
+                event.getContentIdeaId(),
+                event.getWorkflowRunId(),
+                event.getSeverity(),
+                event.getEventType(),
+                event.getMessage(),
+                event.getCreatedAt() == null ? null : event.getCreatedAt().toString()
+        );
     }
 
     private Map<String, Object> payloadOf(String key, Object value) {

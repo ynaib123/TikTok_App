@@ -70,8 +70,20 @@ public class VideoPipelineEvent {
         this.payloadJson = payloadJson;
     }
 
+    public Long getContentIdeaId() {
+        return contentIdeaId;
+    }
+
+    public Long getWorkflowRunId() {
+        return workflowRunId;
+    }
+
     public String getSeverity() {
         return severity;
+    }
+
+    public String getEventType() {
+        return eventType;
     }
 
     public String getMessage() {

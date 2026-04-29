@@ -14,12 +14,14 @@ import {
   fetchContentIdeaStatus,
   fetchManualActions,
   fetchTikTokAccounts,
+  fetchVideoOpsObservability,
   fetchWorkflowRun,
   markPublishComplete,
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
 import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi'
 import WorkflowStatusPanel from './tiktok-journey/WorkflowStatusPanel'
+import WorkflowObservabilityPanel from './tiktok-journey/WorkflowObservabilityPanel'
 import { useActionState } from './tiktok-journey/useActionState'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
 import {
@@ -266,6 +268,11 @@ export default function TikTokJourneyPage() {
     queryKey: ['tiktok-accounts'],
     queryFn: fetchTikTokAccounts,
   })
+  const { data: observability = null } = useQuery({
+    queryKey: ['video-ops-observability'],
+    queryFn: fetchVideoOpsObservability,
+    refetchInterval: 10_000,
+  })
   const { busyActions, isBusy, runAction } = useActionState()
   const [isConnectingTikTok, setIsConnectingTikTok] = useState(false)
   const [generatedIdeas, setGeneratedIdeas] = useState([])
@@ -405,6 +412,7 @@ export default function TikTokJourneyPage() {
       queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
       queryClient.invalidateQueries({ queryKey: ['manual-actions'] }),
       queryClient.invalidateQueries({ queryKey: ['video-dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['video-ops-observability'] }),
     ])
   }
 
@@ -1176,6 +1184,7 @@ export default function TikTokJourneyPage() {
               </div>
 
               <WorkflowStatusPanel status={workflowMonitor.workflowStatus} />
+              <WorkflowObservabilityPanel observability={observability} />
 
               <div className="tiktok-step-screen">
                 <section className="tiktok-step-pane is-left">

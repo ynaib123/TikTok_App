@@ -2,6 +2,8 @@ package com.tiktokapp.backend.web;
 
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
+import com.tiktokapp.backend.dto.videoops.TikTokAccountContextRequest;
+import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackRequest;
@@ -12,6 +14,7 @@ import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
+import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
 import com.tiktokapp.backend.dto.videoops.VideoUploadRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
@@ -20,6 +23,7 @@ import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
+import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
 import jakarta.validation.Valid;
@@ -44,6 +48,7 @@ public class VideoOpsController {
 
     private final VideoOpsService videoOpsService;
     private final TikTokOAuthService tikTokOAuthService;
+    private final TikTokInternalAccountContextService tikTokInternalAccountContextService;
     private final TikTokInitPublishContextService tikTokInitPublishContextService;
     private final VideoOpsInternalAuthService internalAuthService;
     private final ObjectMapper objectMapper;
@@ -51,12 +56,14 @@ public class VideoOpsController {
     public VideoOpsController(
             VideoOpsService videoOpsService,
             TikTokOAuthService tikTokOAuthService,
+            TikTokInternalAccountContextService tikTokInternalAccountContextService,
             TikTokInitPublishContextService tikTokInitPublishContextService,
             VideoOpsInternalAuthService internalAuthService,
             ObjectMapper objectMapper
     ) {
         this.videoOpsService = videoOpsService;
         this.tikTokOAuthService = tikTokOAuthService;
+        this.tikTokInternalAccountContextService = tikTokInternalAccountContextService;
         this.tikTokInitPublishContextService = tikTokInitPublishContextService;
         this.internalAuthService = internalAuthService;
         this.objectMapper = objectMapper;
@@ -82,6 +89,11 @@ public class VideoOpsController {
     @GetMapping("/manual-actions")
     public ResponseEntity<List<VideoManualActionResponse>> getManualActions() {
         return ResponseEntity.ok(videoOpsService.fetchManualActions());
+    }
+
+    @GetMapping("/observability")
+    public ResponseEntity<VideoObservabilityResponse> getObservability() {
+        return ResponseEntity.ok(videoOpsService.fetchObservability());
     }
 
     @GetMapping("/tiktok-accounts")
@@ -124,6 +136,15 @@ public class VideoOpsController {
     ) {
         internalAuthService.validateSecret(internalSecret);
         return ResponseEntity.ok(tikTokInitPublishContextService.buildContext(request));
+    }
+
+    @PostMapping("/internal/tiktok/account-context")
+    public ResponseEntity<TikTokAccountContextResponse> buildAccountContext(
+            @Valid @RequestBody TikTokAccountContextRequest request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(tikTokInternalAccountContextService.buildContext(request));
     }
 
     @PostMapping("/workflows/main-pipeline")

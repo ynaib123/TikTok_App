@@ -809,6 +809,79 @@
   font-weight: 600;
 }
 
+.tiktok-observability-panel {
+  display: grid;
+  gap: 18px;
+  padding: 20px 22px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(16, 16, 17, 0.9) 0%, rgba(12, 12, 13, 0.82) 100%);
+}
+
+.tiktok-observability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.tiktok-observability-card {
+  display: grid;
+  gap: 12px;
+}
+
+.tiktok-observability-card > strong {
+  color: #f4f7fb;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.tiktok-observability-list {
+  display: grid;
+  gap: 10px;
+}
+
+.tiktok-observability-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.tiktok-observability-item.is-succeeded {
+  border-color: rgba(69, 208, 125, 0.2);
+}
+
+.tiktok-observability-item.is-failed,
+.tiktok-observability-item.is-error {
+  border-color: rgba(224, 92, 92, 0.22);
+}
+
+.tiktok-observability-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tiktok-observability-item-head span,
+.tiktok-observability-item p,
+.tiktok-observability-item small {
+  color: rgba(217, 223, 230, 0.72);
+}
+
+.tiktok-observability-item-head strong {
+  color: #f4f7fb;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tiktok-observability-item p,
+.tiktok-observability-item small {
+  margin: 0;
+}
+
 .tiktok-step-screen {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
@@ -1499,6 +1572,10 @@
 @media (max-width: 820px) {
   .tiktok-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tiktok-observability-grid {
+    grid-template-columns: 1fr;
   }
 
   .tiktok-step-screen {

@@ -1,6 +1,7 @@
 package com.tiktokapp.backend.repository;
 
 import com.tiktokapp.backend.model.VideoWorkflowRun;
+import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.model.VideoWorkflowType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -20,4 +21,8 @@ public interface VideoWorkflowRunRepository extends JpaRepository<VideoWorkflowR
     long countByContentIdeaIdIsNullAndWorkflowType(VideoWorkflowType workflowType);
 
     List<VideoWorkflowRun> findTop10ByOrderByCreatedAtDesc();
+
+    List<VideoWorkflowRun> findTop8ByOrderByCreatedAtDesc();
+
+    List<VideoWorkflowRun> findTop8ByStatusOrderByCreatedAtDesc(VideoWorkflowRunStatus status);
 }

@@ -2,10 +2,14 @@ package com.tiktokapp.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
+import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
+import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
+import com.tiktokapp.backend.dto.videoops.VideoPipelineEventResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
+import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import jakarta.servlet.http.Cookie;
@@ -61,6 +65,9 @@ class VideoOpsSecurityIntegrationTest {
     @MockBean
     private TikTokInitPublishContextService tikTokInitPublishContextService;
 
+    @MockBean
+    private TikTokInternalAccountContextService tikTokInternalAccountContextService;
+
     private String accessToken;
     private Cookie csrfCookie;
     private String csrfHeaderName;
@@ -102,6 +109,14 @@ class VideoOpsSecurityIntegrationTest {
                         "2026-04-29T00:00:02Z"
                 )
         );
+        when(videoOpsService.fetchObservability()).thenReturn(
+                new VideoObservabilityResponse(
+                        List.of(new VideoWorkflowRunDetailResponse(99L, 42L, "INIT_PUBLISH_TIKTOK", "SUCCEEDED", 1, null, "{}", "2026-04-29T00:00:00Z", "2026-04-29T00:00:02Z")),
+                        List.of(),
+                        List.of(new VideoPipelineEventResponse(42L, 99L, "ERROR", "workflow_failed", "boom", "2026-04-29T00:00:03Z")),
+                        List.of()
+                )
+        );
         when(tikTokInitPublishContextService.buildContext(any())).thenReturn(
                 new TikTokInitPublishContextResponse(
                         42L,
@@ -110,6 +125,16 @@ class VideoOpsSecurityIntegrationTest {
                         "Bearer",
                         "Caption",
                         "https://shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com/video.mp4",
+                        List.of("SELF_ONLY"),
+                        "SELF_ONLY"
+                )
+        );
+        when(tikTokInternalAccountContextService.buildContext(any())).thenReturn(
+                new TikTokAccountContextResponse(
+                        "open-id-demo",
+                        "access-token-demo",
+                        "Bearer",
+                        "video.publish",
                         List.of("SELF_ONLY"),
                         "SELF_ONLY"
                 )
@@ -150,6 +175,15 @@ class VideoOpsSecurityIntegrationTest {
                 .andExpect(jsonPath("$[0].id").value(42));
 
         verify(videoOpsService).fetchContentIdeas();
+    }
+
+    @Test
+    void allowsAuthenticatedAdminToReadObservability() throws Exception {
+        mockMvc.perform(get("/api/video-ops/observability")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recentRuns[0].id").value(99))
+                .andExpect(jsonPath("$.recentErrors[0].severity").value("ERROR"));
     }
 
     @Test
@@ -211,5 +245,18 @@ class VideoOpsSecurityIntegrationTest {
                 .andExpect(jsonPath("$.contentIdeaId").value(42))
                 .andExpect(jsonPath("$.tiktokAccountOpenId").value("open-id-demo"))
                 .andExpect(jsonPath("$.selectedPrivacyLevel").value("SELF_ONLY"));
+    }
+
+    @Test
+    void acceptsInternalTikTokAccountContextRequestWithInternalSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/tiktok/account-context")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"tiktokAccountOpenId":"open-id-demo","includeCreatorInfo":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tiktokAccountOpenId").value("open-id-demo"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"));
     }
 }
