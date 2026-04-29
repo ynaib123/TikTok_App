@@ -7,6 +7,7 @@ import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
+import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoUploadRequest;
@@ -14,6 +15,7 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
 import jakarta.validation.Valid;
@@ -26,6 +28,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -35,10 +40,12 @@ public class VideoOpsController {
 
     private final VideoOpsService videoOpsService;
     private final TikTokOAuthService tikTokOAuthService;
+    private final ObjectMapper objectMapper;
 
-    public VideoOpsController(VideoOpsService videoOpsService, TikTokOAuthService tikTokOAuthService) {
+    public VideoOpsController(VideoOpsService videoOpsService, TikTokOAuthService tikTokOAuthService, ObjectMapper objectMapper) {
         this.videoOpsService = videoOpsService;
         this.tikTokOAuthService = tikTokOAuthService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/dashboard")
@@ -49,6 +56,13 @@ public class VideoOpsController {
     @GetMapping("/content-ideas")
     public ResponseEntity<List<VideoContentIdeaResponse>> getContentIdeas() {
         return ResponseEntity.ok(videoOpsService.fetchContentIdeas());
+    }
+
+    @GetMapping("/content-ideas/{contentIdeaId}/status")
+    public ResponseEntity<VideoContentIdeaStatusResponse> getContentIdeaStatus(
+            @PathVariable long contentIdeaId
+    ) {
+        return ResponseEntity.ok(videoOpsService.fetchContentIdeaStatus(contentIdeaId));
     }
 
     @GetMapping("/manual-actions")
@@ -147,10 +161,25 @@ public class VideoOpsController {
     @PostMapping("/workflow-runs/{runId}/complete")
     public ResponseEntity<VideoWorkflowRunDetailResponse> completeWorkflowRun(
             @PathVariable long runId,
-            @Valid @RequestBody VideoWorkflowRunCompletionRequest request,
-            @RequestHeader(name = "X-Video-Ops-Callback-Secret", required = false) String callbackSecret
+            @RequestBody String rawBody,
+            @RequestHeader(name = "X-Video-Ops-Callback-Timestamp", required = false) String callbackTimestamp,
+            @RequestHeader(name = "X-Video-Ops-Callback-Signature", required = false) String callbackSignature,
+            @RequestHeader(name = "X-Video-Ops-Callback-Secret", required = false) String callbackSecret,
+            HttpServletRequest servletRequest
     ) {
-        videoOpsService.validateWorkflowCallbackSecret(callbackSecret);
-        return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
+        videoOpsService.validateWorkflowCallbackRequest(
+                servletRequest.getMethod(),
+                servletRequest.getRequestURI(),
+                rawBody,
+                callbackTimestamp,
+                callbackSignature,
+                callbackSecret
+        );
+        try {
+            VideoWorkflowRunCompletionRequest request = objectMapper.readValue(rawBody, VideoWorkflowRunCompletionRequest.class);
+            return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
+        } catch (Exception exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload callback workflow invalide.", exception);
+        }
     }
 }

@@ -13,6 +13,7 @@ public class VideoContentIdeaResponse {
     private final String finalVideoStatus;
     private final String shotstackUrl;
     private final String uploadUrl;
+    private final String tiktokAccountOpenId;
     private final String pipelineStatus;
     private final String lastError;
 
@@ -28,6 +29,7 @@ public class VideoContentIdeaResponse {
             String finalVideoStatus,
             String shotstackUrl,
             String uploadUrl,
+            String tiktokAccountOpenId,
             String pipelineStatus,
             String lastError
     ) {
@@ -42,6 +44,7 @@ public class VideoContentIdeaResponse {
         this.finalVideoStatus = finalVideoStatus;
         this.shotstackUrl = shotstackUrl;
         this.uploadUrl = uploadUrl;
+        this.tiktokAccountOpenId = tiktokAccountOpenId;
         this.pipelineStatus = pipelineStatus;
         this.lastError = lastError;
     }
@@ -88,6 +91,10 @@ public class VideoContentIdeaResponse {
 
     public String getUploadUrl() {
         return uploadUrl;
+    }
+
+    public String getTiktokAccountOpenId() {
+        return tiktokAccountOpenId;
     }
 
     public String getPipelineStatus() {

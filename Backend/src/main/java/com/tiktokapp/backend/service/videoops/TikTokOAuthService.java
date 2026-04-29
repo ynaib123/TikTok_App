@@ -32,6 +32,7 @@ public class TikTokOAuthService {
 
     private final VideoOpsProperties properties;
     private final SupabaseVideoOpsGateway supabaseGateway;
+    private final VideoOpsCryptoService cryptoService;
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -39,11 +40,13 @@ public class TikTokOAuthService {
     public TikTokOAuthService(
             VideoOpsProperties properties,
             SupabaseVideoOpsGateway supabaseGateway,
+            VideoOpsCryptoService cryptoService,
             JwtService jwtService,
             ObjectMapper objectMapper
     ) {
         this.properties = properties;
         this.supabaseGateway = supabaseGateway;
+        this.cryptoService = cryptoService;
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -89,8 +92,8 @@ public class TikTokOAuthService {
 
         Map<String, Object> accountPayload = new LinkedHashMap<>();
         accountPayload.put("open_id", openId);
-        accountPayload.put("access_token", accessToken);
-        accountPayload.put("refresh_token", refreshToken);
+        accountPayload.put("access_token", cryptoService.encryptIfConfigured(accessToken));
+        accountPayload.put("refresh_token", cryptoService.encryptIfConfigured(refreshToken));
         accountPayload.put("token_type", tokenType);
         accountPayload.put("scope", scope);
 

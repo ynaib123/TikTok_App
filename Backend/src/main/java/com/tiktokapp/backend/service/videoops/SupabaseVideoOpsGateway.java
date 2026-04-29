@@ -34,7 +34,7 @@ public class SupabaseVideoOpsGateway {
 
     public JsonNode fetchContentIdeas() {
         ensureConfigured();
-        String select = "id,category,topic,scripts,caption,background_keyword,shotstack_status,publish_status,final_video_status,shotstack_url,tiktok_upload_url,tiktok_upload_status";
+        String select = "id,category,topic,scripts,caption,background_keyword,shotstack_status,publish_status,final_video_status,shotstack_url,tiktok_upload_url,tiktok_upload_status,tiktok_account_open_id";
         String url = restBaseUrl() + "/content_ideas?select=" + encode(select) + "&order=id.desc&limit=" + properties.getQueryLimit();
         return sendJsonRequest(HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -43,9 +43,20 @@ public class SupabaseVideoOpsGateway {
                 .build(), "Impossible de lire content_ideas depuis Supabase.");
     }
 
+    public JsonNode fetchContentIdeaById(long contentIdeaId) {
+        ensureConfigured();
+        String select = "id,category,topic,scripts,caption,background_keyword,shotstack_status,publish_status,final_video_status,shotstack_url,tiktok_upload_url,tiktok_upload_status,tiktok_account_open_id";
+        String url = restBaseUrl() + "/content_ideas?select=" + encode(select) + "&id=eq." + contentIdeaId + "&limit=1";
+        return sendJsonRequest(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build(), "Impossible de lire la content_idea depuis Supabase.");
+    }
+
     public JsonNode fetchTikTokAccounts() {
         ensureConfigured();
-        String select = "id,open_id,scope,access_token,refresh_token,token_type";
+        String select = "id,open_id,scope,token_type";
         String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&order=id.asc&limit=" + properties.getQueryLimit();
         return sendJsonRequest(HttpRequest.newBuilder()
                 .uri(URI.create(url))

@@ -44,6 +44,9 @@ class VideoOpsServiceTest {
     private TikTokUploadService tikTokUploadService;
 
     @Mock
+    private VideoOpsCallbackAuthService callbackAuthService;
+
+    @Mock
     private VideoPipelineStateRepository pipelineStateRepository;
 
     @Mock
@@ -79,6 +82,7 @@ class VideoOpsServiceTest {
                 supabaseGateway,
                 n8nWorkflowGateway,
                 tikTokUploadService,
+                callbackAuthService,
                 pipelineStateRepository,
                 workflowRunRepository,
                 eventRepository,
@@ -120,6 +124,7 @@ class VideoOpsServiceTest {
                 supabaseGateway,
                 n8nWorkflowGateway,
                 tikTokUploadService,
+                callbackAuthService,
                 pipelineStateRepository,
                 workflowRunRepository,
                 eventRepository,

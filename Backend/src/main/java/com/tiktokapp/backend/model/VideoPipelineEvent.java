@@ -69,4 +69,16 @@ public class VideoPipelineEvent {
     public void setPayloadJson(String payloadJson) {
         this.payloadJson = payloadJson;
     }
+
+    public String getSeverity() {
+        return severity;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }

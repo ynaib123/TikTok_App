@@ -7,6 +7,7 @@ import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
+import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoStatCardResponse;
@@ -53,6 +54,7 @@ public class VideoOpsService {
     private final SupabaseVideoOpsGateway supabaseGateway;
     private final N8nWorkflowGateway n8nWorkflowGateway;
     private final TikTokUploadService tikTokUploadService;
+    private final VideoOpsCallbackAuthService callbackAuthService;
     private final VideoPipelineStateRepository pipelineStateRepository;
     private final VideoWorkflowRunRepository workflowRunRepository;
     private final VideoPipelineEventRepository eventRepository;
@@ -63,6 +65,7 @@ public class VideoOpsService {
             SupabaseVideoOpsGateway supabaseGateway,
             N8nWorkflowGateway n8nWorkflowGateway,
             TikTokUploadService tikTokUploadService,
+            VideoOpsCallbackAuthService callbackAuthService,
             VideoPipelineStateRepository pipelineStateRepository,
             VideoWorkflowRunRepository workflowRunRepository,
             VideoPipelineEventRepository eventRepository,
@@ -72,6 +75,7 @@ public class VideoOpsService {
         this.supabaseGateway = supabaseGateway;
         this.n8nWorkflowGateway = n8nWorkflowGateway;
         this.tikTokUploadService = tikTokUploadService;
+        this.callbackAuthService = callbackAuthService;
         this.pipelineStateRepository = pipelineStateRepository;
         this.workflowRunRepository = workflowRunRepository;
         this.eventRepository = eventRepository;
@@ -96,7 +100,14 @@ public class VideoOpsService {
             String finalVideoStatus = text(row, "final_video_status", "unknown");
             String shotstackUrl = text(row, "shotstack_url", "");
             String uploadUrl = text(row, "tiktok_upload_url", "");
-            VideoPipelineStage stage = resolveStage(shotstackStatus, tiktokStatus, finalVideoStatus, shotstackUrl, uploadUrl, state);
+            VideoPipelineStage stage = VideoOpsStateMachine.resolveFromContentSignals(
+                    shotstackStatus,
+                    tiktokStatus,
+                    finalVideoStatus,
+                    shotstackUrl,
+                    uploadUrl,
+                    state != null ? state.getPipelineStage() : VideoPipelineStage.UNKNOWN
+            );
             contentIdeas.add(new VideoContentIdeaResponse(
                     ideaId,
                     text(row, "category", ""),
@@ -109,6 +120,7 @@ public class VideoOpsService {
                     finalVideoStatus,
                     shotstackUrl,
                     uploadUrl,
+                    text(row, "tiktok_account_open_id", ""),
                     stage.name().toLowerCase(Locale.ROOT),
                     state != null ? state.getLastErrorMessage() : null
             ));
@@ -122,13 +134,9 @@ public class VideoOpsService {
         List<TikTokAccountResponse> accounts = new ArrayList<>();
         rows.forEach(row -> {
             String openId = text(row, "open_id", "");
-            String accessToken = text(row, "access_token", "");
-            String refreshToken = text(row, "refresh_token", "");
             String tokenType = text(row, "token_type", "");
             String scope = text(row, "scope", "");
             boolean hasOauthData = !isBlank(openId)
-                    || !isBlank(accessToken)
-                    || !isBlank(refreshToken)
                     || !isBlank(tokenType)
                     || !isBlank(scope);
 
@@ -146,6 +154,56 @@ public class VideoOpsService {
             ));
         });
         return accounts;
+    }
+
+    @Transactional(readOnly = true)
+    public VideoContentIdeaStatusResponse fetchContentIdeaStatus(long contentIdeaId) {
+        JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
+        if (!rows.isArray() || rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
+        }
+
+        JsonNode row = rows.get(0);
+        VideoPipelineState state = pipelineStateRepository.findById(contentIdeaId).orElse(null);
+        VideoWorkflowRun lastRun = workflowRunRepository.findTopByContentIdeaIdOrderByCreatedAtDesc(contentIdeaId).orElse(null);
+        VideoPipelineEvent lastEvent = eventRepository.findTopByContentIdeaIdOrderByCreatedAtDesc(contentIdeaId);
+        VideoPipelineStage stage = VideoOpsStateMachine.resolveFromContentSignals(
+                text(row, "shotstack_status", "unknown"),
+                text(row, "publish_status", "draft"),
+                text(row, "final_video_status", "unknown"),
+                text(row, "shotstack_url", ""),
+                text(row, "tiktok_upload_url", ""),
+                state != null ? state.getPipelineStage() : VideoPipelineStage.UNKNOWN
+        );
+
+        return new VideoContentIdeaStatusResponse(
+                contentIdeaId,
+                text(row, "topic", ""),
+                stage.name(),
+                VideoOpsStateMachine.describe(stage),
+                text(row, "shotstack_status", ""),
+                text(row, "final_video_status", ""),
+                text(row, "publish_status", ""),
+                text(row, "tiktok_upload_status", ""),
+                text(row, "tiktok_account_open_id", ""),
+                text(row, "shotstack_url", ""),
+                text(row, "tiktok_upload_url", ""),
+                state == null ? null : state.getLastErrorMessage(),
+                lastRun == null ? null : new VideoWorkflowRunDetailResponse(
+                        lastRun.getId(),
+                        lastRun.getContentIdeaId(),
+                        lastRun.getWorkflowType().name(),
+                        lastRun.getStatus().name(),
+                        lastRun.getAttemptNumber(),
+                        lastRun.getErrorMessage(),
+                        lastRun.getResponsePayload(),
+                        lastRun.getCreatedAt() == null ? null : lastRun.getCreatedAt().toString(),
+                        lastRun.getCompletedAt() == null ? null : lastRun.getCompletedAt().toString()
+                ),
+                lastEvent == null ? null : lastEvent.getMessage(),
+                lastEvent == null ? null : lastEvent.getSeverity(),
+                state == null || state.getUpdatedAt() == null ? null : state.getUpdatedAt().toString()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -238,25 +296,25 @@ public class VideoOpsService {
     @Transactional
     public VideoWorkflowActionResponse triggerMainPipeline(WorkflowTriggerRequest request, String requestedByEmail) {
         validateMainPipelineRequest(request);
-        return triggerWorkflow(VideoWorkflowType.MAIN_PIPELINE, null, request, requestedByEmail, VideoPipelineStage.CREATION_REQUESTED);
+        return triggerWorkflow(VideoWorkflowType.MAIN_PIPELINE, null, request, requestedByEmail, VideoOpsStateMachine.requestedStage(VideoWorkflowType.MAIN_PIPELINE));
     }
 
     @Transactional
     public VideoWorkflowActionResponse triggerCheckShotstack(WorkflowTriggerRequest request, String requestedByEmail) {
         Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour le render.");
-        return triggerWorkflow(VideoWorkflowType.CHECK_SHOTSTACK, contentIdeaId, request, requestedByEmail, VideoPipelineStage.RENDERING_REQUESTED);
+        return triggerWorkflow(VideoWorkflowType.CHECK_SHOTSTACK, contentIdeaId, request, requestedByEmail, VideoOpsStateMachine.requestedStage(VideoWorkflowType.CHECK_SHOTSTACK));
     }
 
     @Transactional
     public VideoWorkflowActionResponse triggerRenderTemplate(WorkflowTriggerRequest request, String requestedByEmail) {
         Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour le rendu video.");
-        return triggerWorkflow(VideoWorkflowType.RENDER_TEMPLATE_VIDEO, contentIdeaId, request, requestedByEmail, VideoPipelineStage.RENDERING_REQUESTED);
+        return triggerWorkflow(VideoWorkflowType.RENDER_TEMPLATE_VIDEO, contentIdeaId, request, requestedByEmail, VideoOpsStateMachine.requestedStage(VideoWorkflowType.RENDER_TEMPLATE_VIDEO));
     }
 
     @Transactional
     public VideoWorkflowActionResponse triggerInitPublish(WorkflowTriggerRequest request, String requestedByEmail) {
         Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour l'init publish.");
-        return triggerWorkflow(VideoWorkflowType.INIT_PUBLISH_TIKTOK, contentIdeaId, request, requestedByEmail, VideoPipelineStage.PUBLISH_INITIALIZED);
+        return triggerWorkflow(VideoWorkflowType.INIT_PUBLISH_TIKTOK, contentIdeaId, request, requestedByEmail, VideoOpsStateMachine.requestedStage(VideoWorkflowType.INIT_PUBLISH_TIKTOK));
     }
 
     @Transactional
@@ -283,8 +341,9 @@ public class VideoOpsService {
                 Map.of("contentIdeaId", contentIdeaId, "shotstackUrl", shotstackUrl, "uploadUrl", uploadUrl),
                 nextAttemptNumber(contentIdeaId, VideoWorkflowType.TIKTOK_UPLOAD)
         );
-        syncPipelineState(contentIdeaId, VideoPipelineStage.PUBLISH_INITIALIZED, null, run);
-            recordEvent(contentIdeaId, run, "INFO", "upload_started", "Upload TikTok lance depuis le backend.", Map.of("runId", run.getId()));
+        syncPipelineState(contentIdeaId, VideoOpsStateMachine.requestedStage(VideoWorkflowType.TIKTOK_UPLOAD), null, run);
+        recordEvent(contentIdeaId, run, "INFO", "upload_started", "Upload TikTok lance depuis le backend.", Map.of("runId", run.getId()));
+        logWorkflowInfo("upload_started", run, "Upload TikTok lance depuis le backend.");
 
         try {
             TikTokUploadResponse response = tikTokUploadService.uploadFromShotstack(shotstackUrl, uploadUrl);
@@ -294,13 +353,15 @@ public class VideoOpsService {
                     "uploaded_at", Instant.now().toString()
             ));
             markRunSucceeded(run, responseBody(response));
-            syncPipelineState(contentIdeaId, VideoPipelineStage.UPLOAD_COMPLETED, null, run);
+            syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.TIKTOK_UPLOAD, currentStage(contentIdeaId)), null, run);
             recordEvent(contentIdeaId, run, "INFO", "upload_succeeded", "Upload TikTok termine.", Map.of("statusCode", response.getStatusCode()));
+            logWorkflowInfo("upload_succeeded", run, "Upload TikTok termine.");
             return response;
         } catch (RuntimeException exception) {
             markRunFailed(run, exception.getMessage());
-            syncPipelineState(contentIdeaId, VideoPipelineStage.FAILED, exception.getMessage(), run);
+            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
             recordEvent(contentIdeaId, run, "ERROR", "upload_failed", "Upload TikTok en echec.", payloadOf("error", exception.getMessage()));
+            logWorkflowWarn("upload_failed", run, exception.getMessage());
             throw exception;
         }
     }
@@ -323,13 +384,15 @@ public class VideoOpsService {
                     "published_at", Instant.now().toString()
             ));
             markRunSucceeded(run, "{\"result\":\"published\"}");
-            syncPipelineState(contentIdeaId, VideoPipelineStage.PUBLISHED, null, run);
+            syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.FINALIZE_PUBLISH, currentStage(contentIdeaId)), null, run);
             recordEvent(contentIdeaId, run, "INFO", "publish_completed", "Publication finale marquee comme complete.", Map.of("contentIdeaId", contentIdeaId));
+            logWorkflowInfo("publish_completed", run, "Publication finale marquee comme complete.");
             return new VideoWorkflowActionResponse(run.getId(), contentIdeaId, run.getWorkflowType().name(), run.getStatus().name(), "Publication finale enregistree.", false);
         } catch (RuntimeException exception) {
             markRunFailed(run, exception.getMessage());
-            syncPipelineState(contentIdeaId, VideoPipelineStage.FAILED, exception.getMessage(), run);
+            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
             recordEvent(contentIdeaId, run, "ERROR", "publish_failed", "La finalisation de publication a echoue.", payloadOf("error", exception.getMessage()));
+            logWorkflowWarn("publish_failed", run, exception.getMessage());
             throw exception;
         }
     }
@@ -358,7 +421,7 @@ public class VideoOpsService {
         if (nextStatus == VideoWorkflowRunStatus.FAILED) {
             String errorMessage = trimToNull(request.getErrorMessage());
             run.setErrorMessage(errorMessage == null ? "Workflow externe en echec." : errorMessage);
-            syncPipelineState(run.getContentIdeaId(), VideoPipelineStage.FAILED, run.getErrorMessage(), run);
+            syncPipelineState(run.getContentIdeaId(), VideoOpsStateMachine.failureStage(), run.getErrorMessage(), run);
             recordEvent(
                     run.getContentIdeaId(),
                     run,
@@ -367,8 +430,15 @@ public class VideoOpsService {
                     request.getMessage() == null || request.getMessage().isBlank() ? "Workflow externe signale en echec." : request.getMessage(),
                     payloadOf("error", run.getErrorMessage())
             );
+            logWorkflowWarn("workflow_callback_failed", run, run.getErrorMessage());
         } else {
             run.setErrorMessage(null);
+            syncPipelineState(
+                    run.getContentIdeaId(),
+                    VideoOpsStateMachine.successStage(run.getWorkflowType(), currentStage(run.getContentIdeaId())),
+                    null,
+                    run
+            );
             recordEvent(
                     run.getContentIdeaId(),
                     run,
@@ -377,20 +447,15 @@ public class VideoOpsService {
                     request.getMessage() == null || request.getMessage().isBlank() ? "Workflow externe termine avec succes." : request.getMessage(),
                     Map.of("runId", run.getId())
             );
+            logWorkflowInfo("workflow_callback_succeeded", run, request.getMessage() == null ? "Workflow externe termine avec succes." : request.getMessage());
         }
         workflowRunRepository.save(run);
 
         return fetchWorkflowRun(runId);
     }
 
-    public void validateWorkflowCallbackSecret(String providedSecret) {
-        String configuredSecret = trimToNull(properties.getWorkflowCallbackSecret());
-        if (configuredSecret == null) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Le secret de callback workflow n'est pas configure.");
-        }
-        if (!configuredSecret.equals(providedSecret == null ? "" : providedSecret.trim())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Callback workflow refuse.");
-        }
+    public void validateWorkflowCallbackRequest(String method, String path, String body, String timestamp, String signature, String legacySecret) {
+        callbackAuthService.validateCallback(method, path, body, timestamp, signature, legacySecret);
     }
 
     private VideoWorkflowActionResponse triggerWorkflow(
@@ -404,6 +469,7 @@ public class VideoOpsService {
         VideoWorkflowRun existingRun = findReusableRun(contentIdeaId, workflowType, force).orElse(null);
         if (existingRun != null) {
             recordEvent(contentIdeaId, existingRun, "INFO", "workflow_reused", "Requete idempotente reusee.", Map.of("runId", existingRun.getId()));
+            logWorkflowInfo("workflow_reused", existingRun, "Requete idempotente reusee.");
             return new VideoWorkflowActionResponse(
                     existingRun.getId(),
                     contentIdeaId,
@@ -438,12 +504,13 @@ public class VideoOpsService {
         );
         syncPipelineState(contentIdeaId, nextStage, null, run);
         recordEvent(contentIdeaId, run, "INFO", "workflow_requested", "Workflow " + workflowType + " demande.", payload);
+        logWorkflowInfo("workflow_requested", run, "Workflow " + workflowType + " demande.");
 
         try {
             JsonNode response = n8nWorkflowGateway.trigger(workflowType, payloadWithRunMetadata(payload, run));
             markRunAccepted(run, json(response));
             recordEvent(contentIdeaId, run, "INFO", "workflow_accepted", "Workflow " + workflowType + " accepte par n8n.", Map.of("runId", run.getId()));
-            logger.info("Video workflow {} accepted for contentIdeaId={} runId={}", workflowType, contentIdeaId, run.getId());
+            logWorkflowInfo("workflow_accepted", run, "Workflow " + workflowType + " accepte par n8n.");
             return new VideoWorkflowActionResponse(
                     run.getId(),
                     contentIdeaId,
@@ -454,9 +521,9 @@ public class VideoOpsService {
             );
         } catch (RuntimeException exception) {
             markRunFailed(run, exception.getMessage());
-            syncPipelineState(contentIdeaId, VideoPipelineStage.FAILED, exception.getMessage(), run);
+            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
             recordEvent(contentIdeaId, run, "ERROR", "workflow_failed", "Workflow " + workflowType + " en echec.", payloadOf("error", exception.getMessage()));
-            logger.warn("Video workflow {} failed for contentIdeaId={} runId={}: {}", workflowType, contentIdeaId, run.getId(), exception.getMessage());
+            logWorkflowWarn("workflow_failed", run, exception.getMessage());
             throw exception;
         }
     }
@@ -544,7 +611,10 @@ public class VideoOpsService {
             next.setContentIdeaId(contentIdeaId);
             return next;
         });
-        state.setPipelineStage(stage);
+        VideoPipelineStage currentStage = state.getPipelineStage();
+        if (VideoOpsStateMachine.canTransition(currentStage, stage)) {
+            state.setPipelineStage(stage);
+        }
         state.setLastWorkflowType(run.getWorkflowType());
         state.setLastWorkflowRunId(run.getId());
         state.setLastErrorMessage(trimToNull(lastError));
@@ -570,30 +640,13 @@ public class VideoOpsService {
         return nextPayload;
     }
 
-    private VideoPipelineStage resolveStage(
-            String shotstackStatus,
-            String tiktokStatus,
-            String finalVideoStatus,
-            String shotstackUrl,
-            String uploadUrl,
-            VideoPipelineState state
-    ) {
-        if ("published".equalsIgnoreCase(tiktokStatus)) {
-            return VideoPipelineStage.PUBLISHED;
+    private VideoPipelineStage currentStage(Long contentIdeaId) {
+        if (contentIdeaId == null) {
+            return VideoPipelineStage.UNKNOWN;
         }
-        if ("uploading".equalsIgnoreCase(tiktokStatus) || "uploaded".equalsIgnoreCase(tiktokStatus)) {
-            return VideoPipelineStage.UPLOAD_COMPLETED;
-        }
-        if (!isBlank(uploadUrl)) {
-            return VideoPipelineStage.PUBLISH_INITIALIZED;
-        }
-        if ("ready".equalsIgnoreCase(finalVideoStatus) || "done".equalsIgnoreCase(shotstackStatus) || !isBlank(shotstackUrl)) {
-            return VideoPipelineStage.RENDER_READY;
-        }
-        if (List.of("queued", "rendering", "preprocessing").contains(lower(shotstackStatus))) {
-            return VideoPipelineStage.RENDERING_REQUESTED;
-        }
-        return state != null ? state.getPipelineStage() : VideoPipelineStage.UNKNOWN;
+        return pipelineStateRepository.findById(contentIdeaId)
+                .map(VideoPipelineState::getPipelineStage)
+                .orElse(VideoPipelineStage.UNKNOWN);
     }
 
     private void validateAllowedHost(String rawUrl, List<String> allowedHosts, String fieldName) {
@@ -681,5 +734,31 @@ public class VideoOpsService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put(key, value == null ? "" : value);
         return payload;
+    }
+
+    private void logWorkflowInfo(String eventType, VideoWorkflowRun run, String message) {
+        logger.info(
+                "video_ops event={} workflowRunId={} contentIdeaId={} workflowType={} attemptNumber={} status={} message={}",
+                eventType,
+                run == null ? null : run.getId(),
+                run == null ? null : run.getContentIdeaId(),
+                run == null || run.getWorkflowType() == null ? null : run.getWorkflowType().name(),
+                run == null ? null : run.getAttemptNumber(),
+                run == null || run.getStatus() == null ? null : run.getStatus().name(),
+                message
+        );
+    }
+
+    private void logWorkflowWarn(String eventType, VideoWorkflowRun run, String message) {
+        logger.warn(
+                "video_ops event={} workflowRunId={} contentIdeaId={} workflowType={} attemptNumber={} status={} message={}",
+                eventType,
+                run == null ? null : run.getId(),
+                run == null ? null : run.getContentIdeaId(),
+                run == null || run.getWorkflowType() == null ? null : run.getWorkflowType().name(),
+                run == null ? null : run.getAttemptNumber(),
+                run == null || run.getStatus() == null ? null : run.getStatus().name(),
+                message
+        );
     }
 }

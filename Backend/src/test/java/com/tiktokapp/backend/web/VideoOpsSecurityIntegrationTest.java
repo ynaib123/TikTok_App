@@ -2,7 +2,9 @@ package com.tiktokapp.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,12 +75,26 @@ class VideoOpsSecurityIntegrationTest {
                         "ready",
                         "https://shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com/video.mp4",
                         "",
+                        "open-id-demo",
                         "render_ready",
                         null
                 )
         ));
         when(videoOpsService.triggerCheckShotstack(any(), eq("admin@tiktokapp.local"))).thenReturn(
                 new VideoWorkflowActionResponse(7L, 42L, "CHECK_SHOTSTACK", "ACCEPTED", "ok", false)
+        );
+        when(videoOpsService.completeWorkflowRun(eq(99L), any())).thenReturn(
+                new VideoWorkflowRunDetailResponse(
+                        99L,
+                        42L,
+                        "INIT_PUBLISH_TIKTOK",
+                        "SUCCEEDED",
+                        1,
+                        null,
+                        "{}",
+                        "2026-04-29T00:00:00Z",
+                        "2026-04-29T00:00:02Z"
+                )
         );
 
         MvcResult csrfResult = mockMvc.perform(get("/api/admins/csrf-token"))
@@ -139,5 +156,28 @@ class VideoOpsSecurityIntegrationTest {
                 .andExpect(jsonPath("$.workflowType").value("CHECK_SHOTSTACK"));
 
         verify(videoOpsService).triggerCheckShotstack(any(), eq("admin@tiktokapp.local"));
+    }
+
+    @Test
+    void acceptsWorkflowCompletionCallbackWithLegacySecretHeader() throws Exception {
+        mockMvc.perform(post("/api/video-ops/workflow-runs/99/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Callback-Secret", "video-ops-callback-123")
+                        .content("""
+                                {"status":"SUCCEEDED","message":"Workflow termine"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(99))
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        verify(videoOpsService).validateWorkflowCallbackRequest(
+                eq("POST"),
+                eq("/api/video-ops/workflow-runs/99/complete"),
+                anyString(),
+                eq(null),
+                eq(null),
+                eq("video-ops-callback-123")
+        );
+        verify(videoOpsService).completeWorkflowRun(eq(99L), any(VideoWorkflowRunCompletionRequest.class));
     }
 }

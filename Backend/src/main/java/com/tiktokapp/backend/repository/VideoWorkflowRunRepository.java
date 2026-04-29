@@ -11,6 +11,8 @@ public interface VideoWorkflowRunRepository extends JpaRepository<VideoWorkflowR
 
     Optional<VideoWorkflowRun> findTopByContentIdeaIdAndWorkflowTypeOrderByCreatedAtDesc(Long contentIdeaId, VideoWorkflowType workflowType);
 
+    Optional<VideoWorkflowRun> findTopByContentIdeaIdOrderByCreatedAtDesc(Long contentIdeaId);
+
     Optional<VideoWorkflowRun> findTopByContentIdeaIdIsNullAndWorkflowTypeOrderByCreatedAtDesc(VideoWorkflowType workflowType);
 
     long countByContentIdeaIdAndWorkflowType(Long contentIdeaId, VideoWorkflowType workflowType);

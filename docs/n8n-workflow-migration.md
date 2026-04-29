@@ -7,7 +7,11 @@ Ce repo ne pilote pas directement ton instance n8n, donc les workflows doivent e
 - Tous les workflows declenches par le backend recoivent deja `workflowRunId`.
 - En fin de workflow, n8n doit appeler:
   - `POST /api/video-ops/workflow-runs/{workflowRunId}/complete`
-  - Header: `X-Video-Ops-Callback-Secret: <APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET>`
+  - Header prefere:
+    - `X-Video-Ops-Callback-Timestamp: <ISO-8601 UTC>`
+    - `X-Video-Ops-Callback-Signature: <base64 hmac sha256>`
+  - Header legacy temporaire:
+    - `X-Video-Ops-Callback-Secret: <APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET>`
 - Body succes:
 
 ```json

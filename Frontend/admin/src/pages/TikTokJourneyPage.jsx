@@ -11,6 +11,7 @@ import {
 } from '../services/n8nClient'
 import {
   fetchContentIdeas,
+  fetchContentIdeaStatus,
   fetchManualActions,
   fetchTikTokAccounts,
   fetchWorkflowRun,
@@ -18,6 +19,16 @@ import {
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
 import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi'
+import WorkflowStatusPanel from './tiktok-journey/WorkflowStatusPanel'
+import { useActionState } from './tiktok-journey/useActionState'
+import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
+import {
+  useCreationStep,
+  usePublishStep,
+  useRenderStep,
+  useScriptStep,
+  useUploadStep,
+} from './tiktok-journey/useTikTokJourneySteps'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
 import '../styles/themes/products-dark.css'
@@ -255,7 +266,7 @@ export default function TikTokJourneyPage() {
     queryKey: ['tiktok-accounts'],
     queryFn: fetchTikTokAccounts,
   })
-  const [isWorking, setIsWorking] = useState(false)
+  const { busyActions, isBusy, runAction } = useActionState()
   const [isConnectingTikTok, setIsConnectingTikTok] = useState(false)
   const [generatedIdeas, setGeneratedIdeas] = useState([])
   const [selectedGeneratedIdeaId, setSelectedGeneratedIdeaId] = useState(null)
@@ -263,9 +274,6 @@ export default function TikTokJourneyPage() {
   const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
   const [lastGenerationBaselineId, setLastGenerationBaselineId] = useState(null)
   const [lastGenerationExpectedCount, setLastGenerationExpectedCount] = useState(0)
-  const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false)
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false)
-  const [isPreparingVideo, setIsPreparingVideo] = useState(false)
   const [scriptedIdea, setScriptedIdea] = useState(null)
   const [manualAction, setManualAction] = useState(null)
   const [uploadResult, setUploadResult] = useState(null)
@@ -286,6 +294,13 @@ export default function TikTokJourneyPage() {
     [tiktokAccounts],
   )
   const hasConnectedTikTokAccount = Boolean(connectedTikTokAccount)
+  const isWorking = isBusy
+  const isGeneratingIdeas = Boolean(busyActions.generateIdea)
+  const isGeneratingScript = Boolean(busyActions.generateScript)
+  const isPreparingVideo = Boolean(busyActions.renderVideo)
+  const isPreparingUpload = Boolean(busyActions.prepareUpload)
+  const isUploadingVideo = Boolean(busyActions.uploadVideo)
+  const isPublishingVideo = Boolean(busyActions.publishVideo)
 
   const filteredIdeas = useMemo(() => {
     const normalizedSearch = String(listSearch || '').trim().toLowerCase()
@@ -385,164 +400,6 @@ export default function TikTokJourneyPage() {
     setErrorMessage(error?.message || fallback)
   }
 
-  const waitForNewIdeas = async (baselineMaxId, expectedCount, requestedCategory) => {
-    const timeoutAt = Date.now() + 3 * 60 * 1000
-    let bestMatch = []
-
-    while (Date.now() < timeoutAt) {
-      const ideas = await fetchContentIdeas()
-      const ideasAfterBaseline = ideas
-        .filter((idea) => Number(idea.id) > baselineMaxId)
-        .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
-      const expectedCategory = normalizeText(requestedCategory)
-      const categoryMatchedIdeas = ideasAfterBaseline.filter((idea) => {
-        const currentCategory = normalizeText(idea?.category)
-        return !expectedCategory || !currentCategory || currentCategory === expectedCategory
-      })
-      const nextIdeas = categoryMatchedIdeas.length ? categoryMatchedIdeas : ideasAfterBaseline
-
-      if (nextIdeas.length) {
-        bestMatch = nextIdeas.slice(0, Math.max(expectedCount, nextIdeas.length))
-        setGeneratedIdeas((currentIdeas) => mergeIdeasById(currentIdeas, bestMatch))
-        setSelectedGeneratedIdeaId((currentSelectedId) => currentSelectedId || bestMatch[0]?.id || null)
-      }
-
-      if (nextIdeas.length >= expectedCount) return nextIdeas.slice(0, expectedCount)
-      await sleep(4000)
-    }
-
-    const ideas = await fetchContentIdeas()
-    const ideasAfterBaseline = ideas
-      .filter((idea) => Number(idea.id) > baselineMaxId)
-      .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
-    const expectedCategory = normalizeText(requestedCategory)
-    const categoryMatchedIdeas = ideasAfterBaseline.filter((idea) => {
-      const currentCategory = normalizeText(idea?.category)
-      return !expectedCategory || !currentCategory || currentCategory === expectedCategory
-    })
-    const partialIdeas = (categoryMatchedIdeas.length ? categoryMatchedIdeas : ideasAfterBaseline)
-      .slice(0, expectedCount)
-
-    if (partialIdeas.length) return partialIdeas
-
-    throw new Error("Les nouvelles idees n'ont pas ete trouvees dans content_ideas.")
-  }
-
-  const waitForScriptGeneration = async (ideaId, baselineIdea = null) => {
-    const timeoutAt = Date.now() + 15 * 60 * 1000
-    const baselineScript = String(baselineIdea?.script || '').trim()
-    const baselineCaption = String(baselineIdea?.caption || '').trim()
-    const baselineKeyword = String(baselineIdea?.keyword || '').trim()
-
-    while (Date.now() < timeoutAt) {
-      const ideas = await fetchContentIdeas()
-      const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
-      if (!nextIdea) {
-        await sleep(5000)
-        continue
-      }
-
-      const nextScript = String(nextIdea?.script || '').trim()
-      const nextCaption = String(nextIdea?.caption || '').trim()
-      const nextKeyword = String(nextIdea?.keyword || '').trim()
-      const hasChanged = nextScript !== baselineScript || nextCaption !== baselineCaption || nextKeyword !== baselineKeyword
-
-      if (hasScriptGenerationResult(nextIdea) && (hasChanged || !baselineIdea)) {
-        return nextIdea
-      }
-
-      await sleep(5000)
-    }
-
-    throw new Error("La generation du script n'a pas fini dans le temps attendu.")
-  }
-
-  const waitForRenderedVideo = async (ideaId) => {
-    const timeoutAt = Date.now() + 15 * 60 * 1000
-
-    while (Date.now() < timeoutAt) {
-      const ideas = await fetchContentIdeas()
-      const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
-      if (!nextIdea) {
-        await sleep(5000)
-        continue
-      }
-
-      if (isRenderReady(nextIdea)) {
-        return nextIdea
-      }
-
-      await sleep(5000)
-    }
-
-    throw new Error("La generation de la video n'a pas fini dans le temps attendu.")
-  }
-
-  const waitForUploadPreparation = async (ideaId) => {
-    const timeoutAt = Date.now() + 5 * 60 * 1000
-
-    while (Date.now() < timeoutAt) {
-      const manualActions = await fetchManualActions()
-      const action = manualActions.find((item) => Number(item.id) === Number(ideaId))
-      if (action?.uploadUrl) return action
-      await sleep(4000)
-    }
-
-    throw new Error("L'upload URL TikTok n'a pas ete generee.")
-  }
-
-  const raceWorkflowRunAndUploadPreparation = async (runId, ideaId) => {
-    const settled = await Promise.race([
-      (async () => {
-        const run = await waitForWorkflowRunCompletion(runId, 60 * 1000)
-        return { type: 'run', run }
-      })(),
-      (async () => {
-        const action = await waitForUploadPreparation(ideaId)
-        return { type: 'manualAction', action }
-      })(),
-    ])
-
-    if (settled?.type === 'manualAction') {
-      return settled.action
-    }
-
-    const completedRun = settled?.run || null
-    if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-      const manualActions = await fetchManualActions()
-      const action = manualActions.find((item) => Number(item.id) === Number(ideaId)) || null
-      if (action?.uploadUrl) {
-        return action
-      }
-    }
-
-    return waitForUploadPreparation(ideaId)
-  }
-
-  const waitForWorkflowRunCompletion = async (runId, timeoutMs = 2 * 60 * 1000) => {
-    if (!runId) return null
-
-    const timeoutAt = Date.now() + timeoutMs
-    let lastRun = null
-
-    while (Date.now() < timeoutAt) {
-      const run = await fetchWorkflowRun(runId)
-      lastRun = run
-
-      if (String(run?.status || '').toUpperCase() === 'FAILED') {
-        throw new Error(run?.errorMessage || `Le workflow ${run?.workflowType || runId} a echoue.`)
-      }
-
-      if (isWorkflowRunTerminal(run)) {
-        return run
-      }
-
-      await sleep(3000)
-    }
-
-    return lastRun
-  }
-
   const refreshPipelineData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
@@ -554,8 +411,6 @@ export default function TikTokJourneyPage() {
   const resetGeneratedIdeasState = () => {
     setGeneratedIdeas([])
     setSelectedGeneratedIdeaId(null)
-    setIsGeneratingScript(false)
-    setIsPreparingVideo(false)
     setScriptedIdea(null)
     setManualAction(null)
     setUploadResult(null)
@@ -565,7 +420,6 @@ export default function TikTokJourneyPage() {
     resetGeneratedIdeasState()
     setLastGenerationBaselineId(null)
     setLastGenerationExpectedCount(0)
-    setIsGeneratingIdeas(false)
     setErrorMessage(null)
     setSuccessMessage(null)
   }
@@ -626,206 +480,6 @@ export default function TikTokJourneyPage() {
     }
   }
 
-  const handleGenerateIdea = async () => {
-    const requestedCount = Math.max(1, Math.min(MAX_IDEA_BATCH_SIZE, Number(generationCount) || 1))
-    const requestedCategory = String(generationCategory || '').trim()
-    const shouldForceGeneration = displayedGeneratedIdeas.length > 0 || requestedCount > 1
-
-    if (!requestedCategory) {
-      setErrorMessage('Renseigne une categorie avant de lancer la generation.')
-      return
-    }
-
-    setIsWorking(true)
-    setIsGeneratingIdeas(true)
-    setErrorMessage(null)
-    setSuccessMessage(null)
-
-    try {
-      const ideas = await fetchContentIdeas()
-      const baselineMaxId = ideas.reduce((maxId, idea) => Math.max(maxId, Number(idea?.id) || 0), 0)
-      resetGeneratedIdeasState()
-      setLastGenerationBaselineId(baselineMaxId)
-      setLastGenerationExpectedCount(requestedCount)
-        const generationRequests = Array.from({ length: requestedCount }, (_, index) => (
-          triggerMainContentPipeline({
-            source: `backoffice-tiktok-step-creation-${Date.now()}-${index + 1}`,
-            ideaCount: 1,
-            category: requestedCategory,
-            tiktokAccountOpenId: String(connectedTikTokAccount?.openId || '').trim() || null,
-            force: shouldForceGeneration,
-          })
-        ))
-      await Promise.all(generationRequests)
-      const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
-      setGeneratedIdeas(nextIdeas)
-      setSelectedGeneratedIdeaId(nextIdeas[0]?.id || null)
-      setScriptedIdea(null)
-      setManualAction(null)
-      setUploadResult(null)
-      await refreshPipelineData()
-      showSuccess(`${nextIdeas.length} idee(s) generee(s). Choisis-en une puis valide pour lancer l etape script.`)
-    } catch (error) {
-      showError(error, "La generation n'a pas abouti.")
-    } finally {
-      setIsGeneratingIdeas(false)
-      setIsWorking(false)
-    }
-  }
-
-  const handleValidateCreation = async () => {
-    if (!selectedGeneratedIdea?.id) {
-      setErrorMessage('Genere puis selectionne une idee avant de valider cette etape.')
-      return
-    }
-
-    setIsWorking(true)
-    setIsGeneratingScript(true)
-    setErrorMessage(null)
-
-    try {
-      const workflowRun = await triggerScriptGenerationWorkflow({
-        source: 'backoffice-tiktok-step-script',
-        contentIdeaId: selectedGeneratedIdea.id,
-        topic: selectedGeneratedIdea.topic,
-      })
-      goToStep('script')
-      showSuccess('Workflow script lance. Les resultats apparaitront ici des qu ils seront prets.')
-      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
-      let nextScriptedIdea = null
-
-      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-        const ideas = await fetchContentIdeas()
-        nextScriptedIdea = ideas.find((idea) => Number(idea.id) === Number(selectedGeneratedIdea.id)) || null
-      }
-
-      if (!nextScriptedIdea || !hasScriptGenerationResult(nextScriptedIdea)) {
-        nextScriptedIdea = await waitForScriptGeneration(selectedGeneratedIdea.id, selectedGeneratedIdea)
-      }
-
-      setScriptedIdea(nextScriptedIdea)
-      setGeneratedIdeas((currentIdeas) => currentIdeas.map((idea) => (
-        Number(idea.id) === Number(nextScriptedIdea.id) ? nextScriptedIdea : idea
-      )))
-      await refreshPipelineData()
-      showSuccess('Script, caption et keyword generes. Verifie le resultat avant de valider.')
-    } catch (error) {
-      showError(error, "La generation script n'a pas abouti.")
-    } finally {
-      setIsGeneratingScript(false)
-      setIsWorking(false)
-    }
-  }
-
-  const handleRegenerateScript = async () => {
-    const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id) {
-      setErrorMessage('Aucune idee disponible pour relancer le script.')
-      return
-    }
-
-    setIsWorking(true)
-    setIsGeneratingScript(true)
-    setErrorMessage(null)
-
-    try {
-      const workflowRun = await triggerScriptGenerationWorkflow({
-        source: 'backoffice-tiktok-step-script-regenerate',
-        contentIdeaId: idea.id,
-        topic: idea.topic,
-        force: true,
-      })
-      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
-      let nextScriptedIdea = null
-
-      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-        const ideas = await fetchContentIdeas()
-        nextScriptedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
-      }
-
-      if (!nextScriptedIdea || !hasScriptGenerationResult(nextScriptedIdea)) {
-        nextScriptedIdea = await waitForScriptGeneration(idea.id, idea)
-      }
-
-      setScriptedIdea(nextScriptedIdea)
-      setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
-        Number(currentIdea.id) === Number(nextScriptedIdea.id) ? nextScriptedIdea : currentIdea
-      )))
-      await refreshPipelineData()
-      showSuccess('Script regenere. Tu peux valider si le contenu te convient.')
-    } catch (error) {
-      showError(error, "La regeneration du script n'a pas abouti.")
-    } finally {
-      setIsGeneratingScript(false)
-      setIsWorking(false)
-    }
-  }
-
-  const handleValidateScript = async () => {
-    const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id) {
-      setErrorMessage('Aucun resultat script a valider.')
-      return
-    }
-
-    setIsWorking(true)
-    setIsPreparingVideo(true)
-    setErrorMessage(null)
-
-    try {
-      goToStep('init-publish')
-      const workflowRun = await triggerRenderTemplateWorkflow({
-        source: 'backoffice-tiktok-step-video-render',
-        contentIdeaId: idea.id,
-        topic: idea.topic,
-        script: idea.script,
-        caption: idea.caption,
-        keyword: idea.keyword,
-      })
-      showSuccess('Generation video lancee. La video apparaitra ici des qu elle sera prete.')
-
-      const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 90 * 1000)
-      let renderedIdea = null
-
-      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-        const ideas = await fetchContentIdeas()
-        renderedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
-      }
-
-      if (!renderedIdea || !isRenderReady(renderedIdea)) {
-        renderedIdea = await waitForRenderedVideo(idea.id)
-      }
-
-      setScriptedIdea(renderedIdea)
-      setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
-        Number(currentIdea.id) === Number(renderedIdea.id) ? renderedIdea : currentIdea
-      )))
-      setManualAction((currentAction) => ({
-        id: renderedIdea.id,
-        topic: renderedIdea.topic,
-        shotstackUrl: renderedIdea.shotstackUrl || currentAction?.shotstackUrl || '',
-        uploadUrl: currentAction?.uploadUrl || '',
-        workflowStatus: currentAction?.workflowStatus || 'render_ready',
-        tiktokStatus: renderedIdea.tiktokStatus || currentAction?.tiktokStatus || '',
-        finalVideoStatus: renderedIdea.finalVideoStatus || currentAction?.finalVideoStatus || '',
-        shotstackStatus: renderedIdea.shotstackStatus || currentAction?.shotstackStatus || '',
-        pipelineStatus: renderedIdea.pipelineStatus || currentAction?.pipelineStatus || '',
-        lastError: renderedIdea.lastError || currentAction?.lastError || null,
-      }))
-      await refreshPipelineData()
-      showSuccess('Video prete. Verifie le template avant de passer a l upload.')
-    } catch (error) {
-      showError(error, "L'initialisation publish n'a pas abouti.")
-    } finally {
-      setIsPreparingVideo(false)
-      setIsWorking(false)
-    }
-  }
-
-  const handleRetryInitPublish = async () => {
-    await handleValidateScript()
-  }
-
   const handleValidateInitPublish = () => {
     const previewUrl = normalizeUrl(manualAction?.shotstackUrl || scriptedIdea?.shotstackUrl || selectedGeneratedIdea?.shotstackUrl)
     if (!previewUrl) {
@@ -835,91 +489,6 @@ export default function TikTokJourneyPage() {
 
     goToStep('upload')
     showSuccess('Template video valide. Tu peux preparer l upload.')
-  }
-
-  const handlePrepareUpload = async () => {
-    const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id) {
-      setErrorMessage('Aucune video disponible pour preparer l upload.')
-      return
-    }
-
-    setIsWorking(true)
-    setErrorMessage(null)
-
-    try {
-      const workflowRun = await triggerPublishTikTokWorkflow({
-        source: 'backoffice-tiktok-step-upload-prepare',
-        contentIdeaId: idea.id,
-        topic: idea.topic,
-      })
-      const nextManualAction = await raceWorkflowRunAndUploadPreparation(workflowRun?.runId, idea.id)
-
-      setManualAction((currentAction) => ({
-        ...currentAction,
-        ...nextManualAction,
-      }))
-      await refreshPipelineData()
-      showSuccess('Upload URL disponible. Tu peux lancer l upload.')
-    } catch (error) {
-      showError(error, "La preparation de l'upload n'a pas abouti.")
-    } finally {
-      setIsWorking(false)
-    }
-  }
-
-  const handleUploadVideo = async () => {
-    const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id || !manualAction?.shotstackUrl || !manualAction?.uploadUrl) {
-      setErrorMessage('Il manque la video ou l upload URL pour lancer l upload.')
-      return
-    }
-
-    setIsWorking(true)
-    setErrorMessage(null)
-
-    try {
-      const result = await uploadTikTokMedia({
-        id: idea.id,
-        shotstackUrl: manualAction.shotstackUrl,
-        uploadUrl: manualAction.uploadUrl,
-      })
-      setUploadResult(result || { ok: true })
-      await refreshPipelineData()
-      showSuccess('Upload termine. Tu peux passer a la publication finale.')
-    } catch (error) {
-      try {
-        const [ideas, manualActions] = await Promise.all([
-          fetchContentIdeas(),
-          fetchManualActions(),
-        ])
-        const refreshedIdea = ideas.find((item) => Number(item?.id) === Number(idea.id)) || null
-        const refreshedAction = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
-
-        if (refreshedIdea && isUploadCompleted(refreshedIdea)) {
-          setScriptedIdea((currentIdea) => (Number(currentIdea?.id) === Number(refreshedIdea.id) ? refreshedIdea : currentIdea))
-          setGeneratedIdeas((currentIdeas) => currentIdeas.map((currentIdea) => (
-            Number(currentIdea.id) === Number(refreshedIdea.id) ? refreshedIdea : currentIdea
-          )))
-          setManualAction((currentAction) => ({
-            ...currentAction,
-            ...(refreshedAction || {}),
-          }))
-          setUploadResult({
-            ok: true,
-            recovered: true,
-          })
-          await refreshPipelineData()
-          showSuccess('Upload termine cote serveur. La reponse HTTP a probablement expire, mais la video est bien passee en statut upload.')
-          return
-        }
-      } catch {
-      }
-
-      showError(error, "L'upload TikTok n'a pas abouti.")
-    } finally {
-      setIsWorking(false)
-    }
   }
 
   const handleValidateUpload = () => {
@@ -932,26 +501,109 @@ export default function TikTokJourneyPage() {
     showSuccess('Upload valide. Derniere etape: publication.')
   }
 
-  const handlePublishVideo = async () => {
-    const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id) {
-      setErrorMessage('Aucune video disponible pour finaliser la publication.')
-      return
-    }
+  const workflowMonitor = useWorkflowMonitor({
+    fetchContentIdeas,
+    fetchManualActions,
+    fetchContentIdeaStatus,
+    fetchWorkflowRun,
+  })
 
-    setIsWorking(true)
-    setErrorMessage(null)
+  const { handleGenerateIdea } = useCreationStep({
+    displayedGeneratedIdeas,
+    generationCategory,
+    generationCount,
+    connectedTikTokAccount,
+    fetchContentIdeas,
+    triggerMainContentPipeline,
+    refreshPipelineData,
+    resetGeneratedIdeasState,
+    setGeneratedIdeas,
+    setSelectedGeneratedIdeaId,
+    setScriptedIdea,
+    setManualAction,
+    setUploadResult,
+    setLastGenerationBaselineId,
+    setLastGenerationExpectedCount,
+    waitForNewIdeas: workflowMonitor.waitForNewIdeas,
+    showSuccess,
+    showError,
+    runAction,
+    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
+    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+  })
 
-    try {
-      await markPublishComplete(idea.id)
-      await refreshPipelineData()
-      showSuccess('Video publiee avec succes.')
-    } catch (error) {
-      showError(error, "La publication finale n'a pas abouti.")
-    } finally {
-      setIsWorking(false)
-    }
-  }
+  const { handleValidateCreation, handleRegenerateScript } = useScriptStep({
+    selectedGeneratedIdea,
+    scriptedIdea,
+    goToStep,
+    triggerScriptGenerationWorkflow,
+    fetchContentIdeas,
+    waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,
+    waitForContentIdeaStatus: workflowMonitor.waitForContentIdeaStatus,
+    waitForScriptGeneration: workflowMonitor.waitForScriptGeneration,
+    refreshPipelineData,
+    setScriptedIdea,
+    setGeneratedIdeas,
+    showSuccess,
+    showError,
+    runAction,
+    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
+    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+  })
+
+  const { handleValidateScript, handleRetryInitPublish } = useRenderStep({
+    scriptedIdea,
+    selectedGeneratedIdea,
+    goToStep,
+    triggerRenderTemplateWorkflow,
+    fetchContentIdeas,
+    waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,
+    waitForContentIdeaStatus: workflowMonitor.waitForContentIdeaStatus,
+    waitForRenderedVideo: workflowMonitor.waitForRenderedVideo,
+    refreshPipelineData,
+    setScriptedIdea,
+    setGeneratedIdeas,
+    setManualAction,
+    showSuccess,
+    showError,
+    runAction,
+    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
+    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+  })
+
+  const { handlePrepareUpload, handleUploadVideo } = useUploadStep({
+    scriptedIdea,
+    selectedGeneratedIdea,
+    manualAction,
+    triggerPublishTikTokWorkflow,
+    uploadTikTokMedia,
+    fetchContentIdeas,
+    fetchManualActions,
+    raceWorkflowRunAndUploadPreparation: workflowMonitor.raceWorkflowRunAndUploadPreparation,
+    refreshPipelineData,
+    setManualAction,
+    setScriptedIdea,
+    setGeneratedIdeas,
+    setUploadResult,
+    showSuccess,
+    showError,
+    runAction,
+    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
+    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+    isUploadCompleted: workflowMonitor.isUploadCompleted,
+  })
+
+  const { handlePublishVideo } = usePublishStep({
+    scriptedIdea,
+    selectedGeneratedIdea,
+    markPublishComplete,
+    refreshPipelineData,
+    showSuccess,
+    showError,
+    runAction,
+    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
+    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+  })
 
   const renderListView = () => (
     <>
@@ -1196,6 +848,14 @@ export default function TikTokJourneyPage() {
               </div>
             ) : null}
             <div className="tiktok-step-form">
+              {hasConnectedTikTokAccount ? (
+                <div className="video-preview-block">
+                  <span>Compte TikTok cible</span>
+                  <p>{connectedTikTokAccount?.nickname || '-'}</p>
+                  <p>Open ID: {formatShortOpenId(selectedGeneratedIdea?.tiktokAccountOpenId || connectedTikTokAccount?.openId)}</p>
+                  <p>Scope: {connectedTikTokAccount?.scope || '-'}</p>
+                </div>
+              ) : null}
               <label className="tiktok-step-field">
                 <span>Categorie</span>
                 <div className="tiktok-step-toolbar-select">
@@ -1206,7 +866,7 @@ export default function TikTokJourneyPage() {
                     aria-haspopup="listbox"
                     aria-expanded={openListMenu === 'tiktok-category'}
                     aria-controls={openListMenu === 'tiktok-category' ? 'tiktok-category-menu' : undefined}
-                    disabled={isWorking || !hasConnectedTikTokAccount}
+                    disabled={isBusy || !hasConnectedTikTokAccount}
                   >
                     <strong>{generationCategory}</strong>
                     <span className="admin-toolbar-icon" aria-hidden="true"><ChevronDownIcon /></span>
@@ -1257,7 +917,7 @@ export default function TikTokJourneyPage() {
                     const nextValue = Math.max(1, Math.min(MAX_IDEA_BATCH_SIZE, Number(rawValue)))
                     setGenerationCount(String(nextValue))
                   }}
-                  disabled={isWorking || !hasConnectedTikTokAccount}
+                  disabled={isBusy || !hasConnectedTikTokAccount}
                 />
               </label>
             </div>
@@ -1272,7 +932,7 @@ export default function TikTokJourneyPage() {
                 <strong>Generation en cours...</strong>
               </div>
             ) : (
-              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isWorking || !hasConnectedTikTokAccount}>
+              <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isBusy || !hasConnectedTikTokAccount}>
                 {displayedGeneratedIdeas.length ? 'Regenerer des idees' : 'Generer'}
               </button>
             )}
@@ -1281,7 +941,7 @@ export default function TikTokJourneyPage() {
                 {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
               </button>
             ) : null}
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isWorking || !selectedGeneratedIdea || !hasConnectedTikTokAccount}>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isBusy || !selectedGeneratedIdea || !hasConnectedTikTokAccount}>
               Valider
             </button>
           </div>
@@ -1330,10 +990,10 @@ export default function TikTokJourneyPage() {
       return {
         actions: (
           <div className="tiktok-step-actions">
-            <button type="button" className="video-action-btn" onClick={() => void handleRegenerateScript()} disabled={isWorking}>
+            <button type="button" className="video-action-btn" onClick={() => void handleRegenerateScript()} disabled={isBusy}>
               Regenerer script
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateScript()} disabled={isWorking || !scriptedIdea}>
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateScript()} disabled={isBusy || !scriptedIdea}>
               Valider
             </button>
           </div>
@@ -1379,10 +1039,10 @@ export default function TikTokJourneyPage() {
       return {
         actions: (
           <div className="tiktok-step-actions">
-            <button type="button" className="video-action-btn" onClick={() => void handleRetryInitPublish()} disabled={isWorking}>
+            <button type="button" className="video-action-btn" onClick={() => void handleRetryInitPublish()} disabled={isBusy}>
               Relancer la generation video
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={handleValidateInitPublish} disabled={isWorking || !previewUrl}>
+            <button type="button" className="video-action-btn ghost" onClick={handleValidateInitPublish} disabled={isBusy || !previewUrl}>
               Valider
             </button>
           </div>
@@ -1427,7 +1087,7 @@ export default function TikTokJourneyPage() {
               <div className="video-preview-block">
                 <span>Compte connecte</span>
                 <p>{connectedTikTokAccount?.nickname || '-'}</p>
-                <p>Open ID: {formatShortOpenId(connectedTikTokAccount?.openId)}</p>
+                <p>Open ID cible: {formatShortOpenId(activeIdea?.tiktokAccountOpenId || connectedTikTokAccount?.openId)}</p>
                 <p>Scope: {connectedTikTokAccount?.scope || '-'}</p>
                 <p>Status: {connectedTikTokAccount?.status || '-'}</p>
               </div>
@@ -1441,13 +1101,13 @@ export default function TikTokJourneyPage() {
                 {isConnectingTikTok ? 'Connexion...' : 'Connecter TikTok'}
               </button>
             )}
-            <button type="button" className="video-action-btn" onClick={() => void handlePrepareUpload()} disabled={isWorking || Boolean(manualAction?.uploadUrl)}>
-              Preparer upload
+            <button type="button" className="video-action-btn" onClick={() => void handlePrepareUpload()} disabled={isBusy || Boolean(manualAction?.uploadUrl)}>
+              {isPreparingUpload ? 'Preparation...' : 'Preparer upload'}
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={() => void handleUploadVideo()} disabled={isWorking || !manualAction?.uploadUrl || !hasConnectedTikTokAccount}>
-              Uploader
+            <button type="button" className="video-action-btn ghost" onClick={() => void handleUploadVideo()} disabled={isBusy || !manualAction?.uploadUrl || !hasConnectedTikTokAccount}>
+              {isUploadingVideo ? 'Upload...' : 'Uploader'}
             </button>
-            <button type="button" className="video-action-btn ghost" onClick={handleValidateUpload} disabled={isWorking || !uploadResult}>
+            <button type="button" className="video-action-btn ghost" onClick={handleValidateUpload} disabled={isBusy || !uploadResult}>
               Valider
             </button>
           </div>
@@ -1472,10 +1132,10 @@ export default function TikTokJourneyPage() {
     return {
       actions: (
         <div className="tiktok-step-actions">
-          <button type="button" className="video-action-btn" onClick={() => void handlePublishVideo()} disabled={isWorking}>
-            Publier
+          <button type="button" className="video-action-btn" onClick={() => void handlePublishVideo()} disabled={isBusy}>
+            {isPublishingVideo ? 'Publication...' : 'Publier'}
           </button>
-          <button type="button" className="video-action-btn ghost" onClick={closeAddFlow} disabled={isWorking}>
+          <button type="button" className="video-action-btn ghost" onClick={closeAddFlow} disabled={isBusy}>
             Terminer
           </button>
         </div>
@@ -1512,8 +1172,10 @@ export default function TikTokJourneyPage() {
           {!isFlowRoute ? renderListView() : (
             <section className="tiktok-flow">
               <div className="tiktok-page-toolbar tiktok-flow-topbar">
-                <StepProgress currentStepIndex={currentStepIndex} onBack={goBackInFlow} isWorking={isWorking} />
+                <StepProgress currentStepIndex={currentStepIndex} onBack={goBackInFlow} isWorking={isBusy} />
               </div>
+
+              <WorkflowStatusPanel status={workflowMonitor.workflowStatus} />
 
               <div className="tiktok-step-screen">
                 <section className="tiktok-step-pane is-left">

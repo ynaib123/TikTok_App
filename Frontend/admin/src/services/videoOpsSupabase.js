@@ -4,6 +4,14 @@ export async function fetchContentIdeas() {
   return apiGet('/video-ops/content-ideas')
 }
 
+export async function fetchContentIdeaStatus(contentIdeaId) {
+  if (!contentIdeaId) {
+    throw new Error('Le contentIdeaId est obligatoire.')
+  }
+
+  return apiGet(`/video-ops/content-ideas/${contentIdeaId}/status`)
+}
+
 export async function fetchTikTokAccounts() {
   return apiGet('/video-ops/tiktok-accounts')
 }

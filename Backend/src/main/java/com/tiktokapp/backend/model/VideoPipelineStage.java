@@ -3,8 +3,12 @@ package com.tiktokapp.backend.model;
 public enum VideoPipelineStage {
     UNKNOWN,
     CREATION_REQUESTED,
+    IDEA_CREATED,
+    SCRIPT_REQUESTED,
+    SCRIPT_READY,
     RENDERING_REQUESTED,
     RENDER_READY,
+    UPLOAD_PREPARING,
     PUBLISH_INITIALIZED,
     UPLOAD_COMPLETED,
     PUBLISHED,

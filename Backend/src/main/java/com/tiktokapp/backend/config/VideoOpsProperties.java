@@ -15,6 +15,10 @@ public class VideoOpsProperties {
     private String n8nRenderTemplateWebhook = "";
     private String n8nPublishTikTokWebhook = "";
     private String workflowCallbackSecret = "";
+    private String workflowCallbackHmacSecret = "";
+    private long workflowCallbackMaxSkewSeconds = 300;
+    private boolean allowLegacyWorkflowCallbackSecret = true;
+    private String tokenEncryptionKey = "";
     private String tiktokClientKey = "";
     private String tiktokClientSecret = "";
     private String tiktokRedirectUri = "";
@@ -88,6 +92,38 @@ public class VideoOpsProperties {
 
     public void setWorkflowCallbackSecret(String workflowCallbackSecret) {
         this.workflowCallbackSecret = workflowCallbackSecret;
+    }
+
+    public String getWorkflowCallbackHmacSecret() {
+        return workflowCallbackHmacSecret;
+    }
+
+    public void setWorkflowCallbackHmacSecret(String workflowCallbackHmacSecret) {
+        this.workflowCallbackHmacSecret = workflowCallbackHmacSecret;
+    }
+
+    public long getWorkflowCallbackMaxSkewSeconds() {
+        return workflowCallbackMaxSkewSeconds;
+    }
+
+    public void setWorkflowCallbackMaxSkewSeconds(long workflowCallbackMaxSkewSeconds) {
+        this.workflowCallbackMaxSkewSeconds = workflowCallbackMaxSkewSeconds;
+    }
+
+    public boolean isAllowLegacyWorkflowCallbackSecret() {
+        return allowLegacyWorkflowCallbackSecret;
+    }
+
+    public void setAllowLegacyWorkflowCallbackSecret(boolean allowLegacyWorkflowCallbackSecret) {
+        this.allowLegacyWorkflowCallbackSecret = allowLegacyWorkflowCallbackSecret;
+    }
+
+    public String getTokenEncryptionKey() {
+        return tokenEncryptionKey;
+    }
+
+    public void setTokenEncryptionKey(String tokenEncryptionKey) {
+        this.tokenEncryptionKey = tokenEncryptionKey;
     }
 
     public void setTiktokClientKey(String tiktokClientKey) {
