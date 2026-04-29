@@ -36,6 +36,8 @@ Ces fichiers sont des bases propres a importer dans n8n pour remplacer les workf
 
 - Les callbacks backend utilisent:
   - `POST /api/video-ops/workflow-runs/{workflowRunId}/complete`
-  - header `X-Video-Ops-Callback-Secret`
+  - mode legacy: `X-Video-Ops-Callback-Secret`
+  - mode recommande: `X-Video-Ops-Callback-Timestamp` + `X-Video-Ops-Callback-Signature`
 - Les workflows webhook repondent toujours au backend, puis notent la completion via callback.
 - Les secrets TikTok ne sont plus hardcodes dans les nodes.
+- Migration HMAC detaillee: [docs/n8n-hmac-callback-setup.md](../n8n-hmac-callback-setup.md)
