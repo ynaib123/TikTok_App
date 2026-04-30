@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-30T01:59:51.000Z",
+  "createdAt": "2026-04-30T01:59:00.947Z",
+  "id": "25c5bac1-7098-43c5-a7dd-c6c8851c6ac8",
   "name": "script-generation-single-llm",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -235,17 +241,6 @@
         ]
       ]
     },
-    "Supabase Update": {
-      "main": [
-        [
-          {
-            "node": "Callback Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Callback Success": {
       "main": []
     },
@@ -272,8 +267,38 @@
       ]
     }
   },
-  "pinData": {},
+  "settings": {},
+  "staticData": null,
   "meta": {
     "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "47d2f545-9070-44ed-8ea3-b3f46e5efe0f",
+  "activeVersionId": "47d2f545-9070-44ed-8ea3-b3f46e5efe0f",
+  "versionCounter": 7,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-04-30T01:59:00.950Z",
+      "createdAt": "2026-04-30T01:59:00.950Z",
+      "role": "workflow:owner",
+      "workflowId": "25c5bac1-7098-43c5-a7dd-c6c8851c6ac8",
+      "projectId": "FguAIXCXAEmDp8ri",
+      "project": {
+        "updatedAt": "2026-04-30T01:59:12.417Z",
+        "createdAt": "2026-04-30T01:11:03.676Z",
+        "id": "FguAIXCXAEmDp8ri",
+        "name": "naib youssef <youssefnaib47@icloud.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "decd1a7a-b0c1-416f-86c4-a90b89c828b7"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
   }
 }

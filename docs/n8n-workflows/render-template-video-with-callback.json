@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [-980, 100]
+      "position": [
+        -980,
+        100
+      ]
     },
     {
       "parameters": {
@@ -56,7 +59,10 @@
       "name": "Set Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-740, 100]
+      "position": [
+        -740,
+        100
+      ]
     },
     {
       "parameters": {
@@ -84,11 +90,14 @@
       "name": "HTTP Request Image Prompt",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [-500, 100]
+      "position": [
+        -500,
+        100
+      ]
     },
     {
       "parameters": {
-        "url": "={{ 'https://api.pexels.com/videos/search?query=' + encodeURIComponent($('Set Input').item.json.keyword || $('Set Input').item.json.topic) + '&per_page=5&orientation=portrait' }}",
+        "url": "={{ (() => { const raw = String($('Set Input').item.json.keyword || $('Set Input').item.json.topic || 'business'); const normalized = raw.replace(/[\"'&]/g, ' ').replace(/[^\\w\\s-]/g, ' ').replace(/\\s+/g, ' ').trim(); const query = (normalized || 'business').split(' ').slice(0, 4).join(' ') || 'business'; return 'https://api.pexels.com/videos/search?query=' + encodeURIComponent(query) + '&per_page=5&orientation=portrait'; })() }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -104,73 +113,89 @@
       "name": "HTTP Request Pexels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [-260, 100]
+      "position": [
+        -260,
+        100
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const videos = $json.videos || [];\nif (!videos.length) {\n  throw new Error('Aucune video Pexels retournee');\n}\nconst portrait = videos\n  .map(video => ({\n    link: (video.video_files || []).sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.link || '',\n    width: video.width || 0,\n    height: video.height || 0\n  }))\n  .find(video => video.height >= video.width && video.link);\nif (!portrait) {\n  throw new Error('Aucune video portrait exploitable retournee par Pexels');\n}\nreturn [{ json: {\n  id: $('Set Input').item.json.contentIdeaId,\n  workflowRunId: $('Set Input').item.json.workflowRunId,\n  topic: $('Set Input').item.json.topic,\n  scripts: $('Set Input').item.json.script,\n  caption: $('Set Input').item.json.caption,\n  image_prompt: String($('HTTP Request Image Prompt').item.json.choices?.[0]?.message?.content || '').trim(),\n  background_video_url: portrait.link\n}}];"
+        "jsCode": "const videos = $json.videos || [];\nif (!videos.length) {\n  throw new Error('Aucune video Pexels retournee');\n}\nconst preferred = [];\nconst fallback = [];\nfor (const video of videos) {\n  for (const file of video.video_files || []) {\n    if (!file?.link || file.file_type !== 'video/mp4') continue;\n    const width = Number(file.width || video.width || 0);\n    const height = Number(file.height || video.height || 0);\n    if (!width || !height || height <= width) continue;\n    const item = { link: file.link, width, height };\n    if ((width === 1080 && height === 1920) || (width === 720 && height === 1280) || (width === 540 && height === 960)) {\n      preferred.push(item);\n    } else {\n      fallback.push(item);\n    }\n  }\n}\nconst pick = (preferred[0] || fallback.sort((a, b) => (b.height * b.width) - (a.height * a.width))[0]);\nif (!pick) {\n  throw new Error('Aucune video portrait exploitable retournee par Pexels');\n}\nreturn [{ json: {\n  id: $('Set Input').item.json.contentIdeaId,\n  workflowRunId: $('Set Input').item.json.workflowRunId,\n  topic: $('Set Input').item.json.topic,\n  scripts: $('Set Input').item.json.script,\n  caption: $('Set Input').item.json.caption,\n  image_prompt: String($('HTTP Request Image Prompt').item.json.choices?.[0]?.message?.content || '').trim(),\n  background_video_url: pick.link\n}}];"
       },
       "id": "select-media",
       "name": "Select Portrait Media",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-20, 100]
+      "position": [
+        -20,
+        100
+      ]
     },
     {
       "parameters": {
-        "operation": "update",
-        "tableId": "content_ideas",
-        "matchType": "allFilters",
-        "filters": {
-          "conditions": [
+        "method": "PATCH",
+        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '') + '/rest/v1/content_ideas?id=eq.' + $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "keyName": "id",
-              "condition": "eq",
-              "keyValue": "={{ $json.id }}"
+              "name": "apikey",
+              "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
             }
           ]
         },
-        "fieldsUi": {
-          "fieldValues": [
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
             {
-              "fieldId": "shotstack_status",
-              "fieldValue": "preparing"
+              "name": "shotstack_status",
+              "value": "preparing"
             },
             {
-              "fieldId": "final_video_status",
-              "fieldValue": "processing"
+              "name": "final_video_status",
+              "value": "processing"
             },
             {
-              "fieldId": "render_payload",
-              "fieldValue": "={{ JSON.stringify($json) }}"
+              "name": "render_payload",
+              "value": "={{ JSON.stringify($json) }}"
             },
             {
-              "fieldId": "render_status",
-              "fieldValue": "prepared"
+              "name": "render_status",
+              "value": "prepared"
             },
             {
-              "fieldId": "pipeline_status",
-              "fieldValue": "rendering_requested"
+              "name": "pipeline_status",
+              "value": "rendering_requested"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "update-preparing",
-      "name": "Supabase Update Preparing",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [220, 100],
-      "credentials": {
-        "supabaseApi": {
-          "id": "replace-me",
-          "name": "Supabase account"
-        }
-      }
+      "name": "HTTP Request Update Preparing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        220,
+        100
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.shotstack.io/edit/v1/render",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/shotstack/render' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -179,96 +204,94 @@
               "value": "application/json"
             },
             {
-              "name": "x-api-key",
-              "value": "={{ $env.SHOTSTACK_API_KEY }}"
+              "name": "X-Video-Ops-Internal-Secret",
+              "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ timeline: { background: '#0f0f0f', tracks: [ { clips: [ { asset: { type: 'video', src: $json.background_video_url }, start: 0, length: 15, fit: 'cover' } ] }, { clips: [ { asset: { type: 'title', text: String($json.scripts || '').split('\\n').filter(line => line.trim())[0] || '' }, start: 0, length: 3, position: 'center' }, { asset: { type: 'title', text: String($json.scripts || '').split('\\n').filter(line => line.trim())[1] || '' }, start: 3, length: 3, position: 'center' }, { asset: { type: 'title', text: String($json.scripts || '').split('\\n').filter(line => line.trim())[2] || '' }, start: 6, length: 3, position: 'center' } ] } ] }, output: { format: 'mp4', aspectRatio: '9:16', resolution: 'hd' } }) }}",
+        "jsonBody": "={{ JSON.stringify((() => { const cleanText = (value) => String(value || '').normalize('NFKD').replace(/[^\\x20-\\x7E]/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 120); const lines = String($json.scripts || '').split('\\n').map((line) => cleanText(line)).filter(Boolean); const fallbackTopic = cleanText($('Set Input').item.json.topic || 'Video business'); const textLines = (lines.length ? lines : [fallbackTopic]).slice(0, 3); const titleClips = textLines.filter(Boolean).map((line, index) => ({ asset: { type: 'title', text: line, style: 'minimal', color: '#ffffff', background: 'rgba(15,15,15,0.55)' }, start: index * 3, length: 3, position: 'center' })); return { timeline: { background: '#0f0f0f', tracks: [ { clips: [ { asset: { type: 'video', src: $json.background_video_url }, start: 0, length: 15, fit: 'cover' } ] }, ...(titleClips.length ? [{ clips: titleClips }] : []) ] }, output: { format: 'mp4', aspectRatio: '9:16', resolution: 'hd' } }; })()) }}",
         "options": {}
       },
       "id": "shotstack-render",
       "name": "HTTP Request Shotstack Render",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [460, 100]
+      "position": [
+        460,
+        100
+      ]
     },
     {
       "parameters": {
-        "operation": "update",
-        "tableId": "content_ideas",
-        "matchType": "allFilters",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "id",
-              "condition": "eq",
-              "keyValue": "={{ $('Select Portrait Media').item.json.id }}"
-            }
-          ]
-        },
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "shotstack_render_id",
-              "fieldValue": "={{ $json.response?.id || $json.id }}"
-            },
-            {
-              "fieldId": "shotstack_status",
-              "fieldValue": "queued"
-            },
-            {
-              "fieldId": "final_video_status",
-              "fieldValue": "processing"
-            },
-            {
-              "fieldId": "pipeline_status",
-              "fieldValue": "rendering_requested"
-            }
-          ]
-        }
-      },
-      "id": "update-render-id",
-      "name": "Supabase Update Render Id",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [700, 100],
-      "credentials": {
-        "supabaseApi": {
-          "id": "replace-me",
-          "name": "Supabase account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/workflow-runs/' + $('Set Input').item.json.workflowRunId + '/complete' }}",
+        "method": "PATCH",
+        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '') + '/rest/v1/content_ideas?id=eq.' + $('Select Portrait Media').item.json.id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
             {
               "name": "Content-Type",
               "value": "application/json"
             },
             {
-              "name": "X-Video-Ops-Callback-Secret",
-              "value": "={{ $env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET }}"
+              "name": "Prefer",
+              "value": "return=representation"
             }
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { status: 'SUCCEEDED', message: 'Render Shotstack demande.', responsePayload: JSON.stringify({ contentIdeaId: $('Set Input').item.json.contentIdeaId, shotstackRenderId: $('HTTP Request Shotstack Render').item.json.response?.id || $('HTTP Request Shotstack Render').item.json.id }) } }}",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "shotstack_render_id",
+              "value": "={{ $json.response?.id || $json.id }}"
+            },
+            {
+              "name": "shotstack_status",
+              "value": "queued"
+            },
+            {
+              "name": "final_video_status",
+              "value": "processing"
+            },
+            {
+              "name": "pipeline_status",
+              "value": "rendering_requested"
+            }
+          ]
+        },
         "options": {}
+      },
+      "id": "update-render-id",
+      "name": "HTTP Request Update Render Id",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        700,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Set Input').item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL manquante');\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: \"Render Shotstack demande.\",\n  responsePayload: JSON.stringify({ contentIdeaId: Number($('Set Input').item.json.contentIdeaId || 0), shotstackRenderId: $('HTTP Request Shotstack Render').item.json.response?.id || $('HTTP Request Shotstack Render').item.json.id || '' }),\n});\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const req = client.request({\n        protocol: url.protocol,\n        hostname: url.hostname,\n        port: url.port || (url.protocol === 'https:' ? 443 : 80),\n        path: url.pathname + url.search,\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'Content-Length': Buffer.byteLength(body),\n          'X-Video-Ops-Callback-Secret': callbackSecret,\n        },\n      }, (res) => {\n        let data = '';\n        res.on('data', (chunk) => { data += chunk; });\n        res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n      });\n      req.on('error', reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) {\n      break;\n    }\n    lastError = 'Callback backend refuse: ' + response.statusCode + ' ' + response.body;\n    if (response.statusCode !== 404 || attempt === 6) {\n      throw new Error(lastError);\n    }\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) {\n      throw error;\n    }\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error(lastError || 'Callback backend refuse.');\n}\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
       },
       "id": "callback",
       "name": "Callback Success",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [940, 100]
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        100
+      ]
     },
     {
       "parameters": {
@@ -282,36 +305,136 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [1180, 100]
+      "position": [
+        1180,
+        100
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Set Input", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Input": {
-      "main": [[{ "node": "HTTP Request Image Prompt", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP Request Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "HTTP Request Image Prompt": {
-      "main": [[{ "node": "HTTP Request Pexels", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP Request Pexels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "HTTP Request Pexels": {
-      "main": [[{ "node": "Select Portrait Media", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Select Portrait Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Select Portrait Media": {
-      "main": [[{ "node": "Supabase Update Preparing", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP Request Update Preparing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Supabase Update Preparing": {
-      "main": [[{ "node": "HTTP Request Shotstack Render", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP Request Shotstack Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "HTTP Request Shotstack Render": {
-      "main": [[{ "node": "Supabase Update Render Id", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP Request Update Render Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Supabase Update Render Id": {
-      "main": [[{ "node": "Callback Success", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Callback Success": {
-      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+      "main": []
+    },
+    "HTTP Request Update Render Id": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Update Preparing": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Shotstack Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},

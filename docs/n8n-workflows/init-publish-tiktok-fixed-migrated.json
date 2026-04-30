@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [-1180, 120]
+      "position": [
+        -1180,
+        120
+      ]
     },
     {
       "parameters": {
@@ -36,7 +39,10 @@
       "name": "Set Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-940, 120]
+      "position": [
+        -940,
+        120
+      ]
     },
     {
       "parameters": {
@@ -61,7 +67,10 @@
       "name": "Supabase Get Content Idea",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [-700, 120]
+      "position": [
+        -700,
+        120
+      ]
     },
     {
       "parameters": {
@@ -85,7 +94,7 @@
           "parameters": [
             {
               "name": "tiktokAccountOpenId",
-              "value": "={{ $('Supabase Get Content Idea').item.json.tiktok_account_open_id }}"
+              "value": "={{ $('Supabase Get Content Idea').item.json[0].tiktok_account_open_id }}"
             },
             {
               "name": "includeCreatorInfo",
@@ -99,7 +108,10 @@
       "name": "HTTP Request Account Context",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [-460, 120]
+      "position": [
+        -460,
+        120
+      ]
     },
     {
       "parameters": {
@@ -124,7 +136,10 @@
       "name": "HTTP Request Creator Info",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [-220, 120]
+      "position": [
+        -220,
+        120
+      ]
     },
     {
       "parameters": {
@@ -142,7 +157,10 @@
       "name": "HTTP Request Video Head",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [20, 120]
+      "position": [
+        20,
+        120
+      ]
     },
     {
       "parameters": {
@@ -166,7 +184,7 @@
           "parameters": [
             {
               "name": "contentIdeaId",
-              "value": "={{ $json.contentIdeaId }}"
+              "value": "={{ $('Set Input').item.json.contentIdeaId }}"
             },
             {
               "name": "tiktokAccountOpenId",
@@ -196,7 +214,10 @@
       "name": "HTTP Request Init Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [260, 120]
+      "position": [
+        260,
+        120
+      ]
     },
     {
       "parameters": {
@@ -227,6 +248,14 @@
         "bodyParameters": {
           "parameters": [
             {
+              "name": "tiktok_publish_id",
+              "value": "={{ $('HTTP Request Init Publish').item.json.data?.publish_id || '' }}"
+            },
+            {
+              "name": "tiktok_upload_url",
+              "value": "={{ $('HTTP Request Init Publish').item.json.data?.upload_url || '' }}"
+            },
+            {
               "name": "tiktok_upload_status",
               "value": "init_done"
             },
@@ -242,35 +271,23 @@
       "name": "Supabase Update Content Idea",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [500, 120]
+      "position": [
+        500,
+        120
+      ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/workflow-runs/' + $json.workflowRunId + '/complete' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "X-Video-Ops-Callback-Secret",
-              "value": "={{ $env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { status: 'SUCCEEDED', message: 'Init publish TikTok termine.', responsePayload: JSON.stringify({ contentIdeaId: $('Supabase Get Content Idea').item.json[0].id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url }) } }}",
-        "options": {}
+        "jsCode": "const http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Set Input').item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL manquante');\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: \"Init publish TikTok termine.\",\n  responsePayload: JSON.stringify({ contentIdeaId: $('Supabase Get Content Idea').item.json[0].id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url || '' }),\n});\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const req = client.request({\n        protocol: url.protocol,\n        hostname: url.hostname,\n        port: url.port || (url.protocol === 'https:' ? 443 : 80),\n        path: url.pathname + url.search,\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'Content-Length': Buffer.byteLength(body),\n          'X-Video-Ops-Callback-Secret': callbackSecret,\n        },\n      }, (res) => {\n        let data = '';\n        res.on('data', (chunk) => { data += chunk; });\n        res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n      });\n      req.on('error', reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) {\n      break;\n    }\n    lastError = 'Callback backend refuse: ' + response.statusCode + ' ' + response.body;\n    if (response.statusCode !== 404 || attempt === 6) {\n      throw new Error(lastError);\n    }\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) {\n      throw error;\n    }\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error(lastError || 'Callback backend refuse.');\n}\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
       },
       "id": "callback",
       "name": "Callback Success",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [740, 120]
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        120
+      ]
     },
     {
       "parameters": {
@@ -284,7 +301,10 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [980, 120]
+      "position": [
+        980,
+        120
+      ]
     }
   ],
   "connections": {
@@ -369,7 +389,7 @@
       "main": [
         [
           {
-            "node": "Callback Success",
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
@@ -377,10 +397,13 @@
       ]
     },
     "Callback Success": {
+      "main": []
+    },
+    "Respond to Webhook": {
       "main": [
         [
           {
-            "node": "Respond to Webhook",
+            "node": "Callback Success",
             "type": "main",
             "index": 0
           }

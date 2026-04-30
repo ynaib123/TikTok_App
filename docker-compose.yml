@@ -66,6 +66,8 @@ services:
       - "5678:5678"
     environment:
       N8N_BASIC_AUTH_ACTIVE: false
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto,http,https,url
       N8N_HOST: 0.0.0.0
       N8N_PORT: 5678
       N8N_PROTOCOL: http

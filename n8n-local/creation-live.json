@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-04-30T01:59:33.000Z",
+  "createdAt": "2026-04-30T01:59:00.930Z",
+  "id": "7d540770-0aa9-419f-a5ed-618d6bccb605",
   "name": "creation-ideas",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -253,18 +259,7 @@
       "main": [
         [
           {
-            "node": "Supabase Create Row",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Supabase Create Row": {
-      "main": [
-        [
-          {
-            "node": "Summarize",
+            "node": "HTTP Request Create Row",
             "type": "main",
             "index": 0
           }
@@ -285,6 +280,17 @@
     "Callback Success": {
       "main": []
     },
+    "HTTP Request Create Row": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Respond to Webhook": {
       "main": [
         [
@@ -297,8 +303,38 @@
       ]
     }
   },
-  "pinData": {},
+  "settings": {},
+  "staticData": null,
   "meta": {
     "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "3d0f9d66-a6ed-4889-86dd-b08664496a92",
+  "activeVersionId": "3d0f9d66-a6ed-4889-86dd-b08664496a92",
+  "versionCounter": 7,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-04-30T01:59:00.933Z",
+      "createdAt": "2026-04-30T01:59:00.933Z",
+      "role": "workflow:owner",
+      "workflowId": "7d540770-0aa9-419f-a5ed-618d6bccb605",
+      "projectId": "FguAIXCXAEmDp8ri",
+      "project": {
+        "updatedAt": "2026-04-30T01:59:12.417Z",
+        "createdAt": "2026-04-30T01:11:03.676Z",
+        "id": "FguAIXCXAEmDp8ri",
+        "name": "naib youssef <youssefnaib47@icloud.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "decd1a7a-b0c1-416f-86c4-a90b89c828b7"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
   }
 }
