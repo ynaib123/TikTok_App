@@ -9,7 +9,9 @@ import java.util.Optional;
 
 public interface ServiceConnectionRepository extends JpaRepository<ServiceConnection, Long> {
 
-    Optional<ServiceConnection> findByProviderKey(ServiceConnectionProvider providerKey);
+    Optional<ServiceConnection> findFirstByProviderKeyAndActiveTrue(ServiceConnectionProvider providerKey);
 
-    List<ServiceConnection> findAllByOrderByProviderKeyAsc();
+    List<ServiceConnection> findAllByProviderKeyOrderByActiveDescIdDesc(ServiceConnectionProvider providerKey);
+
+    List<ServiceConnection> findAllByOrderByProviderKeyAscActiveDescIdDesc();
 }

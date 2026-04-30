@@ -15,6 +15,13 @@ Frontend/admin/dist-ssr
 *.local
 .env
 .env.*
+n8n-local/database.sqlite
+n8n-local/database.sqlite-shm
+n8n-local/database.sqlite-wal
+n8n-local/crash.journal
+n8n-local/n8nEventLog*.log
+Backend/target/
+Backend/*.log
 playwright-report
 test-results
 

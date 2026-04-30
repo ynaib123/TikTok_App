@@ -106,6 +106,246 @@
   color: rgba(217, 223, 230, 0.62);
 }
 
+.accounts-service-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+.accounts-summary-card {
+  padding-top: 4px;
+}
+
+.accounts-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.accounts-summary-item,
+.accounts-mini-card,
+.accounts-service-saved-item {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.accounts-summary-item {
+  display: grid;
+  gap: 8px;
+  min-height: 108px;
+  padding: 18px;
+}
+
+.accounts-summary-item-wide,
+.accounts-mini-card-wide {
+  grid-column: 1 / -1;
+}
+
+.accounts-summary-item span,
+.accounts-mini-card span,
+.accounts-service-counter {
+  color: rgba(204, 213, 222, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.accounts-summary-item strong,
+.accounts-mini-card strong {
+  color: #f4f7fb;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.accounts-service-card {
+  display: grid;
+  gap: 22px;
+  width: 100%;
+  padding: 22px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.accounts-service-card:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.accounts-service-head {
+  margin-bottom: 0;
+}
+
+.accounts-service-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.accounts-service-main,
+.accounts-service-aside {
+  min-width: 0;
+}
+
+.accounts-service-main {
+  display: grid;
+  gap: 18px;
+}
+
+.accounts-service-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.accounts-service-statusline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.accounts-validation-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(237, 242, 248, 0.84);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.accounts-validation-pill.is-valid {
+  border-color: rgba(107, 228, 173, 0.35);
+  color: #84edbf;
+}
+
+.accounts-validation-pill.is-invalid {
+  border-color: rgba(255, 120, 120, 0.35);
+  color: #ff9d9d;
+}
+
+.accounts-service-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+}
+
+.accounts-service-editor {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.accounts-service-form-wide {
+  grid-column: 1 / -1;
+}
+
+.accounts-service-form-grid .tiktok-step-field textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--admin-catalog-control-radius);
+  background: var(--admin-panel-surface-2);
+  color: var(--admin-panel-text);
+  resize: vertical;
+  box-shadow: none;
+}
+
+.accounts-service-form-grid .tiktok-step-field textarea:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.accounts-service-meta {
+  gap: 14px;
+}
+
+.accounts-mini-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.accounts-mini-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.accounts-service-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.accounts-service-actions.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.accounts-service-saved-list {
+  display: grid;
+  gap: 12px;
+}
+
+.accounts-service-saved-item {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.accounts-service-saved-item.is-active {
+  border-color: rgba(123, 255, 187, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(123, 255, 187, 0.08);
+}
+
+.accounts-service-saved-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.accounts-service-saved-item span {
+  color: #f4f7fb;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.accounts-service-saved-head em {
+  color: #84edbf;
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.accounts-service-saved-item p {
+  margin: 0;
+}
+
+.accounts-service-saved-item small {
+  color: rgba(217, 223, 230, 0.66);
+  font-size: 0.8rem;
+}
+
+.video-action-btn.danger {
+  color: #ffb2b2;
+  border-color: rgba(255, 132, 132, 0.3);
+}
+
 .video-stats-grid,
 .video-panel-grid,
 .video-console-grid {
@@ -1567,6 +1807,14 @@
   .tiktok-flow-progress-steps {
     grid-template-columns: 1fr;
   }
+
+  .accounts-service-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .accounts-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 820px) {
@@ -1588,6 +1836,21 @@
 
   .tiktok-ideas-list {
     grid-template-columns: 1fr;
+  }
+
+  .accounts-service-form-grid,
+  .accounts-service-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .accounts-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .accounts-service-toolbar,
+  .accounts-service-saved-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
 }

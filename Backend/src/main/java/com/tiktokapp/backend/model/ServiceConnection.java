@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -23,7 +22,7 @@ public class ServiceConnection {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "provider_key", nullable = false, unique = true, length = 40)
+    @Column(name = "provider_key", nullable = false, length = 40)
     private ServiceConnectionProvider providerKey;
 
     @Column(name = "display_name", length = 120)
@@ -35,17 +34,25 @@ public class ServiceConnection {
     @Column(name = "account_identifier", length = 255)
     private String accountIdentifier;
 
-    @Lob
-    @Column(name = "secret_value")
+    @Column(name = "secret_value", columnDefinition = "text")
     private String secretValue;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
     private ServiceConnectionStatus status = ServiceConnectionStatus.DISCONNECTED;
 
-    @Lob
-    @Column(name = "metadata_json")
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
+
+    @Column(name = "metadata_json", columnDefinition = "text")
     private String metadataJson;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_validation_status", length = 24)
+    private ServiceConnectionValidationStatus lastValidationStatus = ServiceConnectionValidationStatus.UNKNOWN;
+
+    @Column(name = "last_validation_message", length = 500)
+    private String lastValidationMessage;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -123,6 +130,14 @@ public class ServiceConnection {
         this.status = status;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
     public String getMetadataJson() {
         return metadataJson;
     }
@@ -145,5 +160,21 @@ public class ServiceConnection {
 
     public void setLastValidatedAt(Instant lastValidatedAt) {
         this.lastValidatedAt = lastValidatedAt;
+    }
+
+    public ServiceConnectionValidationStatus getLastValidationStatus() {
+        return lastValidationStatus;
+    }
+
+    public void setLastValidationStatus(ServiceConnectionValidationStatus lastValidationStatus) {
+        this.lastValidationStatus = lastValidationStatus;
+    }
+
+    public String getLastValidationMessage() {
+        return lastValidationMessage;
+    }
+
+    public void setLastValidationMessage(String lastValidationMessage) {
+        this.lastValidationMessage = lastValidationMessage;
     }
 }

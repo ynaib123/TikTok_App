@@ -20,34 +20,28 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "tableId": "content_ideas",
-        "filters": {
-          "conditions": [
+        "method": "GET",
+        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '').replace(/\\/+$/, '') + '/rest/v1/content_ideas?shotstack_render_id=not.is.null&final_video_status=eq.processing' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "keyName": "shotstack_render_id",
-              "condition": "neq",
-              "keyValue": "null"
+              "name": "apikey",
+              "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
             },
             {
-              "keyName": "final_video_status",
-              "condition": "eq",
-              "keyValue": "processing"
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "get-renders",
-      "name": "Supabase Get Pending Renders",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [-600, 100],
-      "credentials": {
-        "supabaseApi": {
-          "id": "replace-me",
-          "name": "Supabase account"
-        }
-      }
+      "name": "HTTP Request Get Pending Renders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-600, 100]
     },
     {
       "parameters": {
@@ -103,45 +97,65 @@
             }
           ]
         },
-        "fieldsUi": {
-          "fieldValues": [
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '').replace(/\\/+$/, '') + '/rest/v1/content_ideas?id=eq.' + $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "shotstack_status",
-              "fieldValue": "={{ $json.shotstack_status }}"
+              "name": "apikey",
+              "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
             },
             {
-              "fieldId": "shotstack_url",
-              "fieldValue": "={{ $json.shotstack_url || '' }}"
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
             },
             {
-              "fieldId": "final_video_status",
-              "fieldValue": "={{ $json.final_video_status }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "pipeline_status",
-              "fieldValue": "={{ $json.pipeline_status }}"
+              "name": "Prefer",
+              "value": "return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "shotstack_status",
+              "value": "={{ $json.shotstack_status }}"
+            },
+            {
+              "name": "shotstack_url",
+              "value": "={{ $json.shotstack_url || '' }}"
+            },
+            {
+              "name": "final_video_status",
+              "value": "={{ $json.final_video_status }}"
+            },
+            {
+              "name": "pipeline_status",
+              "value": "={{ $json.pipeline_status }}"
+            }
+          ]
+        },
+        "options": {}
       },
       "id": "update-row",
-      "name": "Supabase Update Row",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [360, 100],
-      "credentials": {
-        "supabaseApi": {
-          "id": "replace-me",
-          "name": "Supabase account"
-        }
-      }
+      "name": "HTTP Request Update Row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [360, 100]
     }
   ],
   "connections": {
     "Schedule Trigger": {
-      "main": [[{ "node": "Supabase Get Pending Renders", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "HTTP Request Get Pending Renders", "type": "main", "index": 0 }]]
     },
-    "Supabase Get Pending Renders": {
+    "HTTP Request Get Pending Renders": {
       "main": [[{ "node": "Filter Valid Status", "type": "main", "index": 0 }]]
     },
     "Filter Valid Status": {
@@ -151,7 +165,7 @@
       "main": [[{ "node": "Build Update Payload", "type": "main", "index": 0 }]]
     },
     "Build Update Payload": {
-      "main": [[{ "node": "Supabase Update Row", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "HTTP Request Update Row", "type": "main", "index": 0 }]]
     }
   },
   "pinData": {},

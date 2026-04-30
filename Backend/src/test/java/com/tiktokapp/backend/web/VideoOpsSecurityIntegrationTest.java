@@ -3,6 +3,7 @@ package com.tiktokapp.backend.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
 import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
+import com.tiktokapp.backend.dto.videoops.PexelsVideoSearchRequest;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
@@ -15,6 +16,7 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
+import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,6 +77,9 @@ class VideoOpsSecurityIntegrationTest {
     @MockBean
     private TikTokInternalAccountContextService tikTokInternalAccountContextService;
 
+    @MockBean
+    private VideoOpsInternalProxyService videoOpsInternalProxyService;
+
     private String accessToken;
     private Cookie csrfCookie;
     private String csrfHeaderName;
@@ -127,7 +132,7 @@ class VideoOpsSecurityIntegrationTest {
         when(accountsService.fetchOverview()).thenReturn(
                 new AccountsOverviewResponse(
                         List.of(new com.tiktokapp.backend.dto.videoops.TikTokAccountResponse(1L, "Demo", "open-id-demo", "video.publish", "production", "connected")),
-                        List.of(new ServiceConnectionResponse(10L, "GROQ", "Groq Prod", "https://api.groq.com", "team@groq.local", true, "CONNECTED", "2026-04-29T00:00:00Z", "2026-04-29T00:01:00Z")),
+                        List.of(new ServiceConnectionResponse(10L, "GROQ", "Groq Prod", "https://api.groq.com", "team@groq.local", "{\"model\":\"llama\"}", true, "CONNECTED", true, "VALID", "Groq a repondu 200.", "2026-04-29T00:00:00Z", "2026-04-29T00:01:00Z")),
                         new AccountsReadinessResponse(true, 1, List.of())
                 )
         );
@@ -155,6 +160,26 @@ class VideoOpsSecurityIntegrationTest {
                         List.of("SELF_ONLY"),
                         "SELF_ONLY"
                 )
+        );
+        when(videoOpsInternalProxyService.proxyGroqChatCompletions(any())).thenReturn(
+                objectMapper.readTree("""
+                        {"choices":[{"message":{"content":"ok"}}]}
+                        """)
+        );
+        when(videoOpsInternalProxyService.proxyPexelsVideoSearch(anyString(), any(), anyString())).thenReturn(
+                objectMapper.readTree("""
+                        {"videos":[{"id":1}]}
+                        """)
+        );
+        when(videoOpsInternalProxyService.proxyShotstackRender(any())).thenReturn(
+                objectMapper.readTree("""
+                        {"response":{"id":"render-demo"}}
+                        """)
+        );
+        when(videoOpsInternalProxyService.proxyShotstackRenderStatus(eq("render-demo"))).thenReturn(
+                objectMapper.readTree("""
+                        {"response":{"status":"done"}}
+                        """)
         );
 
         MvcResult csrfResult = mockMvc.perform(get("/api/admins/csrf-token"))
@@ -294,5 +319,46 @@ class VideoOpsSecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tiktokAccountOpenId").value("open-id-demo"))
                 .andExpect(jsonPath("$.tokenType").value("Bearer"));
+    }
+
+    @Test
+    void acceptsInternalGroqProxyRequestWithInternalSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/groq/chat-completions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"model":"demo","messages":[{"role":"user","content":"hello"}]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.choices[0].message.content").value("ok"));
+    }
+
+    @Test
+    void acceptsInternalPexelsProxyRequestWithInternalSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/pexels/videos/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"query":"fitness","perPage":5,"orientation":"portrait"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.videos[0].id").value(1));
+    }
+
+    @Test
+    void acceptsInternalShotstackProxyRequestsWithInternalSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/shotstack/render")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"timeline":{},"output":{"format":"mp4"}}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.response.id").value("render-demo"));
+
+        mockMvc.perform(get("/api/video-ops/internal/shotstack/render/render-demo")
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.response.status").value("done"));
     }
 }

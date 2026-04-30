@@ -25,6 +25,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tiktok_app
@@ -37,10 +39,10 @@ services:
       APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.11.100:5174}
       APP_VIDEO_OPS_SUPABASE_URL: ${APP_VIDEO_OPS_SUPABASE_URL:-}
       APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY: ${APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY:-}
-      APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK:-}
-      APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK: ${APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK:-}
-      APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK: ${APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK:-}
-      APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK: ${APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK:-}
+      APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK: http://n8n:5678/webhook/creation-ideas
+      APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK: http://n8n:5678/webhook/script-generation
+      APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK: http://n8n:5678/webhook/render-template-video
+      APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK: http://n8n:5678/webhook/init-publish-tiktok
       APP_VIDEO_OPS_INTERNAL_API_SECRET: ${APP_VIDEO_OPS_INTERNAL_API_SECRET:-}
       APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET:-}
       APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET:-}
@@ -51,11 +53,57 @@ services:
       APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET: ${APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET:-}
       APP_VIDEO_OPS_TIKTOK_REDIRECT_URI: ${APP_VIDEO_OPS_TIKTOK_REDIRECT_URI:-}
       APP_VIDEO_OPS_TIKTOK_OAUTH_SCOPES: ${APP_VIDEO_OPS_TIKTOK_OAUTH_SCOPES:-user.info.basic,video.publish}
-      APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:-open-upload.tiktokapis.com,open-upload-sg.tiktokapis.com,open.tiktokapis.com,business-api.tiktok.com}
-
+      APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:-open-upload.tiktokapis.com,open-upload-sg.tiktokapis.com,open.tiktokapis.com,business-api.tiktokapis.com}
 
     ports:
       - "8080:8080"
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: tiktok-app-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: false
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      N8N_ENCRYPTION_KEY: video-ops-n8n-encryption-key-2026
+      N8N_EDITOR_BASE_URL: http://localhost:5678
+    volumes:
+      - ./n8n-local:/home/node/.n8n
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./Frontend/admin
+    container_name: tiktok-app-frontend
+    restart: unless-stopped
+    ports:
+      - "5174:5174"
+    environment:
+      VITE_API_BASE_URL: /api
+      VITE_BACKEND_PROXY_TARGET: http://backend:8080
+      VITE_USE_MOCK_ADMIN_AUTH: false
+      VITE_ALLOWED_HOSTS: localhost,127.0.0.1,192.168.11.100
+    depends_on:
+      - backend
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: tiktok-app-ngrok
+    restart: unless-stopped
+    ports:
+      - "4040:4040"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    command: http backend:8080 --log=stdout
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
+  n8n_data:

@@ -3,6 +3,7 @@ package com.tiktokapp.backend.service.videoops;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.config.VideoOpsProperties;
+import com.tiktokapp.backend.model.ServiceConnectionProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,11 +22,13 @@ import java.util.Map;
 public class SupabaseVideoOpsGateway {
 
     private final VideoOpsProperties properties;
+    private final ServiceConnectionResolver connectionResolver;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
-    public SupabaseVideoOpsGateway(VideoOpsProperties properties, ObjectMapper objectMapper) {
+    public SupabaseVideoOpsGateway(VideoOpsProperties properties, ServiceConnectionResolver connectionResolver, ObjectMapper objectMapper) {
         this.properties = properties;
+        this.connectionResolver = connectionResolver;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
@@ -177,7 +180,7 @@ public class SupabaseVideoOpsGateway {
     }
 
     private HttpRequest withSupabaseHeaders(HttpRequest request) {
-        String serviceRoleKey = properties.getSupabaseServiceRoleKey();
+        String serviceRoleKey = currentSupabaseServiceRoleKey();
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(request.uri())
                 .timeout(request.timeout().orElse(Duration.ofSeconds(30)))
@@ -192,8 +195,8 @@ public class SupabaseVideoOpsGateway {
     }
 
     private void ensureConfigured() {
-        if (properties.getSupabaseUrl() == null || properties.getSupabaseUrl().isBlank()
-                || properties.getSupabaseServiceRoleKey() == null || properties.getSupabaseServiceRoleKey().isBlank()) {
+        if (currentSupabaseUrl() == null || currentSupabaseUrl().isBlank()
+                || currentSupabaseServiceRoleKey() == null || currentSupabaseServiceRoleKey().isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "La configuration video ops backend vers Supabase est manquante."
@@ -202,7 +205,37 @@ public class SupabaseVideoOpsGateway {
     }
 
     private String restBaseUrl() {
-        return properties.getSupabaseUrl().replaceAll("/+$", "") + "/rest/v1";
+        return currentSupabaseUrl().replaceAll("/+$", "") + "/rest/v1";
+    }
+
+    private String currentSupabaseUrl() {
+        ResolvedServiceConnection connection = connectionResolver.findConnected(ServiceConnectionProvider.SUPABASE);
+        if (connection != null && isSupabaseProjectUrl(connection.baseUrl())) {
+            return connection.baseUrl();
+        }
+        return properties.getSupabaseUrl();
+    }
+
+    private String currentSupabaseServiceRoleKey() {
+        ResolvedServiceConnection connection = connectionResolver.findConnected(ServiceConnectionProvider.SUPABASE);
+        if (connection != null && isSupabaseProjectUrl(connection.baseUrl())
+                && connection.secretValue() != null && !connection.secretValue().isBlank()) {
+            return connection.secretValue();
+        }
+        return properties.getSupabaseServiceRoleKey();
+    }
+
+    private boolean isSupabaseProjectUrl(String rawUrl) {
+        try {
+            if (rawUrl == null || rawUrl.isBlank()) {
+                return false;
+            }
+            URI uri = URI.create(rawUrl);
+            String host = uri.getHost();
+            return host != null && host.toLowerCase().endsWith(".supabase.co");
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private String encode(String value) {

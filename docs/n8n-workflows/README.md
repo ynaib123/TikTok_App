@@ -9,10 +9,12 @@ Ces fichiers sont des bases propres a importer dans n8n pour remplacer les workf
 - `render-template-video-with-callback.json`
 - `init-publish-tiktok-fixed.json`
 - `check-shotstack-fixed.json`
+- `tiktok-account-context-example.json`
 
 ## Variables d'environnement attendues dans n8n
 
 - `APP_VIDEO_OPS_BACKEND_BASE_URL`
+- `APP_VIDEO_OPS_INTERNAL_API_SECRET`
 - `APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET`
 - `APP_VIDEO_OPS_TIKTOK_CLIENT_KEY`
 - `APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET`
@@ -40,4 +42,10 @@ Ces fichiers sont des bases propres a importer dans n8n pour remplacer les workf
   - mode recommande: `X-Video-Ops-Callback-Timestamp` + `X-Video-Ops-Callback-Signature`
 - Les workflows webhook repondent toujours au backend, puis notent la completion via callback.
 - Les secrets TikTok ne sont plus hardcodes dans les nodes.
+- Pour les prochains workflows TikTok sensibles, utilise `tiktok-account-context-example.json` comme base afin d appeler `POST /api/video-ops/internal/tiktok/account-context` au lieu de lire les tokens TikTok depuis Supabase.
 - Migration HMAC detaillee: [docs/n8n-hmac-callback-setup.md](../n8n-hmac-callback-setup.md)
+- Migration `account-context` detaillee: [docs/n8n-account-context-migration.md](../n8n-account-context-migration.md)
+- Migration vers backend proxy securise: [docs/n8n-secure-backend-proxy-migration.md](../n8n-secure-backend-proxy-migration.md)
+- Audit de l export reel des 5 workflows: [docs/n8n-workflows/templaten8n-audit.md](./templaten8n-audit.md)
+- Diff concret reel vs repo: [docs/n8n-workflows/templaten8n-diff.md](./templaten8n-diff.md)
+- Patch exact du workflow reel `init-publish-tiktok`: [docs/n8n-workflows/init-publish-tiktok-live-patch.md](./init-publish-tiktok-live-patch.md)

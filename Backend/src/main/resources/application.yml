@@ -14,7 +14,7 @@ spring:
         format_sql: false
 
 server:
-  port: ${PORT:8080}
+  port: ${PORT:${SERVER_PORT:8081}}
 
 app:
   security:

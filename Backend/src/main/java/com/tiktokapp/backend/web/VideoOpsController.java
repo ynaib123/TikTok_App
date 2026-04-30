@@ -1,8 +1,10 @@
 package com.tiktokapp.backend.web;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
 import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
 import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
+import com.tiktokapp.backend.dto.videoops.PexelsVideoSearchRequest;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionRequest;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
@@ -30,6 +32,7 @@ import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
+import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +61,7 @@ public class VideoOpsController {
     private final TikTokOAuthService tikTokOAuthService;
     private final TikTokInternalAccountContextService tikTokInternalAccountContextService;
     private final TikTokInitPublishContextService tikTokInitPublishContextService;
+    private final VideoOpsInternalProxyService videoOpsInternalProxyService;
     private final VideoOpsInternalAuthService internalAuthService;
     private final ObjectMapper objectMapper;
 
@@ -67,6 +71,7 @@ public class VideoOpsController {
             TikTokOAuthService tikTokOAuthService,
             TikTokInternalAccountContextService tikTokInternalAccountContextService,
             TikTokInitPublishContextService tikTokInitPublishContextService,
+            VideoOpsInternalProxyService videoOpsInternalProxyService,
             VideoOpsInternalAuthService internalAuthService,
             ObjectMapper objectMapper
     ) {
@@ -75,6 +80,7 @@ public class VideoOpsController {
         this.tikTokOAuthService = tikTokOAuthService;
         this.tikTokInternalAccountContextService = tikTokInternalAccountContextService;
         this.tikTokInitPublishContextService = tikTokInitPublishContextService;
+        this.videoOpsInternalProxyService = videoOpsInternalProxyService;
         this.internalAuthService = internalAuthService;
         this.objectMapper = objectMapper;
     }
@@ -129,9 +135,34 @@ public class VideoOpsController {
         return ResponseEntity.ok(accountsService.upsertServiceConnection(providerKey, request));
     }
 
+    @PostMapping("/accounts/services/{providerKey}/{connectionId}/activate")
+    public ResponseEntity<ServiceConnectionResponse> activateServiceConnection(
+            @PathVariable String providerKey,
+            @PathVariable long connectionId
+    ) {
+        return ResponseEntity.ok(accountsService.activateServiceConnection(providerKey, connectionId));
+    }
+
+    @PostMapping("/accounts/services/{providerKey}/{connectionId}/validate")
+    public ResponseEntity<ServiceConnectionResponse> validateServiceConnection(
+            @PathVariable String providerKey,
+            @PathVariable long connectionId
+    ) {
+        return ResponseEntity.ok(accountsService.validateServiceConnection(providerKey, connectionId));
+    }
+
     @DeleteMapping("/accounts/services/{providerKey}")
     public ResponseEntity<Void> disconnectServiceConnection(@PathVariable String providerKey) {
         accountsService.disconnectServiceConnection(providerKey);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/accounts/services/{providerKey}/{connectionId}")
+    public ResponseEntity<Void> deleteServiceConnection(
+            @PathVariable String providerKey,
+            @PathVariable long connectionId
+    ) {
+        accountsService.deleteServiceConnection(providerKey, connectionId);
         return ResponseEntity.noContent().build();
     }
 
@@ -185,6 +216,46 @@ public class VideoOpsController {
     ) {
         internalAuthService.validateSecret(internalSecret);
         return ResponseEntity.ok(tikTokInternalAccountContextService.buildContext(request));
+    }
+
+    @PostMapping("/internal/groq/chat-completions")
+    public ResponseEntity<JsonNode> proxyGroqChatCompletions(
+            @RequestBody(required = false) JsonNode request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyGroqChatCompletions(request));
+    }
+
+    @PostMapping("/internal/pexels/videos/search")
+    public ResponseEntity<JsonNode> proxyPexelsVideoSearch(
+            @Valid @RequestBody PexelsVideoSearchRequest request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyPexelsVideoSearch(
+                request.getQuery(),
+                request.getPerPage(),
+                request.getOrientation()
+        ));
+    }
+
+    @PostMapping("/internal/shotstack/render")
+    public ResponseEntity<JsonNode> proxyShotstackRender(
+            @RequestBody(required = false) JsonNode request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyShotstackRender(request));
+    }
+
+    @GetMapping("/internal/shotstack/render/{renderId}")
+    public ResponseEntity<JsonNode> proxyShotstackRenderStatus(
+            @PathVariable String renderId,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyShotstackRenderStatus(renderId));
     }
 
     @PostMapping("/workflows/main-pipeline")

@@ -3,64 +3,107 @@ import { useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminShell from '../components/AdminShell'
 import {
-  disconnectServiceConnection,
+  activateServiceConnection,
+  deleteServiceConnection,
   disconnectTikTokAccount,
   fetchAccountsOverview,
   saveServiceConnection,
+  validateServiceConnection,
 } from '../services/videoOpsSupabase'
 import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi'
+
+const EMPTY_LIST = []
+const DEFAULT_READINESS = { ready: false, missingItems: [] }
 
 const SERVICE_CONNECTION_FIELDS = {
   SUPABASE: {
     title: 'Supabase',
-    description: 'URL du projet et service role key utilises par le backend et les workflows.',
     baseUrlLabel: 'Project URL',
     identifierLabel: 'Project / workspace',
     secretLabel: 'Service role key',
+    defaultBaseUrl: 'https://<project>.supabase.co',
+    metadataPlaceholder: '{"schema":"public"}',
+    envVars: ['APP_VIDEO_OPS_SUPABASE_URL', 'APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY'],
   },
   N8N: {
     title: 'n8n',
-    description: 'URL de ton instance et secret interne pour les callbacks et endpoints backend.',
     baseUrlLabel: 'Instance URL',
     identifierLabel: 'Workspace / owner',
     secretLabel: 'Internal secret',
+    defaultBaseUrl: 'http://n8n:5678',
+    metadataPlaceholder: '{"callbacks":"hmac"}',
+    envVars: ['APP_VIDEO_OPS_INTERNAL_API_SECRET', 'APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET'],
   },
   GROQ: {
     title: 'Groq',
-    description: 'Cle API utilisee pour la generation de scripts et d idees.',
     baseUrlLabel: 'API base URL',
     identifierLabel: 'Workspace / email',
     secretLabel: 'API key',
+    defaultBaseUrl: 'https://api.groq.com',
+    metadataPlaceholder: '{"model":"llama-3.3-70b-versatile"}',
+    envVars: ['GROQ_API_KEY'],
   },
   SHOTSTACK: {
     title: 'Shotstack',
-    description: 'Cle API et endpoint utilises pour le rendu video.',
     baseUrlLabel: 'API base URL',
     identifierLabel: 'Environment / owner',
     secretLabel: 'API key',
+    defaultBaseUrl: 'https://api.shotstack.io/edit/v1',
+    metadataPlaceholder: '{"environment":"production"}',
+    envVars: ['SHOTSTACK_API_KEY'],
   },
   PEXELS: {
     title: 'Pexels',
-    description: 'Cle API et infos de recherche media de fond.',
     baseUrlLabel: 'API base URL',
     identifierLabel: 'Workspace / email',
     secretLabel: 'API key',
+    defaultBaseUrl: 'https://api.pexels.com',
+    metadataPlaceholder: '{"orientation":"portrait"}',
+    envVars: ['PEXELS_API_KEY'],
   },
 }
 
 function createEmptyServiceForm(connection) {
   return {
+    connectionId: connection?.id || null,
     displayName: connection?.displayName || '',
     baseUrl: connection?.baseUrl || '',
     accountIdentifier: connection?.accountIdentifier || '',
     secretValue: '',
-    metadataJson: '',
+    metadataJson: connection?.metadataJson || '',
   }
 }
 
-function formatProviderStatus(connection) {
-  if (!connection) return 'not_connected'
-  return String(connection.status || 'not_connected').toLowerCase()
+function formatValidationStatus(connection) {
+  if (!connection) return 'unknown'
+  return String(connection.validationStatus || 'unknown').toLowerCase()
+}
+
+function formatStatusLabel(value) {
+  return String(value || 'unknown').replaceAll('_', ' ').toLowerCase()
+}
+
+function validateServiceForm(providerKey, form, connection) {
+  const providerConfig = SERVICE_CONNECTION_FIELDS[providerKey]
+  const normalizedBaseUrl = String(form?.baseUrl || '').trim()
+  const normalizedMetadata = String(form?.metadataJson || '').trim()
+  const normalizedSecret = String(form?.secretValue || '').trim()
+
+  if (!normalizedBaseUrl) {
+    throw new Error(`Renseigne ${providerConfig.baseUrlLabel.toLowerCase()} pour ${providerConfig.title}.`)
+  }
+
+  if (normalizedMetadata) {
+    try {
+      JSON.parse(normalizedMetadata)
+    } catch {
+      throw new Error(`Le champ Metadata JSON de ${providerConfig.title} doit contenir un JSON valide.`)
+    }
+  }
+
+  if (!normalizedSecret && !connection?.hasSecret) {
+    throw new Error(`Renseigne ${providerConfig.secretLabel.toLowerCase()} pour ${providerConfig.title}.`)
+  }
 }
 
 export default function TikTokAccountsPage() {
@@ -69,6 +112,8 @@ export default function TikTokAccountsPage() {
   const [isConnectingTikTok, setIsConnectingTikTok] = useState(false)
   const [savingProviderKey, setSavingProviderKey] = useState('')
   const [disconnectingProviderKey, setDisconnectingProviderKey] = useState('')
+  const [activatingConnectionKey, setActivatingConnectionKey] = useState('')
+  const [validatingConnectionKey, setValidatingConnectionKey] = useState('')
   const [feedbackMessage, setFeedbackMessage] = useState(location.state?.tiktokOAuthSuccess || location.state?.accountsWarning || null)
   const [errorMessage, setErrorMessage] = useState(null)
   const {
@@ -80,13 +125,28 @@ export default function TikTokAccountsPage() {
     queryFn: fetchAccountsOverview,
   })
 
-  const tiktokAccounts = overview?.tiktokAccounts || []
-  const serviceConnections = overview?.serviceConnections || []
-  const readiness = overview?.readiness || { ready: false, missingItems: [] }
+  const tiktokAccounts = overview?.tiktokAccounts ?? EMPTY_LIST
+  const serviceConnections = overview?.serviceConnections ?? EMPTY_LIST
+  const readiness = overview?.readiness ?? DEFAULT_READINESS
 
-  const connectionsByProvider = useMemo(
-    () => Object.fromEntries(serviceConnections.map((connection) => [String(connection.providerKey || '').toUpperCase(), connection])),
+  const serviceConnectionsByProvider = useMemo(
+    () => Object.entries(SERVICE_CONNECTION_FIELDS).reduce((accumulator, [providerKey]) => {
+      accumulator[providerKey] = serviceConnections.filter(
+        (connection) => String(connection.providerKey || '').toUpperCase() === providerKey,
+      )
+      return accumulator
+    }, {}),
     [serviceConnections],
+  )
+
+  const activeConnectionsByProvider = useMemo(
+    () => Object.fromEntries(
+      Object.entries(serviceConnectionsByProvider).map(([providerKey, connections]) => [
+        providerKey,
+        connections.find((connection) => connection.active) || null,
+      ]),
+    ),
+    [serviceConnectionsByProvider],
   )
 
   const [serviceForms, setServiceForms] = useState(() => Object.fromEntries(
@@ -96,16 +156,39 @@ export default function TikTokAccountsPage() {
   useEffect(() => {
     setServiceForms((current) => {
       const next = { ...current }
+      let hasChanges = false
+
       Object.keys(SERVICE_CONNECTION_FIELDS).forEach((providerKey) => {
-        next[providerKey] = {
-          ...createEmptyServiceForm(connectionsByProvider[providerKey]),
-          secretValue: current[providerKey]?.secretValue || '',
-          metadataJson: current[providerKey]?.metadataJson || '',
+        const activeConnection = activeConnectionsByProvider[providerKey] || null
+        const currentForm = current[providerKey]
+        const shouldKeepEditingCurrentProfile = currentForm?.connectionId
+          && serviceConnectionsByProvider[providerKey]?.some((connection) => connection.id === currentForm.connectionId)
+        const sourceConnection = shouldKeepEditingCurrentProfile
+          ? serviceConnectionsByProvider[providerKey].find((connection) => connection.id === currentForm.connectionId) || activeConnection
+          : activeConnection
+        const nextForm = {
+          ...createEmptyServiceForm(sourceConnection),
+          secretValue: currentForm?.secretValue || '',
+          metadataJson: currentForm?.metadataJson || sourceConnection?.metadataJson || '',
+        }
+
+        const isSameForm = currentForm
+          && currentForm.connectionId === nextForm.connectionId
+          && currentForm.displayName === nextForm.displayName
+          && currentForm.baseUrl === nextForm.baseUrl
+          && currentForm.accountIdentifier === nextForm.accountIdentifier
+          && currentForm.secretValue === nextForm.secretValue
+          && currentForm.metadataJson === nextForm.metadataJson
+
+        if (!isSameForm) {
+          hasChanges = true
+          next[providerKey] = nextForm
         }
       })
-      return next
+
+      return hasChanges ? next : current
     })
-  }, [connectionsByProvider])
+  }, [activeConnectionsByProvider, serviceConnectionsByProvider])
 
   useEffect(() => {
     if (location.state?.tiktokOAuthSuccess || location.state?.accountsWarning) {
@@ -132,6 +215,20 @@ export default function TikTokAccountsPage() {
     }))
   }
 
+  const loadServiceProfile = (providerKey, connection) => {
+    setServiceForms((current) => ({
+      ...current,
+      [providerKey]: createEmptyServiceForm(connection),
+    }))
+  }
+
+  const startNewServiceProfile = (providerKey) => {
+    setServiceForms((current) => ({
+      ...current,
+      [providerKey]: createEmptyServiceForm(null),
+    }))
+  }
+
   const handleConnectTikTok = async () => {
     setIsConnectingTikTok(true)
     setFeedbackMessage(null)
@@ -150,16 +247,14 @@ export default function TikTokAccountsPage() {
     setFeedbackMessage(null)
     setErrorMessage(null)
     try {
+      const editedConnection = (serviceConnectionsByProvider[providerKey] || EMPTY_LIST).find(
+        (connection) => connection.id === serviceForms[providerKey]?.connectionId,
+      ) || null
+      validateServiceForm(providerKey, serviceForms[providerKey] || {}, editedConnection)
       await saveServiceConnection(providerKey, serviceForms[providerKey] || {})
-      setServiceForms((current) => ({
-        ...current,
-        [providerKey]: {
-          ...(current[providerKey] || createEmptyServiceForm(null)),
-          secretValue: '',
-        },
-      }))
+      startNewServiceProfile(providerKey)
       await refreshAccounts()
-      setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} connecte.`)
+      setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} valide et active.`)
     } catch (requestError) {
       setErrorMessage(requestError?.message || `Impossible d enregistrer ${providerKey}.`)
     } finally {
@@ -167,16 +262,52 @@ export default function TikTokAccountsPage() {
     }
   }
 
-  const handleDisconnectService = async (providerKey) => {
-    setDisconnectingProviderKey(providerKey)
+  const handleActivateService = async (providerKey, connectionId) => {
+    const connectionKey = `${providerKey}-${connectionId}`
+    setActivatingConnectionKey(connectionKey)
     setFeedbackMessage(null)
     setErrorMessage(null)
     try {
-      await disconnectServiceConnection(providerKey)
+      await activateServiceConnection(providerKey, connectionId)
       await refreshAccounts()
-      setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} deconnecte.`)
+      setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} active.`)
     } catch (requestError) {
-      setErrorMessage(requestError?.message || `Impossible de deconnecter ${providerKey}.`)
+      setErrorMessage(requestError?.message || `Impossible d activer ${providerKey}.`)
+    } finally {
+      setActivatingConnectionKey('')
+    }
+  }
+
+  const handleValidateService = async (providerKey, connectionId) => {
+    const connectionKey = `${providerKey}-${connectionId}`
+    setValidatingConnectionKey(connectionKey)
+    setFeedbackMessage(null)
+    setErrorMessage(null)
+    try {
+      await validateServiceConnection(providerKey, connectionId)
+      await refreshAccounts()
+      setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} revalide.`)
+    } catch (requestError) {
+      setErrorMessage(requestError?.message || `Impossible de valider ${providerKey}.`)
+    } finally {
+      setValidatingConnectionKey('')
+    }
+  }
+
+  const handleDeleteService = async (providerKey, connectionId) => {
+    const connectionKey = `${providerKey}-${connectionId}`
+    setDisconnectingProviderKey(connectionKey)
+    setFeedbackMessage(null)
+    setErrorMessage(null)
+    try {
+      await deleteServiceConnection(providerKey, connectionId)
+      if (serviceForms[providerKey]?.connectionId === connectionId) {
+        startNewServiceProfile(providerKey)
+      }
+      await refreshAccounts()
+      setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} supprime.`)
+    } catch (requestError) {
+      setErrorMessage(requestError?.message || `Impossible de supprimer ${providerKey}.`)
     } finally {
       setDisconnectingProviderKey('')
     }
@@ -210,45 +341,57 @@ export default function TikTokAccountsPage() {
           <section className="video-page-heading">
             <div>
               <p className="video-ops-kicker">Accounts</p>
-              <h1>Connecte tous les comptes et toutes les cles utilises dans le parcours.</h1>
+              <h1>Centralise les comptes et change de profil rapidement.</h1>
             </div>
           </section>
 
           <section className="video-panel-grid single-column">
-            <article className="video-panel-card">
+            <article className="video-panel-card accounts-summary-card">
               <div className="video-panel-head">
-                <h2>Readiness</h2>
+                <h2>Overview</h2>
                 <span>{readiness.ready ? 'ready' : 'incomplete'}</span>
               </div>
-              {isLoading ? <p className="video-inline-state">Chargement de la readiness...</p> : null}
+              {isLoading ? <p className="video-inline-state">Chargement...</p> : null}
               {!isLoading ? (
-                <div className="video-preview-stack">
-                  <div className="video-preview-block">
+                <div className="accounts-summary-grid">
+                  <div className="accounts-summary-item">
                     <span>Statut</span>
-                    <p>{readiness.ready ? 'Tous les comptes requis sont connectes.' : 'Des connexions manquent encore.'}</p>
+                    <strong>{readiness.ready ? 'Ready' : 'Action requise'}</strong>
                   </div>
-                  <div className="video-preview-block">
-                    <span>Comptes TikTok connectes</span>
-                    <p>{readiness.connectedTikTokAccounts || 0}</p>
+                  <div className="accounts-summary-item">
+                    <span>TikTok</span>
+                    <strong>{readiness.connectedTikTokAccounts || 0}</strong>
                   </div>
-                  <div className="video-preview-block">
-                    <span>Elements manquants</span>
-                    <p>{readiness.missingItems?.length ? readiness.missingItems.join(', ') : 'Aucun'}</p>
+                  <div className="accounts-summary-item">
+                    <span>Services actifs</span>
+                    <strong>{Object.values(activeConnectionsByProvider).filter(Boolean).length}</strong>
+                  </div>
+                  <div className="accounts-summary-item accounts-summary-item-wide">
+                    <span>Manquants</span>
+                    <strong>{readiness.missingItems?.length ? readiness.missingItems.join(' • ') : 'Aucun'}</strong>
                   </div>
                 </div>
               ) : null}
             </article>
           </section>
 
-          <section className="video-panel-grid">
-            <article className="video-panel-card">
-              <div className="video-panel-head">
+          <section className="accounts-service-list">
+            <article className="video-panel-card accounts-service-card accounts-service-card-tiktok">
+              <div className="video-panel-head accounts-service-head">
                 <h2>TikTok</h2>
-                <span>{tiktokAccounts.length} connected account{tiktokAccounts.length > 1 ? 's' : ''}</span>
+                <span>{tiktokAccounts.length} compte{tiktokAccounts.length > 1 ? 's' : ''}</span>
               </div>
-              <p className="video-inline-state">OAuth et compte(s) TikTok disponibles pour le parcours.</p>
-              <div className="tiktok-step-actions">
-                <button type="button" className="video-action-btn" onClick={() => void handleConnectTikTok()} disabled={isConnectingTikTok}>
+              <div className="accounts-service-toolbar">
+                <p className="video-inline-state">
+                  Connexion OAuth pour les comptes de publication.
+                  {tiktokAccounts.length ? ' Supprime le compte existant pour en ajouter un autre.' : ''}
+                </p>
+                <button
+                  type="button"
+                  className="video-action-btn"
+                  onClick={() => void handleConnectTikTok()}
+                  disabled={isConnectingTikTok || tiktokAccounts.length > 0}
+                >
                   {isConnectingTikTok ? 'Redirection...' : 'Connecter TikTok'}
                 </button>
               </div>
@@ -289,92 +432,194 @@ export default function TikTokAccountsPage() {
               ) : (
                 <div className="video-empty-state">
                   <p>Aucun compte TikTok n est encore connecte.</p>
-                  <p>Ajoute au moins un compte TikTok ici avant d utiliser le `+` dans la page TikTok.</p>
                 </div>
               )}
             </article>
 
             {Object.entries(SERVICE_CONNECTION_FIELDS).map(([providerKey, providerConfig]) => {
-              const connection = connectionsByProvider[providerKey] || null
+              const connections = serviceConnectionsByProvider[providerKey] || EMPTY_LIST
+              const connection = activeConnectionsByProvider[providerKey] || null
               const form = serviceForms[providerKey] || createEmptyServiceForm(connection)
               const isSaving = savingProviderKey === providerKey
-              const isDisconnecting = disconnectingProviderKey === providerKey
+              const isEditingExistingProfile = Boolean(form.connectionId)
 
               return (
-                <article key={providerKey} className="video-panel-card">
-                  <div className="video-panel-head">
+                <article key={providerKey} className="video-panel-card accounts-service-card">
+                  <div className="video-panel-head accounts-service-head">
                     <h2>{providerConfig.title}</h2>
-                    <span>{formatProviderStatus(connection)}</span>
+                    <span>{connection?.active ? 'active' : 'idle'}</span>
                   </div>
-                  <p className="video-inline-state">{providerConfig.description}</p>
-                  <div className="tiktok-step-form">
-                    <label className="tiktok-step-field">
-                      <span>Display name</span>
-                      <input
-                        type="text"
-                        value={form.displayName}
-                        onChange={(event) => updateServiceForm(providerKey, 'displayName', event.target.value)}
-                        placeholder={`${providerConfig.title} production`}
-                      />
-                    </label>
-                    <label className="tiktok-step-field">
-                      <span>{providerConfig.baseUrlLabel}</span>
-                      <input
-                        type="text"
-                        value={form.baseUrl}
-                        onChange={(event) => updateServiceForm(providerKey, 'baseUrl', event.target.value)}
-                        placeholder="https://..."
-                      />
-                    </label>
-                    <label className="tiktok-step-field">
-                      <span>{providerConfig.identifierLabel}</span>
-                      <input
-                        type="text"
-                        value={form.accountIdentifier}
-                        onChange={(event) => updateServiceForm(providerKey, 'accountIdentifier', event.target.value)}
-                        placeholder="Owner / workspace / email"
-                      />
-                    </label>
-                    <label className="tiktok-step-field">
-                      <span>{providerConfig.secretLabel}</span>
-                      <input
-                        type="password"
-                        value={form.secretValue}
-                        onChange={(event) => updateServiceForm(providerKey, 'secretValue', event.target.value)}
-                        placeholder={connection?.hasSecret ? 'Secret deja enregistre' : 'Coller le secret ici'}
-                      />
-                    </label>
-                    <label className="tiktok-step-field">
-                      <span>Metadata JSON</span>
-                      <textarea
-                        rows="4"
-                        value={form.metadataJson}
-                        onChange={(event) => updateServiceForm(providerKey, 'metadataJson', event.target.value)}
-                        placeholder='{"env":"prod"}'
-                      />
-                    </label>
-                  </div>
-                  <div className="video-preview-stack">
-                    <div className="video-preview-block">
-                      <span>Etat courant</span>
-                      <p>{connection?.status || 'DISCONNECTED'}</p>
+                  <div className="accounts-service-layout">
+                    <div className="accounts-service-main">
+                      <div className="accounts-service-toolbar">
+                        <div className="accounts-service-statusline">
+                          <span className={`video-pill ${connection?.active ? 'success' : ''}`}>
+                            {formatStatusLabel(connection?.status || 'DISCONNECTED')}
+                          </span>
+                          <span className={`accounts-validation-pill is-${formatValidationStatus(connection)}`}>
+                            {formatStatusLabel(connection?.validationStatus || 'UNKNOWN')}
+                          </span>
+                          <span className="accounts-service-counter">{connections.length} profil{connections.length > 1 ? 's' : ''}</span>
+                        </div>
+                        {!connection?.active ? (
+                          <button type="button" className="video-action-btn ghost" onClick={() => startNewServiceProfile(providerKey)}>
+                            Nouveau profil
+                          </button>
+                        ) : null}
+                      </div>
+                      {connections.length ? (
+                        <div className="accounts-service-saved-list">
+                          {connections.map((savedConnection) => {
+                            const connectionKey = `${providerKey}-${savedConnection.id}`
+                            const isActivating = activatingConnectionKey === connectionKey
+                            const isValidating = validatingConnectionKey === connectionKey
+                            const isDeleting = disconnectingProviderKey === connectionKey
+                            const isEditing = form.connectionId === savedConnection.id
+
+                            return (
+                              <div key={savedConnection.id} className={`accounts-service-saved-item${savedConnection.active ? ' is-active' : ''}`}>
+                                <div className="accounts-service-saved-head">
+                                  <span>{savedConnection.displayName || savedConnection.accountIdentifier || `Profil ${savedConnection.id}`}</span>
+                                  {savedConnection.active ? <em>Actif</em> : null}
+                                </div>
+                                <p>{savedConnection.accountIdentifier || savedConnection.baseUrl || '-'}</p>
+                                <small>
+                                  {formatStatusLabel(savedConnection.status)} • {formatStatusLabel(savedConnection.validationStatus)}
+                                </small>
+                                <div className="tiktok-step-actions accounts-service-actions compact">
+                                  <button
+                                    type="button"
+                                    className="video-action-btn ghost"
+                                    onClick={() => loadServiceProfile(providerKey, savedConnection)}
+                                  >
+                                    {isEditing ? 'Edition en cours' : 'Editer'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="video-action-btn ghost"
+                                    onClick={() => void handleValidateService(providerKey, savedConnection.id)}
+                                    disabled={isValidating}
+                                  >
+                                    {isValidating ? 'Validation...' : 'Verifier'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="video-action-btn ghost"
+                                    onClick={() => void handleActivateService(providerKey, savedConnection.id)}
+                                    disabled={isActivating || savedConnection.active}
+                                  >
+                                    {savedConnection.active ? 'Actif' : isActivating ? 'Activation...' : 'Activer'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="video-action-btn ghost danger"
+                                    onClick={() => void handleDeleteService(providerKey, savedConnection.id)}
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting ? 'Suppression...' : 'Supprimer'}
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                      {!connection?.active ? (
+                        <div className="accounts-service-editor">
+                          <div className="accounts-service-form-grid">
+                            <label className="tiktok-step-field">
+                              <span>Nom</span>
+                              <input
+                                type="text"
+                                value={form.displayName}
+                                onChange={(event) => updateServiceForm(providerKey, 'displayName', event.target.value)}
+                                placeholder={`${providerConfig.title} production`}
+                              />
+                            </label>
+                            <label className="tiktok-step-field">
+                              <span>{providerConfig.baseUrlLabel}</span>
+                              <input
+                                type="text"
+                                value={form.baseUrl}
+                                onChange={(event) => updateServiceForm(providerKey, 'baseUrl', event.target.value)}
+                                placeholder={providerConfig.defaultBaseUrl}
+                              />
+                              {providerKey === 'N8N' ? (
+                                <small className="accounts-field-help">
+                                  Si toute la stack tourne dans Docker, utilise <code>http://n8n:5678</code>.
+                                </small>
+                              ) : null}
+                            </label>
+                            <label className="tiktok-step-field">
+                              <span>{providerConfig.identifierLabel}</span>
+                              <input
+                                type="text"
+                                value={form.accountIdentifier}
+                                onChange={(event) => updateServiceForm(providerKey, 'accountIdentifier', event.target.value)}
+                                placeholder="Owner / workspace / email"
+                              />
+                            </label>
+                            <label className="tiktok-step-field">
+                              <span>{providerConfig.secretLabel}</span>
+                              <input
+                                type="password"
+                                value={form.secretValue}
+                                onChange={(event) => updateServiceForm(providerKey, 'secretValue', event.target.value)}
+                                placeholder={connection?.hasSecret ? 'Secret deja enregistre' : 'Coller le secret ici'}
+                              />
+                            </label>
+                            <label className="tiktok-step-field accounts-service-form-wide">
+                              <span>Metadata JSON</span>
+                              <textarea
+                                rows="4"
+                                value={form.metadataJson}
+                                onChange={(event) => updateServiceForm(providerKey, 'metadataJson', event.target.value)}
+                                placeholder={providerConfig.metadataPlaceholder}
+                              />
+                            </label>
+                          </div>
+                          <div className="tiktok-step-actions accounts-service-actions">
+                            <button type="button" className="video-action-btn" onClick={() => void handleSaveService(providerKey)} disabled={isSaving}>
+                              {isSaving ? 'Connexion...' : isEditingExistingProfile ? 'Mettre a jour' : 'Enregistrer'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="accounts-service-editor accounts-service-editor-readonly">
+                          <p>Un compte {providerConfig.title} est déjà connecté. Supprime-le pour en ajouter un autre.</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="video-preview-block">
-                      <span>Secret present</span>
-                      <p>{connection?.hasSecret ? 'Oui' : 'Non'}</p>
-                    </div>
-                    <div className="video-preview-block">
-                      <span>Derniere validation</span>
-                      <p>{connection?.lastValidatedAt || '-'}</p>
-                    </div>
-                  </div>
-                  <div className="tiktok-step-actions">
-                    <button type="button" className="video-action-btn" onClick={() => void handleSaveService(providerKey)} disabled={isSaving}>
-                      {isSaving ? 'Connexion...' : 'Connecter / enregistrer'}
-                    </button>
-                    <button type="button" className="video-action-btn ghost" onClick={() => void handleDisconnectService(providerKey)} disabled={isDisconnecting || !connection}>
-                      {isDisconnecting ? 'Deconnexion...' : 'Deconnecter'}
-                    </button>
+                    <aside className="accounts-service-aside">
+                      <div className="accounts-mini-stack">
+                        <div className="accounts-mini-card">
+                          <span>Actif</span>
+                          <strong>{connection?.displayName || connection?.accountIdentifier || 'Aucun'}</strong>
+                        </div>
+                        <div className="accounts-mini-card">
+                          <span>Secret</span>
+                          <strong>{connection?.hasSecret ? 'Present' : 'Absent'}</strong>
+                        </div>
+                        <div className="accounts-mini-card">
+                          <span>Validation</span>
+                          <strong>{formatStatusLabel(connection?.validationStatus || 'UNKNOWN')}</strong>
+                        </div>
+                        <div className="accounts-mini-card">
+                          <span>Derniere verif</span>
+                          <strong>{connection?.lastValidatedAt || '-'}</strong>
+                        </div>
+                        <div className="accounts-mini-card">
+                          <span>Env</span>
+                          <strong>{providerConfig.envVars.join(', ')}</strong>
+                        </div>
+                        {connection?.validationMessage ? (
+                          <div className="accounts-mini-card accounts-mini-card-wide">
+                            <span>Message</span>
+                            <strong>{connection.validationMessage}</strong>
+                          </div>
+                        ) : null}
+                      </div>
+                    </aside>
                   </div>
                 </article>
               )

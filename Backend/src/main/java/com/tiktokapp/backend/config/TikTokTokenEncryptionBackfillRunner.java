@@ -35,33 +35,37 @@ public class TikTokTokenEncryptionBackfillRunner implements ApplicationRunner {
             return;
         }
 
-        JsonNode rows = supabaseGateway.fetchTikTokAccountsForEncryptionMigration();
-        if (!rows.isArray() || rows.isEmpty()) {
-            logger.info("video_ops token encryption backfill found no TikTok accounts to inspect");
-            return;
+        try {
+            JsonNode rows = supabaseGateway.fetchTikTokAccountsForEncryptionMigration();
+            if (!rows.isArray() || rows.isEmpty()) {
+                logger.info("video_ops token encryption backfill found no TikTok accounts to inspect");
+                return;
+            }
+
+            int migratedCount = 0;
+            for (JsonNode row : rows) {
+                long accountId = row.path("id").asLong();
+                String accessToken = trimToNull(row.path("access_token").asText(""));
+                String refreshToken = trimToNull(row.path("refresh_token").asText(""));
+
+                Map<String, Object> patch = new LinkedHashMap<>();
+                if (accessToken != null && !cryptoService.isEncrypted(accessToken)) {
+                    patch.put("access_token", cryptoService.encryptIfConfigured(accessToken));
+                }
+                if (refreshToken != null && !cryptoService.isEncrypted(refreshToken)) {
+                    patch.put("refresh_token", cryptoService.encryptIfConfigured(refreshToken));
+                }
+
+                if (!patch.isEmpty()) {
+                    supabaseGateway.updateTikTokAccount(accountId, patch);
+                    migratedCount++;
+                }
+            }
+
+            logger.info("video_ops token encryption backfill completed migratedAccounts={}", migratedCount);
+        } catch (Exception exception) {
+            logger.warn("video_ops token encryption backfill skipped because TikTok accounts could not be read safely", exception);
         }
-
-        int migratedCount = 0;
-        for (JsonNode row : rows) {
-            long accountId = row.path("id").asLong();
-            String accessToken = trimToNull(row.path("access_token").asText(""));
-            String refreshToken = trimToNull(row.path("refresh_token").asText(""));
-
-            Map<String, Object> patch = new LinkedHashMap<>();
-            if (accessToken != null && !cryptoService.isEncrypted(accessToken)) {
-                patch.put("access_token", cryptoService.encryptIfConfigured(accessToken));
-            }
-            if (refreshToken != null && !cryptoService.isEncrypted(refreshToken)) {
-                patch.put("refresh_token", cryptoService.encryptIfConfigured(refreshToken));
-            }
-
-            if (!patch.isEmpty()) {
-                supabaseGateway.updateTikTokAccount(accountId, patch);
-                migratedCount++;
-            }
-        }
-
-        logger.info("video_ops token encryption backfill completed migratedAccounts={}", migratedCount);
     }
 
     private String trimToNull(String value) {

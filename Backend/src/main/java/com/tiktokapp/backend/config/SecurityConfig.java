@@ -39,10 +39,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers(
-                                "/api/video-ops/workflow-runs/*/complete",
+                        .ignoringRequestMatchers(                                "/api/admins/refresh",                                "/api/video-ops/workflow-runs/*/complete",
                                 "/api/video-ops/internal/tiktok/init-publish-context",
-                                "/api/video-ops/internal/tiktok/account-context"
+                                "/api/video-ops/internal/tiktok/account-context",
+                                "/api/video-ops/internal/groq/chat-completions",
+                                "/api/video-ops/internal/pexels/videos/search",
+                                "/api/video-ops/internal/shotstack/render",
+                                "/api/video-ops/internal/shotstack/render/*",
+                                "/api/video-ops/accounts/**"
                         )
                 )
                 .cors(Customizer.withDefaults())
@@ -62,7 +66,11 @@ public class SecurityConfig {
                                 "/api/admins/logout",
                                 "/api/video-ops/workflow-runs/*/complete",
                                 "/api/video-ops/internal/tiktok/init-publish-context",
-                                "/api/video-ops/internal/tiktok/account-context"
+                                "/api/video-ops/internal/tiktok/account-context",
+                                "/api/video-ops/internal/groq/chat-completions",
+                                "/api/video-ops/internal/pexels/videos/search",
+                                "/api/video-ops/internal/shotstack/render",
+                                "/api/video-ops/internal/shotstack/render/*"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
@@ -76,7 +84,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(securityProperties.getAllowedOrigins());
-        configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN"));
         configuration.setExposedHeaders(List.of("Set-Cookie"));
         configuration.setAllowCredentials(true);

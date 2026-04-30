@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Size;
 
 public class ServiceConnectionRequest {
 
+    private Long connectionId;
+
     @Size(max = 120)
     private String displayName;
 
@@ -16,6 +18,14 @@ public class ServiceConnectionRequest {
     private String secretValue;
 
     private String metadataJson;
+
+    public Long getConnectionId() {
+        return connectionId;
+    }
+
+    public void setConnectionId(Long connectionId) {
+        this.connectionId = connectionId;
+    }
 
     public String getDisplayName() {
         return displayName;

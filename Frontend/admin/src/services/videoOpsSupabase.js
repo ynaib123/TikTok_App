@@ -32,6 +32,30 @@ export async function saveServiceConnection(providerKey, payload = {}) {
   return apiPut(`/video-ops/accounts/services/${providerKey}`, payload)
 }
 
+export async function activateServiceConnection(providerKey, connectionId) {
+  if (!providerKey || !connectionId) {
+    throw new Error('Le providerKey et le connectionId sont obligatoires.')
+  }
+
+  return apiPost(`/video-ops/accounts/services/${providerKey}/${connectionId}/activate`, {})
+}
+
+export async function validateServiceConnection(providerKey, connectionId) {
+  if (!providerKey || !connectionId) {
+    throw new Error('Le providerKey et le connectionId sont obligatoires.')
+  }
+
+  return apiPost(`/video-ops/accounts/services/${providerKey}/${connectionId}/validate`, {})
+}
+
+export async function deleteServiceConnection(providerKey, connectionId) {
+  if (!providerKey || !connectionId) {
+    throw new Error('Le providerKey et le connectionId sont obligatoires.')
+  }
+
+  return apiDelete(`/video-ops/accounts/services/${providerKey}/${connectionId}`)
+}
+
 export async function disconnectServiceConnection(providerKey) {
   if (!providerKey) {
     throw new Error('Le providerKey est obligatoire.')

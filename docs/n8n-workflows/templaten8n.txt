@@ -1,0 +1,1761 @@
+/// init-publish-tiktok
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "init-publish-tiktok",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "61b9e6fd-deef-46b6-8878-d70e27f2285e",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        144
+      ],
+      "webhookId": "d22c7811-ab9b-4744-a66b-5d9587cf23dd"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "contentIdeaId",
+              "value": "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+              "type": "number"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fda87646-13d4-447f-88b9-ce731451f8a5",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "content_ideas",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contentIdeaId }}"
+            },
+            {
+              "keyName": "platform",
+              "condition": "eq",
+              "keyValue": "tiktok"
+            },
+            {
+              "keyName": "final_video_status",
+              "condition": "eq",
+              "keyValue": "ready"
+            }
+          ]
+        }
+      },
+      "id": "187eb803-b678-4f46-a363-7b1181ca5f21",
+      "name": "Supabase Get Content Idea",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        144
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $('HTTP Request Init Publish Context').item.json.shotstackUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "5d360b4d-6ad2-4429-a2ec-77d9a4db384c",
+      "name": "HTTP Request Video Head",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2032,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('HTTP Request Init Publish Context').item.json.accessToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  post_info: {\n    title: String($('HTTP Request Init Publish Context').item.json.title || '').trim().slice(0, 150),\n    privacy_level: $('HTTP Request Init Publish Context').item.json.selectedPrivacyLevel || 'SELF_ONLY',\n    disable_duet: true,\n    disable_comment: false,\n    disable_stitch: true,\n    video_cover_timestamp_ms: 1000\n  },\n  source_info: {\n    source: 'FILE_UPLOAD',\n    video_size: Number($('HTTP Request Video Head').item.json.headers['content-length'] || 0),\n    chunk_size: Number($('HTTP Request Video Head').item.json.headers['content-length'] || 0),\n    total_chunk_count: 1\n  }\n}) }}\n",
+        "options": {}
+      },
+      "id": "5e0f81ab-ed1f-49c1-aab6-3a9337c2ea6d",
+      "name": "HTTP Request Init Publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2272,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Supabase Get Content Idea').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "tiktok_publish_id",
+              "fieldValue": "={{ $json.data?.publish_id }}"
+            },
+            {
+              "fieldId": "tiktok_upload_url",
+              "fieldValue": "={{ $json.data?.upload_url }}"
+            },
+            {
+              "fieldId": "tiktok_upload_status",
+              "fieldValue": "init_done"
+            },
+            {
+              "fieldId": "publish_status",
+              "fieldValue": "draft"
+            }
+          ]
+        }
+      },
+      "id": "25416d07-6285-49ec-a80d-cc8b86ae41be",
+      "name": "Supabase Update Content Idea",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2512,
+        144
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Timestamp",
+              "value": "={{ $json.callbackTimestamp }}"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Signature",
+              "value": "={{ $json.callbackSignature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.callbackBody }}",
+        "options": {}
+      },
+      "id": "b523ceb8-e157-499f-9338-8a2c6c09c743",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2960,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, contentIdeaId: $('Supabase Get Content Idea').item.json.id, publishId: $('HTTP Request Init Publish').item.json.data?.publish_id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url, status: 'init_done' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c3a4e71d-ea44-48fd-aaf6-b7fdc7ac4ca8",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3200,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst backendBaseUrl = 'https://endurable-defiling-bleak.ngrok-free.dev'.replace(/\\/+$/, '');\nconst hmacSecret = 'video-ops-hmac-2026-super-secret-8f4k29x7p1m';\nconst workflowRunId = Number($('Set Input').item.json.workflowRunId || 0);\n\nif (!workflowRunId) {\n  throw new Error('workflowRunId manquant');\n}\n\nconst requestPath = `/api/video-ops/workflow-runs/${workflowRunId}/complete`;\nconst callbackUrl = `${backendBaseUrl}${requestPath}`;\nconst callbackTimestamp = new Date().toISOString();\n\nconst callbackBodyObject = {\n  status: 'SUCCEEDED',\n  message: 'Init publish TikTok termine.'\n};\n\nconst callbackBody = JSON.stringify(callbackBodyObject);\nconst payloadHash = crypto.createHash('sha256').update(callbackBody, 'utf8').digest('base64');\nconst canonical = ['POST', requestPath, callbackTimestamp, payloadHash].join('\\n');\nconst callbackSignature = crypto.createHmac('sha256', hmacSecret).update(canonical, 'utf8').digest('base64');\n\nreturn [{\n  json: {\n    callbackUrl,\n    callbackTimestamp,\n    callbackSignature,\n    callbackBody\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        144
+      ],
+      "id": "f08305d6-1430-4670-ac40-9f0821c5e46f",
+      "name": "Build Callback Auth"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://endurable-defiling-bleak.ngrok-free.dev/api/video-ops/internal/tiktok/init-publish-context",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Internal-Secret",
+              "value": "video-ops-internal-2026-very-secret-1"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contentIdeaId\": {{ Number($('Set Input').item.json.contentIdeaId) }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1776,
+        144
+      ],
+      "id": "7d23fe6f-a116-4e04-9007-b5c58aca60fe",
+      "name": "HTTP Request Init Publish Context"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input": {
+      "main": [
+        [
+          {
+            "node": "Supabase Get Content Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Get Content Idea": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Init Publish Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Video Head": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Init Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Init Publish": {
+      "main": [
+        [
+          {
+            "node": "Supabase Update Content Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Update Content Idea": {
+      "main": [
+        [
+          {
+            "node": "Build Callback Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Callback Auth": {
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Init Publish Context": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Video Head",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03f0bb40bc4d36fe4b86ff52e36f070cd89e1231b2f6d95f96b904abddbfaa85"
+  }
+}
+
+
+
+
+
+/// check-shotstack-status
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "0fd487bb-387a-4b44-b4dc-6facc11f6150",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "content_ideas",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "shotstack_render_id",
+              "condition": "neq",
+              "keyValue": "null"
+            },
+            {
+              "keyName": "final_video_status",
+              "condition": "eq",
+              "keyValue": "processing"
+            }
+          ]
+        }
+      },
+      "id": "2f346b0a-3839-4217-b232-8bef31daaca8",
+      "name": "Supabase Get Pending Renders",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(item => ['queued', 'rendering', 'preparing'].includes(String(item.json.shotstack_status || '').toLowerCase()));"
+      },
+      "id": "b4d9aaff-f588-4686-9339-1efd32c4f794",
+      "name": "Filter Valid Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.shotstack.io/v1/render/' + String($json.shotstack_render_id || '').trim() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "=hIUXf7D9Pc5G3zjpT6wt3JeLmljX7DfJn6n13QS1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d97facff-e099-4202-a485-b8e87b127226",
+      "name": "HTTP Request Shotstack Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const status = String($json.response?.status || '').toLowerCase();\nconst base = $('Filter Valid Status').item.json;\nif (status === 'done') {\n  return [{ json: { id: base.id, shotstack_status: 'done', shotstack_url: $json.response?.url || '', final_video_status: 'ready', pipeline_status: 'render_ready' } }];\n}\nif (status === 'failed') {\n  return [{ json: { id: base.id, shotstack_status: 'failed', final_video_status: 'failed', pipeline_status: 'failed' } }];\n}\nreturn [];"
+      },
+      "id": "854e3008-4613-4925-8859-cb10ce80da95",
+      "name": "Build Update Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "shotstack_status",
+              "fieldValue": "={{ $json.shotstack_status }}"
+            },
+            {
+              "fieldId": "shotstack_url",
+              "fieldValue": "={{ $json.shotstack_url || '' }}"
+            },
+            {
+              "fieldId": "final_video_status",
+              "fieldValue": "={{ $json.final_video_status }}"
+            },
+            {
+              "fieldId": "pipeline_status",
+              "fieldValue": "={{ $json.pipeline_status }}"
+            }
+          ]
+        }
+      },
+      "id": "02d1dc13-1446-4fcd-b9b0-a9ab5bc304bb",
+      "name": "Supabase Update Row",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supabase Get Pending Renders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Get Pending Renders": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Status": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Shotstack Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Shotstack Status": {
+      "main": [
+        [
+          {
+            "node": "Build Update Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Update Payload": {
+      "main": [
+        [
+          {
+            "node": "Supabase Update Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03f0bb40bc4d36fe4b86ff52e36f070cd89e1231b2f6d95f96b904abddbfaa85"
+  }
+}
+/// script-generation
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "script-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "eaf297de-df7c-4804-8683-2fae44e139ce",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "2cd7466a-dcd4-4473-ab2a-21feb3c54b63"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "contentIdeaId",
+              "value": "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+              "type": "number"
+            },
+            {
+              "name": "topic",
+              "value": "={{ String($json.body.topic || $json.topic || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "category",
+              "value": "={{ String($json.body.category || $json.category || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e97f8e6e-087b-48bb-ab74-f63261ef0fd7",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.7, messages: [ { role: 'system', content: 'Tu generes du contenu TikTok. Retourne uniquement un JSON valide avec les cles script, caption, background_keyword.' }, { role: 'user', content: 'Categorie: ' + $json.category + '\\nTopic: ' + $json.topic + '\\nContraintes:\\n- script: francais, naturel, court, pret pour une video TikTok\\n- caption: concise avec hashtags\\n- background_keyword: un seul mot-cle visuel exploitable\\nRetourne uniquement le JSON.' } ] }) }}",
+        "options": {}
+      },
+      "id": "4af0d0c4-7891-43ec-94a1-1807984709c2",
+      "name": "HTTP Request Groq",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        528,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.choices?.[0]?.message?.content || '').trim();\nconst cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (error) {\n  throw new Error('Reponse LLM non parseable en JSON: ' + cleaned);\n}\nreturn [{ json: {\n  contentIdeaId: Number($('Set Input').item.json.contentIdeaId || 0),\n  workflowRunId: Number($('Set Input').item.json.workflowRunId || 0),\n  script: String(parsed.script || '').trim(),\n  caption: String(parsed.caption || '').trim(),\n  background_keyword: String(parsed.background_keyword || '').trim()\n}}];"
+      },
+      "id": "8ef2aab5-8891-4c87-8390-ad0913491a28",
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contentIdeaId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "scripts",
+              "fieldValue": "={{ $json.script }}"
+            },
+            {
+              "fieldId": "script_status",
+              "fieldValue": "done"
+            },
+            {
+              "fieldId": "caption",
+              "fieldValue": "={{ $json.caption }}"
+            },
+            {
+              "fieldId": "background_keyword",
+              "fieldValue": "={{ $json.background_keyword }}"
+            },
+            {
+              "fieldId": "pipeline_status",
+              "fieldValue": "script_ready"
+            }
+          ]
+        }
+      },
+      "id": "dc05a34f-e48a-4e40-bf44-e6cab44284af",
+      "name": "Supabase Update",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Timestamp",
+              "value": "={{ $json.callbackTimestamp }}"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Signature",
+              "value": "={{ $json.callbackSignature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.callbackBody }}",
+        "options": {}
+      },
+      "id": "e72819c8-307c-4368-9b7d-21f91c37f2cf",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1568,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, contentIdeaId: $json.contentIdeaId, workflowRunId: $json.workflowRunId, status: 'script_ready' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b6e07b2c-4af5-422a-a336-cefb7ca2d6a6",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1840,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst backendBaseUrl = 'https://endurable-defiling-bleak.ngrok-free.dev'.replace(/\\/+$/, '');\nconst hmacSecret = 'video-ops-hmac-2026-super-secret-8f4k29x7p1m';\nconst workflowRunId = Number($('Set Input').item.json.workflowRunId || 0);\n\nif (!workflowRunId) {\n  throw new Error('workflowRunId manquant');\n}\n\nconst requestPath = `/api/video-ops/workflow-runs/${workflowRunId}/complete`;\nconst callbackUrl = `${backendBaseUrl}${requestPath}`;\nconst callbackTimestamp = new Date().toISOString();\n\nconst callbackBodyObject = {\n  status: 'SUCCEEDED',\n  message: 'Script workflow termine.'\n};\n\nconst callbackBody = JSON.stringify(callbackBodyObject);\nconst payloadHash = crypto.createHash('sha256').update(callbackBody, 'utf8').digest('base64');\nconst canonical = ['POST', requestPath, callbackTimestamp, payloadHash].join('\\n');\nconst callbackSignature = crypto.createHmac('sha256', hmacSecret).update(canonical, 'utf8').digest('base64');\n\nreturn [{\n  json: {\n    callbackUrl,\n    callbackTimestamp,\n    callbackSignature,\n    callbackBody\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        0
+      ],
+      "id": "8c0bdc2e-fb84-43bf-9655-180f86a0b9ef",
+      "name": "Build Callback Auth"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Groq": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Supabase Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Update": {
+      "main": [
+        [
+          {
+            "node": "Build Callback Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Callback Auth": {
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "youssefnaib6.app.n8n.cloud",
+          "user-agent": "Java-http-client/17.0.18",
+          "content-length": "472",
+          "accept-encoding": "gzip, br",
+          "cdn-loop": "cloudflare; loops=1; subreqs=1",
+          "cf-connecting-ip": "196.115.18.84",
+          "cf-ew-via": "15",
+          "cf-ipcountry": "MA",
+          "cf-ray": "9f3f6cdf5d99e2c2-MAD",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-worker": "n8n.cloud",
+          "content-type": "application/json",
+          "x-forwarded-for": "196.115.18.84, 162.158.122.172",
+          "x-forwarded-host": "youssefnaib6.app.n8n.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "traefik-prod-users-gwc-52-84768ff5b-bt9h2",
+          "x-is-trusted": "yes",
+          "x-real-ip": "196.115.18.84"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "contentIdeaId": 263,
+          "category": null,
+          "ideaCount": 1,
+          "topic": "\"Ambitious Home Cook Tries Recipe from a Michelin Star Chef with Hilarious, Cringeworthy, and Deliciously Funny Results\"",
+          "script": null,
+          "caption": null,
+          "keyword": null,
+          "tiktokAccountOpenId": null,
+          "source": "backoffice-tiktok-step-script",
+          "force": false,
+          "requestedBy": "admin@tiktokapp.local",
+          "requestedAt": "2026-04-29T15:43:56.952387173Z",
+          "workflowRunId": 329,
+          "attemptNumber": 1,
+          "idempotencyKey": "CHECK_SHOTSTACK:263"
+        },
+        "webhookUrl": "https://youssefnaib6.app.n8n.cloud/webhook/script-generation",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03f0bb40bc4d36fe4b86ff52e36f070cd89e1231b2f6d95f96b904abddbfaa85"
+  }
+}
+/// creation-ideas
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "creation-ideas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "034e4c37-d7ed-49f0-af04-789c3bfbb5d0",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "0489447d-c240-4df8-bb6e-0da09f7614a8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst category = String(body.category || '').trim();\nconst ideaCount = Number(body.ideaCount || 1);\nif (!category) throw new Error('category est obligatoire');\nif (!Number.isInteger(ideaCount) || ideaCount < 1 || ideaCount > 5) throw new Error('ideaCount doit etre entre 1 et 5');\nreturn [{ json: { category, ideaCount, workflowRunId: Number(body.workflowRunId || 0), template_id: body.templateId || null, tiktok_account_open_id: body.tiktokAccountOpenId || null } }];"
+      },
+      "id": "08e08839-848c-4ac6-b964-67701ffc53ba",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nreturn Array.from({ length: input.ideaCount }).map((_, index) => ({ json: { ...input, iteration: index + 1 } }));"
+      },
+      "id": "e0e75016-1a4d-4a85-83a3-4e5820d626e3",
+      "name": "Expand Ideas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'llama-3.1-8b-instant', messages: [ { role: 'user', content: 'Generate exactly one TikTok content idea for category ' + $json.category + '. Return only the idea text, no numbering, no explanation.' } ] } }}",
+        "options": {}
+      },
+      "id": "42614c39-100b-4b78-8225-ec15e029a543",
+      "name": "HTTP Request Idea",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        752,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { topic: String($json.choices?.[0]?.message?.content || '').trim(), category: $('Expand Ideas').item.json.category, workflowRunId: $('Expand Ideas').item.json.workflowRunId, template_id: $('Expand Ideas').item.json.template_id, tiktok_account_open_id: $('Expand Ideas').item.json.tiktok_account_open_id } }];"
+      },
+      "id": "2ff8a2d5-2241-465e-a314-b5964f017174",
+      "name": "Normalize Topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "content_ideas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "new"
+            },
+            {
+              "fieldId": "topic",
+              "fieldValue": "={{ $json.topic }}"
+            },
+            {
+              "fieldId": "pipeline_status",
+              "fieldValue": "idea_created"
+            },
+            {
+              "fieldId": "publish_status",
+              "fieldValue": "draft"
+            },
+            {
+              "fieldId": "platform",
+              "fieldValue": "tiktok"
+            },
+            {
+              "fieldId": "template_id",
+              "fieldValue": "={{ $json.template_id }}"
+            },
+            {
+              "fieldId": "tiktok_account_open_id",
+              "fieldValue": "={{ $json.tiktok_account_open_id }}"
+            },
+            {
+              "fieldId": "category",
+              "fieldValue": "={{ $json.category }}"
+            }
+          ]
+        }
+      },
+      "id": "ac68e5bb-7834-46e8-9a86-76f8d7043659",
+      "name": "Supabase Create Row",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst workflowRunId = Number($('Validate Input').first().json.workflowRunId || 0);\n\nreturn [{\n  json: {\n    workflowRunId,\n    createdCount: items.length\n  }\n}];\n"
+      },
+      "id": "50b5e1cb-6065-4d48-bb9a-d174ad7adf00",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Timestamp",
+              "value": "={{ $json.callbackTimestamp }}"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Signature",
+              "value": "={{ $json.callbackSignature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.callbackBody }}",
+        "options": {}
+      },
+      "id": "37b223ad-5574-46f0-8d5a-87091a12b448",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, workflowRunId: $json.workflowRunId, createdCount: $json.createdCount, status: 'idea_created' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "dd792f6b-191d-46be-8e94-21b1743d3669",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst backendBaseUrl = 'https://endurable-defiling-bleak.ngrok-free.dev'.replace(/\\/+$/, '');\nconst hmacSecret = 'video-ops-hmac-2026-super-secret-8f4k29x7p1m';\nconst workflowRunId = Number($('Validate Input').first().json.workflowRunId || 0);\n\nif (!workflowRunId) {\n  throw new Error('workflowRunId manquant');\n}\n\nconst requestPath = `/api/video-ops/workflow-runs/${workflowRunId}/complete`;\nconst callbackUrl = `${backendBaseUrl}${requestPath}`;\nconst callbackTimestamp = new Date().toISOString();\n\nconst callbackBodyObject = {\n  status: 'SUCCEEDED',\n  message: 'Creation ideas terminee.'\n};\n\nconst callbackBody = JSON.stringify(callbackBodyObject);\nconst payloadHash = crypto.createHash('sha256').update(callbackBody, 'utf8').digest('base64');\nconst canonical = ['POST', requestPath, callbackTimestamp, payloadHash].join('\\n');\nconst callbackSignature = crypto.createHmac('sha256', hmacSecret).update(canonical, 'utf8').digest('base64');\n\nreturn [{\n  json: {\n    callbackUrl,\n    callbackTimestamp,\n    callbackSignature,\n    callbackBody\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ],
+      "id": "5a7bbd2e-fa13-46d0-8366-6ce883eebc0e",
+      "name": "Build Callback Auth"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Expand Ideas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Ideas": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Idea": {
+      "main": [
+        [
+          {
+            "node": "Normalize Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Topic": {
+      "main": [
+        [
+          {
+            "node": "Supabase Create Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Create Row": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Build Callback Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Callback Auth": {
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03f0bb40bc4d36fe4b86ff52e36f070cd89e1231b2f6d95f96b904abddbfaa85"
+  }
+}
+/// render-template-video
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "render-template-video",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9fc5681e-a24f-45a9-9d57-10b67fafbd6d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "2aa2186c-6d97-4cfd-95ec-64068666c1fe"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "contentIdeaId",
+              "value": "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+              "type": "number"
+            },
+            {
+              "name": "topic",
+              "value": "={{ String($json.body.topic || $json.topic || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "script",
+              "value": "={{ String($json.body.script || $json.script || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "caption",
+              "value": "={{ String($json.body.caption || $json.caption || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "keyword",
+              "value": "={{ String($json.body.keyword || $json.keyword || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bae4c046-2b13-4969-b4d1-9549a48d3a2a",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [ { role: 'user', content: 'Create one realistic visual prompt for a vertical TikTok business video about this topic: ' + $json.topic + '. Script: ' + $json.script + '. Keyword: ' + ($json.keyword || $json.topic) + '. One sentence only.' } ] }) }}",
+        "options": {}
+      },
+      "id": "5e50e385-e94e-4ea3-81f6-4bad15ff18ee",
+      "name": "HTTP Request Image Prompt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.pexels.com/videos/search?query=' + encodeURIComponent($('Set Input').item.json.keyword || $('Set Input').item.json.topic) + '&per_page=5&orientation=portrait' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=4Y1jQOm9eVdMewM4t02e1OSQDkh3G43y9UBMkjQOuLbgiH02BZ8dVEhu"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5152bb89-3f53-4317-9b35-65f5b313e32d",
+      "name": "HTTP Request Pexels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const videos = $json.videos || [];\nif (!videos.length) {\n  throw new Error('Aucune video Pexels retournee');\n}\nconst portrait = videos\n  .map(video => ({\n    link: (video.video_files || []).sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.link || '',\n    width: video.width || 0,\n    height: video.height || 0\n  }))\n  .find(video => video.height >= video.width && video.link);\nif (!portrait) {\n  throw new Error('Aucune video portrait exploitable retournee par Pexels');\n}\nreturn [{ json: {\n  id: $('Set Input').item.json.contentIdeaId,\n  workflowRunId: $('Set Input').item.json.workflowRunId,\n  topic: $('Set Input').item.json.topic,\n  scripts: $('Set Input').item.json.script,\n  caption: $('Set Input').item.json.caption,\n  image_prompt: String($('HTTP Request Image Prompt').item.json.choices?.[0]?.message?.content || '').trim(),\n  background_video_url: portrait.link\n}}];"
+      },
+      "id": "a64feb3c-6bc2-4fcd-85b3-4613ccc426e2",
+      "name": "Select Portrait Media",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "shotstack_status",
+              "fieldValue": "preparing"
+            },
+            {
+              "fieldId": "final_video_status",
+              "fieldValue": "processing"
+            },
+            {
+              "fieldId": "render_payload",
+              "fieldValue": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "fieldId": "render_status",
+              "fieldValue": "prepared"
+            },
+            {
+              "fieldId": "pipeline_status",
+              "fieldValue": "rendering_requested"
+            }
+          ]
+        }
+      },
+      "id": "b63ac5e0-1804-4004-ba58-e4fb9554e9ea",
+      "name": "Supabase Update Preparing",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/edit/v1/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "hIUXf7D9Pc5G3zjpT6wt3JeLmljX7DfJn6n13QS1"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  timeline: {\n    background: '#0f0f0f',\n    tracks: [\n      {\n        clips: [\n          {\n            asset: {\n              type: 'video',\n              src: $('Select Portrait Media').item.json.background_video_url\n            },\n            start: 0,\n            length: 15,\n            fit: 'cover'\n          }\n        ]\n      },\n      {\n        clips: [\n          {\n            asset: {\n              type: 'title',\n              text: String($('Select Portrait Media').item.json.scripts || '').split('\\n').filter(line => line.trim())[0] || ''\n            },\n            start: 0,\n            length: 3,\n            position: 'center'\n          },\n          {\n            asset: {\n              type: 'title',\n              text: String($('Select Portrait Media').item.json.scripts || '').split('\\n').filter(line => line.trim())[1] || ''\n            },\n            start: 3,\n            length: 3,\n            position: 'center'\n          },\n          {\n            asset: {\n              type: 'title',\n              text: String($('Select Portrait Media').item.json.scripts || '').split('\\n').filter(line => line.trim())[2] || ''\n            },\n            start: 6,\n            length: 3,\n            position: 'center'\n          }\n        ]\n      }\n    ]\n  },\n  output: {\n    format: 'mp4',\n    aspectRatio: '9:16',\n    resolution: 'hd'\n  }\n}) }}\n",
+        "options": {}
+      },
+      "id": "6be3b6fd-d643-4a69-992f-293eafc341aa",
+      "name": "HTTP Request Shotstack Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_ideas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Select Portrait Media').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "shotstack_render_id",
+              "fieldValue": "={{ $json.response?.id || $json.id }}"
+            },
+            {
+              "fieldId": "shotstack_status",
+              "fieldValue": "queued"
+            },
+            {
+              "fieldId": "final_video_status",
+              "fieldValue": "processing"
+            },
+            {
+              "fieldId": "pipeline_status",
+              "fieldValue": "rendering_requested"
+            }
+          ]
+        }
+      },
+      "id": "5f74c39b-8d79-47ad-b1a7-842e4c0dc119",
+      "name": "Supabase Update Render Id",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "olyjINILsTPE6nsD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Timestamp",
+              "value": "={{ $json.callbackTimestamp }}"
+            },
+            {
+              "name": "X-Video-Ops-Callback-Signature",
+              "value": "={{ $json.callbackSignature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.callbackBody }}",
+        "options": {}
+      },
+      "id": "812a8015-4d0a-481a-8f09-6236a3752467",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2128,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, contentIdeaId: $('Set Input').item.json.contentIdeaId, shotstackRenderId: $('HTTP Request Shotstack Render').item.json.response?.id || $('HTTP Request Shotstack Render').item.json.id, status: 'render_requested' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "aaff1f4a-a55e-4642-bda0-5de9da6a17c9",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2368,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst backendBaseUrl = 'https://endurable-defiling-bleak.ngrok-free.dev'.replace(/\\/+$/, '');\nconst hmacSecret = 'video-ops-hmac-2026-super-secret-8f4k29x7p1m';\nconst workflowRunId = Number($('Set Input').item.json.workflowRunId || 0);\n\nif (!workflowRunId) {\n  throw new Error('workflowRunId manquant');\n}\n\nconst requestPath = `/api/video-ops/workflow-runs/${workflowRunId}/complete`;\nconst callbackUrl = `${backendBaseUrl}${requestPath}`;\nconst callbackTimestamp = new Date().toISOString();\n\nconst callbackBodyObject = {\n  status: 'SUCCEEDED',\n  message: 'Render workflow termine.'\n};\n\nconst callbackBody = JSON.stringify(callbackBodyObject);\nconst payloadHash = crypto.createHash('sha256').update(callbackBody, 'utf8').digest('base64');\nconst canonical = ['POST', requestPath, callbackTimestamp, payloadHash].join('\\n');\nconst callbackSignature = crypto.createHmac('sha256', hmacSecret).update(canonical, 'utf8').digest('base64');\n\nreturn [{\n  json: {\n    ...$json,\n    callbackUrl,\n    callbackTimestamp,\n    callbackSignature,\n    callbackBody\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        0
+      ],
+      "id": "721c2e1d-9df8-44d4-a619-b97ac65a7872",
+      "name": "Build Callback Auth"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Pexels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Pexels": {
+      "main": [
+        [
+          {
+            "node": "Select Portrait Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Portrait Media": {
+      "main": [
+        [
+          {
+            "node": "Supabase Update Preparing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Update Preparing": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Shotstack Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Shotstack Render": {
+      "main": [
+        [
+          {
+            "node": "Supabase Update Render Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Update Render Id": {
+      "main": [
+        [
+          {
+            "node": "Build Callback Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Callback Auth": {
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03f0bb40bc4d36fe4b86ff52e36f070cd89e1231b2f6d95f96b904abddbfaa85"
+  }
+}

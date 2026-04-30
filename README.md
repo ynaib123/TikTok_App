@@ -57,9 +57,21 @@ VITE_ALLOWED_HOSTS=<ton-host-ngrok-si-utilise>
 Notes importantes :
 
 - `VITE_API_BASE_URL=/api` permet d utiliser le proxy Vite et evite les problemes CSRF en local
-- `VITE_BACKEND_PROXY_TARGET` doit pointer vers le backend Spring local
+- `VITE_BACKEND_PROXY_TARGET` doit pointer vers le backend Spring expose par Docker sur `http://127.0.0.1:8080`
 - `VITE_ALLOWED_HOSTS` est utile si tu ouvres le frontend via `ngrok` ou un autre host externe
 - le frontend admin ne doit plus appeler directement Supabase ou les webhooks `n8n`
+
+Si tu veux un setup 100% Docker, tu peux aussi utiliser directement :
+
+```bash
+docker compose up --build -d
+```
+
+Puis ouvrir :
+
+- backend : `http://localhost:8080`
+- frontend admin : `http://localhost:5174`
+- n8n : `http://localhost:5678`
 
 ## Configuration backend video ops
 
@@ -165,6 +177,12 @@ Video ops :
 - `POST /api/video-ops/internal/tiktok/account-context`
 - `POST /api/video-ops/content-ideas/{id}/upload`
 - `POST /api/video-ops/content-ideas/{id}/publish`
+
+Guides utiles:
+
+- migration HMAC des callbacks `n8n` : [docs/n8n-hmac-callback-setup.md](docs/n8n-hmac-callback-setup.md)
+- migration des workflows TikTok sensibles via `account-context` : [docs/n8n-account-context-migration.md](docs/n8n-account-context-migration.md)
+- migration vers le mode backend proxy securise : [docs/n8n-secure-backend-proxy-migration.md](docs/n8n-secure-backend-proxy-migration.md)
 
 ## Scripts frontend admin
 
