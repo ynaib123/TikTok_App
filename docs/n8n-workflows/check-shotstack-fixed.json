@@ -85,19 +85,6 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "tableId": "content_ideas",
-        "matchType": "allFilters",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "id",
-              "condition": "eq",
-              "keyValue": "={{ $json.id }}"
-            }
-          ]
-        },
-      "parameters": {
         "method": "PATCH",
         "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '').replace(/\\/+$/, '') + '/rest/v1/content_ideas?id=eq.' + $json.id }}",
         "sendHeaders": true,

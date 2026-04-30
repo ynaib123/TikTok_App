@@ -9,11 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
@@ -21,39 +22,56 @@ public class N8nWorkflowGateway {
 
     private final VideoOpsProperties properties;
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
 
     public N8nWorkflowGateway(VideoOpsProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(20))
-                .build();
     }
 
     public JsonNode trigger(VideoWorkflowType workflowType, Map<String, Object> payload) {
         String webhookUrl = resolveWebhookUrl(workflowType);
+        HttpURLConnection connection = null;
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(webhookUrl))
-                    .timeout(Duration.ofSeconds(60))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            byte[] requestBody = objectMapper.writeValueAsBytes(payload);
+            URL url = URI.create(webhookUrl).toURL();
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(20_000);
+            connection.setReadTimeout(60_000);
+            connection.setDoOutput(true);
+            connection.setFixedLengthStreamingMode(requestBody.length);
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Connection", "close");
+            try (OutputStream outputStream = connection.getOutputStream()) {
+                outputStream.write(requestBody);
+                outputStream.flush();
+            }
+
+            int statusCode = connection.getResponseCode();
+            String body = readBody(statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream());
+            if (statusCode < 200 || statusCode >= 300) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_GATEWAY,
-                        "n8n a refuse le declenchement " + workflowType + " avec le statut " + response.statusCode() + "."
+                        "n8n a refuse le declenchement " + workflowType + " avec le statut " + statusCode + "."
                 );
             }
-            String body = response.body();
             return body == null || body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "n8n ne repond pas pour " + workflowType + ".", exception);
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Impossible de contacter n8n pour " + workflowType + ".", exception);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private String readBody(InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            return "";
+        }
+        try (InputStream stream = inputStream) {
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 

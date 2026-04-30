@@ -58,7 +58,7 @@
         "options": {}
       },
       "id": "get-idea",
-      "name": "HTTP Request Get Content Idea",
+      "name": "Supabase Get Content Idea",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [-700, 120]
@@ -66,7 +66,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\/+$/, '') + '/api/video-ops/internal/tiktok/account-context' }}",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/tiktok/account-context' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -129,7 +129,7 @@
     {
       "parameters": {
         "method": "HEAD",
-        "url": "={{ $('HTTP Request Get Content Idea').item.json[0].shotstack_url }}",
+        "url": "={{ $('Supabase Get Content Idea').item.json[0].shotstack_url }}",
         "options": {
           "response": {
             "response": {
@@ -147,7 +147,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\/+$/, '') + '/api/video-ops/internal/tiktok/init-publish-context' }}",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/tiktok/init-publish-context' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -182,7 +182,7 @@
             },
             {
               "name": "videoUrl",
-              "value": "={{ $('HTTP Request Get Content Idea').item.json[0].shotstack_url }}"
+              "value": "={{ $('Supabase Get Content Idea').item.json[0].shotstack_url }}"
             },
             {
               "name": "videoSize",
@@ -201,7 +201,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '').replace(/\\/+$/, '') + '/rest/v1/content_ideas?id=eq.' + $('HTTP Request Get Content Idea').item.json[0].id }}",
+        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '').replace(/\\/+$/, '') + '/rest/v1/content_ideas?id=eq.' + $('Supabase Get Content Idea').item.json[0].id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -239,7 +239,7 @@
         "options": {}
       },
       "id": "update-idea",
-      "name": "HTTP Request Update Content Idea",
+      "name": "Supabase Update Content Idea",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [500, 120]
@@ -247,7 +247,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\/+$/, '') + '/api/video-ops/workflow-runs/' + $json.workflowRunId + '/complete' }}",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/workflow-runs/' + $json.workflowRunId + '/complete' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -263,7 +263,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { status: 'SUCCEEDED', message: 'Init publish TikTok termine.', responsePayload: JSON.stringify({ contentIdeaId: $('HTTP Request Get Content Idea').item.json[0].id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url }) } }}",
+        "jsonBody": "={{ { status: 'SUCCEEDED', message: 'Init publish TikTok termine.', responsePayload: JSON.stringify({ contentIdeaId: $('Supabase Get Content Idea').item.json[0].id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url }) } }}",
         "options": {}
       },
       "id": "callback",
@@ -275,7 +275,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { ok: true, contentIdeaId: $('HTTP Request Get Content Idea').item.json[0].id, publishId: $('HTTP Request Init Publish').item.json.data?.publish_id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url, status: 'init_done' } }}",
+        "responseBody": "={{ { ok: true, contentIdeaId: $('Supabase Get Content Idea').item.json[0].id, publishId: $('HTTP Request Init Publish').item.json.data?.publish_id, uploadUrl: $('HTTP Request Init Publish').item.json.data?.upload_url, status: 'init_done' } }}",
         "options": {
           "responseCode": 200
         }
