@@ -95,6 +95,10 @@ services:
       VITE_BACKEND_PROXY_TARGET: http://backend:8080
       VITE_USE_MOCK_ADMIN_AUTH: false
       VITE_ALLOWED_HOSTS: localhost,127.0.0.1,192.168.11.100
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./Frontend/admin:/app
+      - /app/node_modules
     depends_on:
       - backend
 

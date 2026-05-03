@@ -11,7 +11,13 @@
       "Bash(curl -s http://localhost:5174/accounts)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git revert *)"
+      "Bash(git revert *)",
+      "PowerShell(Get-Process dockerd -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "PowerShell(Get-Command docker)",
+      "PowerShell(Restart-Service -Name \"Docker\" -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Start-Service -Name \"Docker\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")"
     ]
   }
 }

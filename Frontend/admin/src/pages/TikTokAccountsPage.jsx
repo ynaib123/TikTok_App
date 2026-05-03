@@ -534,7 +534,7 @@ export default function TikTokAccountsPage() {
                           onChange={(event) => updateServiceForm(providerKey, 'secretValue', event.target.value)}
                           placeholder={providerKey === 'N8N'
                             ? 'Laisse vide sauf si tu veux garder une note secrete'
-                            : connection?.hasSecret ? 'Secret deja enregistre' : 'Coller le secret ici'}
+                            : 'Coller le secret ici'}
                         />
                       </label>
                       <label className="tiktok-step-field accounts-service-form-wide">
