@@ -17,7 +17,14 @@
       "PowerShell(Get-Command docker)",
       "PowerShell(Restart-Service -Name \"Docker\" -Force -ErrorAction SilentlyContinue)",
       "PowerShell(Start-Service -Name \"Docker\" -ErrorAction SilentlyContinue)",
-      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")"
+      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\TikTok_App\" -Force -Recurse)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Format-Table Name, FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\TikTok_App\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(xargs du *)",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }
