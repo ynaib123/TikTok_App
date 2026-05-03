@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec *)",
+      "Bash(python3 /c/TikTok_App/docs/n8n-workflows/build_workflows.py)",
+      "Bash(node deploy_workflows.js)",
+      "Bash(sqlite3 /c/TikTok_App/n8n-local/database.sqlite \"SELECT name FROM sqlite_master WHERE type='table';\")",
+      "PowerShell(docker exec tiktok-app-n8n n8n user-management:reset 2>&1)",
+      "PowerShell(head -5)",
+      "Bash(npx eslint *)",
+      "Bash(curl -s http://localhost:5174/accounts)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

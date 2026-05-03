@@ -1,0 +1,389 @@
+﻿{
+    "updatedAt":  "2026-05-02T13:48:24.882Z",
+    "createdAt":  "2026-05-02T00:00:00.000Z",
+    "id":  "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name":  "check-shotstack-fixed",
+    "description":  null,
+    "active":  true,
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "check-shotstack",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "webhook",
+                      "name":  "Webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       -840,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "assignments":  {
+                                                             "assignments":  [
+                                                                                 {
+                                                                                     "name":  "contentIdeaId",
+                                                                                     "value":  "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+                                                                                     "type":  "number"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "workflowRunId",
+                                                                                     "value":  "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+                                                                                     "type":  "number"
+                                                                                 }
+                                                                             ]
+                                                         },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "set-input",
+                      "name":  "Set Input",
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       -600,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "GET",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.contentIdeaId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "get-idea",
+                      "name":  "Backend Get Content Idea",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -360,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const idea = $json;\nif (!idea || !idea.id) throw new Error(\u0027contentIdea introuvable.\u0027);\nif (!idea.shotstack_render_id) throw new Error(\u0027Aucun shotstack_render_id pour cette contentIdea.\u0027);\nconst status = String(idea.shotstack_status || \u0027\u0027).toLowerCase();\nif (![\u0027queued\u0027, \u0027rendering\u0027, \u0027preparing\u0027].includes(status)) {\n  return [{ json: { skip: true, reason: \u0027shotstack_status=\u0027 + status + \u0027 â€” rien a faire.\u0027, idea } }];\n}\nreturn [{ json: { skip: false, renderId: idea.shotstack_render_id, ideaId: idea.id, idea } }];"
+                                     },
+                      "id":  "validate-render",
+                      "name":  "Validate Render State",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -120,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "skip-check",
+                                                                                   "leftValue":  "={{ $json.skip }}",
+                                                                                   "rightValue":  true,
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "if-skip",
+                      "name":  "Skip if not pending",
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.2,
+                      "position":  [
+                                       120,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "GET",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/shotstack/render/\u0027 + $json.renderId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "shotstack-status",
+                      "name":  "Backend Get Shotstack Status",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       360,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const status = String($json.response?.status || \u0027\u0027).toLowerCase();\nconst ideaId = $(\u0027Validate Render State\u0027).item.json.ideaId;\nif (status === \u0027done\u0027) {\n  return [{ json: { ideaId, patch: { shotstack_status: \u0027done\u0027, shotstack_url: $json.response?.url || \u0027\u0027, final_video_status: \u0027ready\u0027, pipeline_status: \u0027render_ready\u0027 }, callbackStatus: \u0027SUCCEEDED\u0027, callbackMessage: \u0027Render Shotstack termine.\u0027 } }];\n}\nif (status === \u0027failed\u0027) {\n  return [{ json: { ideaId, patch: { shotstack_status: \u0027failed\u0027, final_video_status: \u0027failed\u0027, pipeline_status: \u0027failed\u0027 }, callbackStatus: \u0027FAILED\u0027, callbackMessage: \u0027Render Shotstack en echec.\u0027 } }];\n}\nreturn [];"
+                                     },
+                      "id":  "map-update",
+                      "name":  "Build Update Payload",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       600,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "PATCH",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.ideaId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify($json.patch) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "update-row",
+                      "name":  "Backend Update Content Idea",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       840,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Set Input\u0027).item.json.contentIdeaId, shotstackStatus: $(\u0027Build Update Payload\u0027).item.json.patch.shotstack_status } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "respond",
+                      "name":  "Respond to Webhook",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       1080,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/workflow-runs/\u0027 + $(\u0027Set Input\u0027).item.json.workflowRunId + \u0027/complete\u0027 }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Callback-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ status: $(\u0027Build Update Payload\u0027).item.json.callbackStatus, message: $(\u0027Build Update Payload\u0027).item.json.callbackMessage, responsePayload: JSON.stringify({ contentIdeaId: $(\u0027Set Input\u0027).item.json.contentIdeaId, shotstackStatus: $(\u0027Build Update Payload\u0027).item.json.patch.shotstack_status }) }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "callback",
+                      "name":  "Callback Backend",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       1320,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Set Input\u0027).item.json.contentIdeaId, skipped: true, reason: $(\u0027Validate Render State\u0027).item.json.reason } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "respond-skip",
+                      "name":  "Respond Skipped",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       360,
+                                       300
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Set Input",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Set Input":  {
+                                          "main":  [
+                                                       [
+                                                           {
+                                                               "node":  "Backend Get Content Idea",
+                                                               "type":  "main",
+                                                               "index":  0
+                                                           }
+                                                       ]
+                                                   ]
+                                      },
+                        "Backend Get Content Idea":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Validate Render State",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "Validate Render State":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Skip if not pending",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Skip if not pending":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Respond Skipped",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ],
+                                                                 [
+                                                                     {
+                                                                         "node":  "Backend Get Shotstack Status",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Backend Get Shotstack Status":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "Build Update Payload",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                        "Build Update Payload":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Backend Update Content Idea",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ]
+                                                 },
+                        "Backend Update Content Idea":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Respond to Webhook",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                        "Respond to Webhook":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Callback Backend",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "Callback Backend":  {
+                                                 "main":  [
+
+                                                          ]
+                                             }
+                    },
+    "pinData":  {
+
+                },
+    "meta":  {
+                 "templateCredsSetupCompleted":  true
+             }
+}

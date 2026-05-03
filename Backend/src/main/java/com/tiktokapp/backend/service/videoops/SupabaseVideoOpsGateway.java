@@ -2,243 +2,223 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tiktokapp.backend.config.VideoOpsProperties;
-import com.tiktokapp.backend.model.ServiceConnectionProvider;
+import com.tiktokapp.backend.model.ContentIdea;
+import com.tiktokapp.backend.model.TikTokAccount;
+import com.tiktokapp.backend.repository.ContentIdeaRepository;
+import com.tiktokapp.backend.repository.TikTokAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * Data gateway for content_ideas and tiktok_accounts — backed by local PostgreSQL via JPA.
+ * Kept as a facade so all callers remain unchanged.
+ */
 @Service
 public class SupabaseVideoOpsGateway {
 
-    private final VideoOpsProperties properties;
-    private final ServiceConnectionResolver connectionResolver;
+    private final ContentIdeaRepository contentIdeaRepo;
+    private final TikTokAccountRepository tiktokAccountRepo;
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
 
-    public SupabaseVideoOpsGateway(VideoOpsProperties properties, ServiceConnectionResolver connectionResolver, ObjectMapper objectMapper) {
-        this.properties = properties;
-        this.connectionResolver = connectionResolver;
+    public SupabaseVideoOpsGateway(
+            ContentIdeaRepository contentIdeaRepo,
+            TikTokAccountRepository tiktokAccountRepo,
+            ObjectMapper objectMapper
+    ) {
+        this.contentIdeaRepo = contentIdeaRepo;
+        this.tiktokAccountRepo = tiktokAccountRepo;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(20))
-                .build();
     }
 
+    @Transactional(readOnly = true)
     public JsonNode fetchContentIdeas() {
-        ensureConfigured();
-        String select = "id,category,topic,scripts,caption,background_keyword,shotstack_status,publish_status,final_video_status,shotstack_url,tiktok_upload_url,tiktok_upload_status,tiktok_account_open_id";
-        String url = restBaseUrl() + "/content_ideas?select=" + encode(select) + "&order=id.desc&limit=" + properties.getQueryLimit();
-        return sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build(), "Impossible de lire content_ideas depuis Supabase.");
+        List<ContentIdea> ideas = contentIdeaRepo.findAllByOrderByIdDesc();
+        return objectMapper.valueToTree(ideas.stream().map(this::toMap).toList());
     }
 
+    @Transactional(readOnly = true)
     public JsonNode fetchContentIdeaById(long contentIdeaId) {
-        ensureConfigured();
-        String select = "id,category,topic,scripts,caption,background_keyword,shotstack_status,publish_status,final_video_status,shotstack_url,tiktok_upload_url,tiktok_upload_status,tiktok_account_open_id";
-        String url = restBaseUrl() + "/content_ideas?select=" + encode(select) + "&id=eq." + contentIdeaId + "&limit=1";
-        return sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build(), "Impossible de lire la content_idea depuis Supabase.");
+        return contentIdeaRepo.findById(contentIdeaId)
+                .map(idea -> objectMapper.<JsonNode>valueToTree(List.of(toMap(idea))))
+                .orElse(objectMapper.createArrayNode());
     }
 
+    @Transactional(readOnly = true)
     public JsonNode fetchInitPublishContentIdea(long contentIdeaId) {
-        ensureConfigured();
-        String select = "id,platform,caption,shotstack_url,final_video_status,publish_status,tiktok_account_open_id";
-        String url = restBaseUrl() + "/content_ideas?select=" + encode(select) + "&id=eq." + contentIdeaId + "&limit=1";
-        return sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build(), "Impossible de lire le contexte init publish depuis Supabase.");
+        return contentIdeaRepo.findById(contentIdeaId)
+                .map(idea -> {
+                    Map<String, Object> row = Map.of(
+                            "id", idea.getId(),
+                            "platform", orEmpty(idea.getPlatform()),
+                            "caption", orEmpty(idea.getCaption()),
+                            "shotstack_url", orEmpty(idea.getShotstackUrl()),
+                            "final_video_status", orEmpty(idea.getFinalVideoStatus()),
+                            "publish_status", orEmpty(idea.getPublishStatus()),
+                            "tiktok_account_open_id", orEmpty(idea.getTiktokAccountOpenId())
+                    );
+                    return objectMapper.<JsonNode>valueToTree(List.of(row));
+                })
+                .orElse(objectMapper.createArrayNode());
     }
 
+    @Transactional(readOnly = true)
     public JsonNode fetchTikTokAccounts() {
-        ensureConfigured();
-        String select = "id,open_id,scope,token_type";
-        String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&order=id.asc&limit=" + properties.getQueryLimit();
-        return sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build(), "Impossible de lire tiktok_accounts depuis Supabase.");
+        List<TikTokAccount> accounts = tiktokAccountRepo.findAllByOrderByIdAsc();
+        return objectMapper.valueToTree(accounts.stream().map(a -> Map.of(
+                "id", a.getId(),
+                "open_id", orEmpty(a.getOpenId()),
+                "scope", orEmpty(a.getScope()),
+                "token_type", orEmpty(a.getTokenType())
+        )).toList());
     }
 
+    @Transactional(readOnly = true)
     public JsonNode fetchTikTokAccountsForEncryptionMigration() {
-        ensureConfigured();
-        String select = "id,open_id,access_token,refresh_token";
-        String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&order=id.asc&limit=" + properties.getQueryLimit();
-        return sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build(), "Impossible de lire tiktok_accounts pour la migration de chiffrement.");
+        List<TikTokAccount> accounts = tiktokAccountRepo.findAllByOrderByIdAsc();
+        return objectMapper.valueToTree(accounts.stream().map(a -> Map.of(
+                "id", a.getId(),
+                "open_id", orEmpty(a.getOpenId()),
+                "access_token", orEmpty(a.getAccessToken()),
+                "refresh_token", orEmpty(a.getRefreshToken())
+        )).toList());
     }
 
+    @Transactional(readOnly = true)
     public JsonNode findTikTokAccountsByOpenId(String openId) {
-        ensureConfigured();
-        String select = "id,open_id,scope,access_token,refresh_token,token_type";
-        String url = restBaseUrl() + "/tiktok_accounts?select=" + encode(select) + "&open_id=eq." + encode(openId) + "&limit=1";
-        return sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build(), "Impossible de lire le compte TikTok depuis Supabase.");
+        return tiktokAccountRepo.findFirstByOpenId(openId)
+                .map(a -> objectMapper.<JsonNode>valueToTree(List.of(Map.of(
+                        "id", a.getId(),
+                        "open_id", orEmpty(a.getOpenId()),
+                        "scope", orEmpty(a.getScope()),
+                        "access_token", orEmpty(a.getAccessToken()),
+                        "refresh_token", orEmpty(a.getRefreshToken()),
+                        "token_type", orEmpty(a.getTokenType())
+                ))))
+                .orElse(objectMapper.createArrayNode());
     }
 
+    @Transactional
     public JsonNode updateContentIdea(long contentIdeaId, Map<String, Object> payload) {
-        ensureConfigured();
-        String url = restBaseUrl() + "/content_ideas?id=eq." + contentIdeaId;
-        try {
-            String body = objectMapper.writeValueAsString(payload);
-            return sendJsonRequest(HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Prefer", "return=representation")
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
-                    .build(), "Impossible de mettre a jour content_ideas dans Supabase.");
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossible de serialiser la mise a jour Supabase.", exception);
-        }
+        ContentIdea idea = contentIdeaRepo.findById(contentIdeaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable."));
+        applyContentIdeaPatch(idea, payload);
+        contentIdeaRepo.save(idea);
+        return objectMapper.valueToTree(List.of(toMap(idea)));
     }
 
+    @Transactional
     public JsonNode createTikTokAccount(Map<String, Object> payload) {
-        ensureConfigured();
-        String url = restBaseUrl() + "/tiktok_accounts";
-        try {
-            String body = objectMapper.writeValueAsString(payload);
-            return sendJsonRequest(HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Prefer", "return=representation")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build(), "Impossible de creer le compte TikTok dans Supabase.");
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossible de serialiser la creation du compte TikTok.", exception);
-        }
+        TikTokAccount account = new TikTokAccount();
+        applyTikTokAccountPatch(account, payload);
+        tiktokAccountRepo.save(account);
+        return objectMapper.valueToTree(List.of(toAccountMap(account)));
     }
 
+    @Transactional
     public JsonNode updateTikTokAccount(long accountId, Map<String, Object> payload) {
-        ensureConfigured();
-        String url = restBaseUrl() + "/tiktok_accounts?id=eq." + accountId;
-        try {
-            String body = objectMapper.writeValueAsString(payload);
-            return sendJsonRequest(HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Prefer", "return=representation")
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
-                    .build(), "Impossible de mettre a jour le compte TikTok dans Supabase.");
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossible de serialiser la mise a jour du compte TikTok.", exception);
-        }
+        TikTokAccount account = tiktokAccountRepo.findById(accountId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "compte TikTok introuvable."));
+        applyTikTokAccountPatch(account, payload);
+        tiktokAccountRepo.save(account);
+        return objectMapper.valueToTree(List.of(toAccountMap(account)));
     }
 
+    @Transactional
     public void deleteTikTokAccount(long accountId) {
-        ensureConfigured();
-        String url = restBaseUrl() + "/tiktok_accounts?id=eq." + accountId;
-        sendJsonRequest(HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .method("DELETE", HttpRequest.BodyPublishers.noBody())
-                .build(), "Impossible de supprimer le compte TikTok dans Supabase.");
+        tiktokAccountRepo.deleteById(accountId);
     }
 
-    private JsonNode sendJsonRequest(HttpRequest request, String fallbackMessage) {
-        try {
-            HttpRequest enrichedRequest = withSupabaseHeaders(request);
-            HttpResponse<String> response = httpClient.send(enrichedRequest, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_GATEWAY,
-                        fallbackMessage + " Supabase a repondu " + response.statusCode() + "."
-                );
+    private void applyContentIdeaPatch(ContentIdea idea, Map<String, Object> patch) {
+        patch.forEach((key, value) -> {
+            String v = value == null ? null : value.toString();
+            switch (key) {
+                case "category" -> idea.setCategory(v);
+                case "topic" -> idea.setTopic(v);
+                case "scripts" -> idea.setScripts(v);
+                case "script_status" -> idea.setScriptStatus(v);
+                case "caption" -> idea.setCaption(v);
+                case "background_keyword" -> idea.setBackgroundKeyword(v);
+                case "status" -> idea.setStatus(v);
+                case "pipeline_status" -> idea.setPipelineStatus(v);
+                case "publish_status" -> idea.setPublishStatus(v);
+                case "platform" -> idea.setPlatform(v);
+                case "final_video_status" -> idea.setFinalVideoStatus(v);
+                case "shotstack_status" -> idea.setShotstackStatus(v);
+                case "shotstack_url" -> idea.setShotstackUrl(v);
+                case "shotstack_render_id" -> idea.setShotstackRenderId(v);
+                case "render_payload" -> idea.setRenderPayload(v);
+                case "render_status" -> idea.setRenderStatus(v);
+                case "tiktok_account_open_id" -> idea.setTiktokAccountOpenId(v);
+                case "template_id" -> idea.setTemplateId(v);
+                case "tiktok_publish_id" -> idea.setTiktokPublishId(v);
+                case "tiktok_upload_url" -> idea.setTiktokUploadUrl(v);
+                case "tiktok_upload_status" -> idea.setTiktokUploadStatus(v);
+                case "tiktok_check_status" -> idea.setTiktokCheckStatus(v);
+                case "uploaded_at" -> idea.setUploadedAt(v == null ? null : Instant.parse(v));
+                case "published_at" -> idea.setPublishedAt(v == null ? null : Instant.parse(v));
             }
-            String body = response.body();
-            return body == null || body.isBlank() ? objectMapper.createArrayNode() : objectMapper.readTree(body);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, fallbackMessage, exception);
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, fallbackMessage, exception);
-        }
+        });
     }
 
-    private HttpRequest withSupabaseHeaders(HttpRequest request) {
-        String serviceRoleKey = currentSupabaseServiceRoleKey();
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(request.uri())
-                .timeout(request.timeout().orElse(Duration.ofSeconds(30)))
-                .header("apikey", serviceRoleKey)
-                .header("Authorization", "Bearer " + serviceRoleKey)
-                .header("Content-Type", "application/json");
-        request.headers().map().forEach((name, values) -> values.forEach(value -> builder.header(name, value)));
-        return builder.method(
-                request.method(),
-                request.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody())
-        ).build();
-    }
-
-    private void ensureConfigured() {
-        if (currentSupabaseUrl() == null || currentSupabaseUrl().isBlank()
-                || currentSupabaseServiceRoleKey() == null || currentSupabaseServiceRoleKey().isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "La configuration video ops backend vers Supabase est manquante."
-            );
-        }
-    }
-
-    private String restBaseUrl() {
-        return currentSupabaseUrl().replaceAll("/+$", "") + "/rest/v1";
-    }
-
-    private String currentSupabaseUrl() {
-        ResolvedServiceConnection connection = connectionResolver.findConnected(ServiceConnectionProvider.SUPABASE);
-        if (connection != null && isSupabaseProjectUrl(connection.baseUrl())) {
-            return connection.baseUrl();
-        }
-        return properties.getSupabaseUrl();
-    }
-
-    private String currentSupabaseServiceRoleKey() {
-        ResolvedServiceConnection connection = connectionResolver.findConnected(ServiceConnectionProvider.SUPABASE);
-        if (connection != null && isSupabaseProjectUrl(connection.baseUrl())
-                && connection.secretValue() != null && !connection.secretValue().isBlank()) {
-            return connection.secretValue();
-        }
-        return properties.getSupabaseServiceRoleKey();
-    }
-
-    private boolean isSupabaseProjectUrl(String rawUrl) {
-        try {
-            if (rawUrl == null || rawUrl.isBlank()) {
-                return false;
+    private void applyTikTokAccountPatch(TikTokAccount account, Map<String, Object> patch) {
+        patch.forEach((key, value) -> {
+            String v = value == null ? null : value.toString();
+            switch (key) {
+                case "open_id" -> account.setOpenId(v);
+                case "access_token" -> account.setAccessToken(v);
+                case "refresh_token" -> account.setRefreshToken(v);
+                case "scope" -> account.setScope(v);
+                case "token_type" -> account.setTokenType(v);
             }
-            URI uri = URI.create(rawUrl);
-            String host = uri.getHost();
-            return host != null && host.toLowerCase().endsWith(".supabase.co");
-        } catch (IllegalArgumentException exception) {
-            return false;
-        }
+        });
     }
 
-    private String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    private Map<String, Object> toMap(ContentIdea idea) {
+        java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("id", idea.getId());
+        map.put("category", orEmpty(idea.getCategory()));
+        map.put("topic", orEmpty(idea.getTopic()));
+        map.put("scripts", orEmpty(idea.getScripts()));
+        map.put("script_status", orEmpty(idea.getScriptStatus()));
+        map.put("caption", orEmpty(idea.getCaption()));
+        map.put("background_keyword", orEmpty(idea.getBackgroundKeyword()));
+        map.put("status", orEmpty(idea.getStatus()));
+        map.put("pipeline_status", orEmpty(idea.getPipelineStatus()));
+        map.put("publish_status", orEmpty(idea.getPublishStatus()));
+        map.put("platform", orEmpty(idea.getPlatform()));
+        map.put("final_video_status", orEmpty(idea.getFinalVideoStatus()));
+        map.put("shotstack_status", orEmpty(idea.getShotstackStatus()));
+        map.put("shotstack_url", orEmpty(idea.getShotstackUrl()));
+        map.put("shotstack_render_id", orEmpty(idea.getShotstackRenderId()));
+        map.put("render_payload", orEmpty(idea.getRenderPayload()));
+        map.put("render_status", orEmpty(idea.getRenderStatus()));
+        map.put("tiktok_account_open_id", orEmpty(idea.getTiktokAccountOpenId()));
+        map.put("template_id", orEmpty(idea.getTemplateId()));
+        map.put("tiktok_publish_id", orEmpty(idea.getTiktokPublishId()));
+        map.put("tiktok_upload_url", orEmpty(idea.getTiktokUploadUrl()));
+        map.put("tiktok_upload_status", orEmpty(idea.getTiktokUploadStatus()));
+        map.put("tiktok_check_status", orEmpty(idea.getTiktokCheckStatus()));
+        return map;
+    }
+
+    private Map<String, Object> toAccountMap(TikTokAccount a) {
+        return Map.of(
+                "id", a.getId(),
+                "open_id", orEmpty(a.getOpenId()),
+                "scope", orEmpty(a.getScope()),
+                "token_type", orEmpty(a.getTokenType()),
+                "access_token", orEmpty(a.getAccessToken()),
+                "refresh_token", orEmpty(a.getRefreshToken())
+        );
+    }
+
+    private String orEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

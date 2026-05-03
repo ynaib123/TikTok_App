@@ -12,8 +12,6 @@ export default function TikTokOAuthCallbackPage() {
     let isActive = true
 
     async function run() {
-      const code = searchParams.get('code')
-      const state = searchParams.get('state')
       const oauthError = searchParams.get('error')
       const oauthDescription = searchParams.get('error_description')
 
@@ -22,6 +20,22 @@ export default function TikTokOAuthCallbackPage() {
         setErrorMessage(oauthDescription || oauthError || 'La connexion TikTok a ete refusee.')
         return
       }
+
+      // Server-side OAuth completion: backend redirected here with ?tiktokSuccess=1
+      const tiktokSuccess = searchParams.get('tiktokSuccess')
+      if (tiktokSuccess === '1') {
+        if (!isActive) return
+        setMessage('Compte TikTok connecte.')
+        window.setTimeout(() => navigate('/accounts', {
+          replace: true,
+          state: { tiktokOAuthSuccess: 'Compte TikTok connecte avec succes.' },
+        }), 800)
+        return
+      }
+
+      // Legacy client-side flow: code + state passed directly to this page
+      const code = searchParams.get('code')
+      const state = searchParams.get('state')
 
       if (!code || !state) {
         if (!isActive) return

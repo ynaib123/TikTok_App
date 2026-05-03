@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\nconst category = String(body.category || '').trim();\nconst ideaCount = Number(body.ideaCount || 1);\nif (!category) throw new Error('category est obligatoire');\nif (!Number.isInteger(ideaCount) || ideaCount < 1 || ideaCount > 5) throw new Error('ideaCount doit etre entre 1 et 5');\nreturn [{ json: { category, ideaCount, workflowRunId: Number(body.workflowRunId || 0), template_id: body.templateId || null, tiktok_account_open_id: body.tiktokAccountOpenId || null } }];"
+        "jsCode": "const body = $input.first().json.body || {};\nconst category = String(body.category || '').trim();\nconst ideaCount = Number(body.ideaCount || 1);\nif (!category) throw new Error('category est obligatoire');\nif (!Number.isInteger(ideaCount) || ideaCount < 1 || ideaCount > 5) throw new Error('ideaCount doit etre entre 1 et 5');\nreturn [{ json: { category, ideaCount, workflowRunId: Number(body.workflowRunId || 0), templateId: body.templateId || null, tiktokAccountOpenId: body.tiktokAccountOpenId || null } }];"
       },
       "id": "validate-input",
       "name": "Validate Input",
@@ -32,7 +32,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nreturn Array.from({ length: input.ideaCount }).map((_, index) => ({ json: { ...input, iteration: index + 1 } }));"
+        "jsCode": "const input = $input.first().json;\nreturn Array.from({ length: input.ideaCount }).map((_, i) => ({ json: { ...input, iteration: i + 1 } }));"
       },
       "id": "expand",
       "name": "Expand Ideas",
@@ -76,7 +76,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { topic: String($json.choices?.[0]?.message?.content || '').trim(), category: $('Expand Ideas').item.json.category, workflowRunId: $('Expand Ideas').item.json.workflowRunId, template_id: $('Expand Ideas').item.json.template_id, tiktok_account_open_id: $('Expand Ideas').item.json.tiktok_account_open_id } }];"
+        "jsCode": "return [{ json: { topic: String($json.choices?.[0]?.message?.content || '').trim(), category: $('Expand Ideas').item.json.category, workflowRunId: $('Expand Ideas').item.json.workflowRunId, templateId: $('Expand Ideas').item.json.templateId, tiktokAccountOpenId: $('Expand Ideas').item.json.tiktokAccountOpenId } }];"
       },
       "id": "normalize",
       "name": "Normalize Topic",
@@ -90,69 +90,27 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '') + '/rest/v1/content_ideas' }}",
+        "url": "=http://backend:8080/api/video-ops/internal/content-ideas",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
             },
             {
-              "name": "Prefer",
-              "value": "return=representation"
+              "name": "X-Video-Ops-Internal-Secret",
+              "value": "2nDq4MoyD9CVHiUq4toqv3_Rl2K05Eqs7Fpjf09iPuM"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "status",
-              "value": "new"
-            },
-            {
-              "name": "topic",
-              "value": "={{ $json.topic }}"
-            },
-            {
-              "name": "pipeline_status",
-              "value": "idea_created"
-            },
-            {
-              "name": "publish_status",
-              "value": "draft"
-            },
-            {
-              "name": "platform",
-              "value": "tiktok"
-            },
-            {
-              "name": "template_id",
-              "value": "={{ $json.template_id }}"
-            },
-            {
-              "name": "tiktok_account_open_id",
-              "value": "={{ $json.tiktok_account_open_id }}"
-            },
-            {
-              "name": "category",
-              "value": "={{ $json.category }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ category: $json.category, topic: $json.topic, status: 'new', pipelineStatus: 'idea_created', publishStatus: 'draft', platform: 'tiktok', templateId: $json.templateId || null, tiktokAccountOpenId: $json.tiktokAccountOpenId || null }) }}",
         "options": {}
       },
       "id": "create-row",
-      "name": "HTTP Request Create Row",
+      "name": "Backend Create Content Idea",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -175,19 +133,6 @@
     },
     {
       "parameters": {
-        "jsCode": "const http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Summarize').item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL manquante');\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: \"Creation ideas terminee.\",\n  responsePayload: JSON.stringify({ createdCount: Number($json.createdCount || 0) }),\n});\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const req = client.request({\n        protocol: url.protocol,\n        hostname: url.hostname,\n        port: url.port || (url.protocol === 'https:' ? 443 : 80),\n        path: url.pathname + url.search,\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'Content-Length': Buffer.byteLength(body),\n          'X-Video-Ops-Callback-Secret': callbackSecret,\n        },\n      }, (res) => {\n        let data = '';\n        res.on('data', (chunk) => { data += chunk; });\n        res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n      });\n      req.on('error', reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) {\n      break;\n    }\n    lastError = 'Callback backend refuse: ' + response.statusCode + ' ' + response.body;\n    if (response.statusCode !== 404 || attempt === 6) {\n      throw new Error(lastError);\n    }\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) {\n      throw error;\n    }\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error(lastError || 'Callback backend refuse.');\n}\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
-      },
-      "id": "callback",
-      "name": "Callback Success",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        860,
-        120
-      ]
-    },
-    {
-      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { ok: true, workflowRunId: $('Summarize').item.json.workflowRunId, createdCount: $('Summarize').item.json.createdCount, status: 'idea_created' } }}",
         "options": {
@@ -198,6 +143,19 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
+      "position": [
+        620,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nconst { URL } = require('url');\nconst baseUrl = 'http://backend:8080';\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Summarize').item.json.workflowRunId || 0);\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({ status: 'SUCCEEDED', message: 'Creation ideas terminee.', responsePayload: JSON.stringify({ createdCount: Number($json.createdCount || 0) }) });\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nlet response = null; let lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt++) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const rq = http.request({ hostname: url.hostname, port: url.port || 80, path: url.pathname + url.search, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Video-Ops-Callback-Secret': callbackSecret } }, (res) => { let data = ''; res.on('data', (c) => { data += c; }); res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data })); });\n      rq.on('error', reject); rq.write(body); rq.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) break;\n    lastError = 'Callback refuse: ' + response.statusCode;\n    if (attempt === 6) throw new Error(lastError);\n  } catch (e) { lastError = e.message; if (attempt === 6) throw e; }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) throw new Error(lastError || 'Callback refuse.');\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
+      },
+      "id": "callback",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         860,
         120
@@ -253,14 +211,14 @@
       "main": [
         [
           {
-            "node": "Supabase Create Row",
+            "node": "Backend Create Content Idea",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase Create Row": {
+    "Backend Create Content Idea": {
       "main": [
         [
           {
@@ -282,9 +240,6 @@
         ]
       ]
     },
-    "Callback Success": {
-      "main": []
-    },
     "Respond to Webhook": {
       "main": [
         [
@@ -295,6 +250,9 @@
           }
         ]
       ]
+    },
+    "Callback Success": {
+      "main": []
     }
   },
   "pinData": {},

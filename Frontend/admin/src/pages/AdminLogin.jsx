@@ -232,8 +232,7 @@ export default function AdminLogin() {
 
           <div className="admin-auth-demo-hint">
             <p className="admin-auth-card-kicker">Acces demo</p>
-            <p>Email: admin@tiktokapp.local</p>
-            <p>Mot de passe: admin123</p>
+            <p>Renseigne les identifiants locaux via `VITE_MOCK_ADMIN_EMAIL` et `VITE_MOCK_ADMIN_PASSWORD` si tu actives `VITE_USE_MOCK_ADMIN_AUTH=true`.</p>
           </div>
         </section>
       </div>

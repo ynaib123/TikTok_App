@@ -1,6 +1,10 @@
 # n8n Workflow Migration
 
-Ce repo ne pilote pas directement ton instance n8n, donc les workflows doivent etre reimportes ou modifies dans n8n apres ces changements backend/frontend.
+Ce repo ne pilote pas automatiquement toutes les instances n8n.
+
+Pour une instance distante ou partagee, les workflows doivent etre reimportes ou modifies dans n8n apres ces changements backend/frontend.
+
+Pour l instance locale de ce repo (`n8n-local/database.sqlite`), verifie d abord les workflows actifs avant de reimporter: la base peut deja contenir une version plus recente que les exports legacy.
 
 ## Nouvelles regles
 

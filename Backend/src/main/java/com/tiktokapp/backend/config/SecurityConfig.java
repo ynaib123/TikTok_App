@@ -39,7 +39,13 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers(                                "/api/admins/refresh",                                "/api/video-ops/workflow-runs/*/complete",
+                        .ignoringRequestMatchers(
+                                "/api/admins/refresh",
+                                "/api/video-ops/workflow-runs/*/complete",
+                                "/api/video-ops/workflows/**",
+                                "/api/video-ops/content-ideas/*/upload",
+                                "/api/video-ops/content-ideas/*/publish",
+                                "/api/video-ops/internal/**",
                                 "/api/video-ops/internal/tiktok/init-publish-context",
                                 "/api/video-ops/internal/tiktok/account-context",
                                 "/api/video-ops/internal/groq/chat-completions",
@@ -65,6 +71,7 @@ public class SecurityConfig {
                                 "/api/admins/refresh",
                                 "/api/admins/logout",
                                 "/api/video-ops/workflow-runs/*/complete",
+                                "/api/video-ops/internal/**",
                                 "/api/video-ops/internal/tiktok/init-publish-context",
                                 "/api/video-ops/internal/tiktok/account-context",
                                 "/api/video-ops/internal/groq/chat-completions",

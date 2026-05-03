@@ -25,6 +25,8 @@ public class VideoOpsSchemaMigration {
 
     @PostConstruct
     void migrateEnumCheckConstraints() {
+        ensureContentIdeasSchema();
+        ensureTikTokAccountsSchema();
         ensureServiceConnectionsProfilesSchema();
         synchronizeCheckConstraint(
                 "video_pipeline_states",
@@ -56,6 +58,57 @@ public class VideoOpsSchemaMigration {
         jdbcTemplate.execute("ALTER TABLE " + tableName + " DROP CONSTRAINT IF EXISTS " + constraintName);
         jdbcTemplate.execute("ALTER TABLE " + tableName + " ADD CONSTRAINT " + constraintName + " CHECK (" + predicate + ")");
         logger.info("video_ops schema constraint {} synchronized on {}", constraintName, tableName);
+    }
+
+    private void ensureContentIdeasSchema() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS content_ideas (
+                    id                      bigserial PRIMARY KEY,
+                    category                text,
+                    topic                   text,
+                    scripts                 text,
+                    script_status           text,
+                    caption                 text,
+                    background_keyword      text,
+                    status                  text,
+                    pipeline_status         text,
+                    publish_status          text,
+                    platform                text,
+                    final_video_status      text,
+                    shotstack_status        text,
+                    shotstack_url           text,
+                    shotstack_render_id     text,
+                    render_payload          text,
+                    render_status           text,
+                    tiktok_account_open_id  text,
+                    template_id             text,
+                    tiktok_publish_id       text,
+                    tiktok_upload_url       text,
+                    tiktok_upload_status    text,
+                    tiktok_check_status     text,
+                    uploaded_at             timestamptz,
+                    published_at            timestamptz,
+                    created_at              timestamptz NOT NULL DEFAULT now(),
+                    updated_at              timestamptz NOT NULL DEFAULT now()
+                )
+                """);
+        logger.info("video_ops schema content_ideas ensured");
+    }
+
+    private void ensureTikTokAccountsSchema() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS tiktok_accounts (
+                    id            bigserial PRIMARY KEY,
+                    open_id       text,
+                    access_token  text,
+                    refresh_token text,
+                    scope         text,
+                    token_type    text,
+                    created_at    timestamptz NOT NULL DEFAULT now(),
+                    updated_at    timestamptz NOT NULL DEFAULT now()
+                )
+                """);
+        logger.info("video_ops schema tiktok_accounts ensured");
     }
 
     private void ensureServiceConnectionsProfilesSchema() {

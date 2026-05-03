@@ -4,8 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import AdminShell from '../components/AdminShell'
 import AdminToolbarMenuButton from './admin-dashboard/AdminToolbarMenuButton'
 import {
-  triggerCheckShotstackWorkflow as triggerScriptGenerationWorkflow,
+  triggerCheckShotstackWorkflow,
   triggerMainContentPipeline,
+  triggerScriptGenerationWorkflow,
   triggerRenderTemplateWorkflow,
   triggerPublishTikTokWorkflow,
 } from '../services/n8nClient'
@@ -569,6 +570,7 @@ export default function TikTokJourneyPage() {
     scriptedIdea,
     selectedGeneratedIdea,
     goToStep,
+    triggerCheckShotstackWorkflow,
     triggerRenderTemplateWorkflow,
     fetchContentIdeas,
     waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,
@@ -769,7 +771,7 @@ export default function TikTokJourneyPage() {
       {!isJourneyReady ? (
         <section className="tiktok-step-empty-state" aria-live="polite">
           <strong>Accounts incomplets</strong>
-          <p>Connecte TikTok, Supabase, n8n, Groq, Shotstack et Pexels dans l onglet Accounts avant de lancer un nouveau parcours.</p>
+          <p>Connecte TikTok, n8n, Groq, Shotstack et Pexels dans l onglet Accounts avant de lancer un nouveau parcours.</p>
         </section>
       ) : null}
 

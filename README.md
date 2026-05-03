@@ -4,8 +4,9 @@ Projet local compose de :
 
 - `Backend/` : API Spring Boot pour l authentification admin et les endpoints backoffice
 - `Frontend/admin/` : backoffice React/Vite
-- `supabase/` : scripts SQL utilitaires pour les acces video ops
-- `docker-compose.yml` : PostgreSQL + backend Spring
+- `n8n-local/` : instance locale n8n et exports de workflows
+- `supabase/` : artefacts legacy conserves pour compatibilite documentaire
+- `docker-compose.yml` : PostgreSQL + backend Spring + n8n + frontend
 
 ## Prerequis
 
@@ -26,10 +27,10 @@ docker compose up --build -d
 
 Backend : `http://localhost:8080`
 
-Compte admin cree automatiquement :
+Compte admin cree automatiquement avec les valeurs de ton `.env` :
 
 - email : `admin@tiktokapp.local`
-- mot de passe : `admin123`
+- mot de passe : `APP_ADMIN_PASSWORD`
 
 ### 2. Frontend admin
 
@@ -52,6 +53,8 @@ VITE_API_BASE_URL=/api
 VITE_BACKEND_PROXY_TARGET=http://127.0.0.1:8080
 VITE_USE_MOCK_ADMIN_AUTH=false
 VITE_ALLOWED_HOSTS=<ton-host-ngrok-si-utilise>
+VITE_MOCK_ADMIN_EMAIL=<optionnel-si-mock-auth>
+VITE_MOCK_ADMIN_PASSWORD=<optionnel-si-mock-auth>
 ```
 
 Notes importantes :
@@ -59,7 +62,8 @@ Notes importantes :
 - `VITE_API_BASE_URL=/api` permet d utiliser le proxy Vite et evite les problemes CSRF en local
 - `VITE_BACKEND_PROXY_TARGET` doit pointer vers le backend Spring expose par Docker sur `http://127.0.0.1:8080`
 - `VITE_ALLOWED_HOSTS` est utile si tu ouvres le frontend via `ngrok` ou un autre host externe
-- le frontend admin ne doit plus appeler directement Supabase ou les webhooks `n8n`
+- le frontend admin ne doit plus appeler directement les webhooks `n8n` ni exposer de secrets backend
+- `VITE_MOCK_ADMIN_EMAIL` et `VITE_MOCK_ADMIN_PASSWORD` ne sont necessaires que si tu actives `VITE_USE_MOCK_ADMIN_AUTH=true`
 
 Si tu veux un setup 100% Docker, tu peux aussi utiliser directement :
 
@@ -78,13 +82,11 @@ Puis ouvrir :
 Variables backend recommandees pour un fonctionnement complet :
 
 ```properties
+POSTGRES_PASSWORD=...
+APP_ADMIN_PASSWORD=...
+APP_JWT_SECRET=...
+N8N_ENCRYPTION_KEY=...
 APP_ALLOWED_ORIGINS=http://localhost:5174,https://<ton-host-ngrok>
-APP_VIDEO_OPS_SUPABASE_URL=https://<project>.supabase.co
-APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY=...
-APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK=...
-APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK=...
-APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK=...
-APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK=...
 APP_VIDEO_OPS_INTERNAL_API_SECRET=...
 APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET=...
 APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET=...
@@ -101,7 +103,9 @@ APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS=open-upload.tiktokapis.com,open.tiktokapis.co
 
 Notes backend pro :
 
-- `APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY` active le chiffrement applicatif des tokens TikTok stockes dans Supabase.
+- `POSTGRES_PASSWORD`, `APP_ADMIN_PASSWORD`, `APP_JWT_SECRET`, `APP_VIDEO_OPS_INTERNAL_API_SECRET`, `APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET`, `APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET`, `APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY` et `N8N_ENCRYPTION_KEY` sont des secrets obligatoires.
+- les webhooks `n8n` ne se configurent plus dans `.env` : le backend utilise maintenant la connexion `n8n` active enregistree dans la page `Accounts`.
+- `APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY` active le chiffrement applicatif des tokens TikTok stockes en base PostgreSQL locale.
 - `APP_VIDEO_OPS_INTERNAL_API_SECRET` permet a n8n d'appeler les endpoints backend internes sans exposer les tokens TikTok.
 - `APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET` active l authentification HMAC des callbacks n8n.
 - `APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET` reste disponible en mode legacy pendant la migration.
@@ -123,27 +127,45 @@ Le backend utilise :
 - access token admin
 - refresh token via cookie HttpOnly
 
-## Video Ops et Supabase
+## Video Ops et PostgreSQL local
 
 Le backoffice passe maintenant par le backend Spring pour :
 
-- `public.content_ideas`
-- `public.tiktok_accounts`
+- `content_ideas`
+- `tiktok_accounts`
 - les mises a jour de pipeline
 - les declenchements `n8n`
 
-Le backend utilise la `service role key` Supabase pour lire et mettre a jour ces donnees cote serveur.
+Le backend lit et met a jour ces donnees via JPA sur PostgreSQL local. Il n y a plus d appels HTTP backend vers Supabase pour `content_ideas` et `tiktok_accounts`.
 
-Si tu veux simplement debloquer un ancien front qui lisait Supabase directement, il reste un script legacy :
+Le dossier `supabase/` reste present uniquement pour des artefacts legacy et de transition.
+
+La page `Accounts` ne propose plus de connexion `Supabase`, car elle n est plus utilisee par les workflows courants.
+
+Si tu veux auditer d anciens flux ou une ancienne integration front, il reste un script legacy :
 
 - `supabase/rls_video_ops_read_access.sql`
 
-Ce script ouvre la lecture `anon` pour ces deux tables afin que le frontend puisse les lire.
+Ce script ne fait pas partie du chemin nominal courant.
 
 Attention :
 
 - cette solution est uniquement legacy / secours local
-- pour une version securisee, garde le mode actuel `frontend -> backend Spring -> Supabase/n8n`
+- pour une version securisee, garde le mode actuel `frontend -> backend Spring -> PostgreSQL local / n8n`
+
+## n8n local
+
+L instance locale `n8n` charge ses workflows depuis `n8n-local/database.sqlite`.
+
+Au 2 mai 2026, la base locale contient deja les workflows actifs migres pour :
+
+- `creation-ideas`
+- `script-generation-single-llm`
+- `render-template-video-with-callback`
+- `check-shotstack-fixed`
+- `init-publish-tiktok-fixed`
+
+Les fichiers JSON dans `n8n-local/` et `docs/n8n-workflows/` restent utiles pour revision, export ou reimport manuel, mais un reimport n est pas requis tant que les workflows actifs en base restent ceux-la.
 
 ## Endpoints backend utiles
 

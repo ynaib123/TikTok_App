@@ -5,8 +5,8 @@ import { clearAdminCsrfTokenCache, fetchAdminCsrfToken } from './adminCsrfServic
 const ADMIN_REMEMBER_ME_KEY = 'tiktok_app_admin_remember_me'
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
 const USE_MOCK_ADMIN_AUTH = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH === 'true'
-const MOCK_ADMIN_EMAIL = 'admin@tiktokapp.local'
-const MOCK_ADMIN_PASSWORD = 'admin123'
+const MOCK_ADMIN_EMAIL = import.meta.env?.VITE_MOCK_ADMIN_EMAIL || ''
+const MOCK_ADMIN_PASSWORD = import.meta.env?.VITE_MOCK_ADMIN_PASSWORD || ''
 
 let refreshAdminSessionPromise = null
 
@@ -90,11 +90,15 @@ async function requestWithOptionalCsrf(endpoint, {
 }
 
 async function loginAdminWithMock(email, motDePasse, rememberMe = true) {
+  if (!MOCK_ADMIN_EMAIL || !MOCK_ADMIN_PASSWORD) {
+    throw new Error('Mock admin auth active, mais VITE_MOCK_ADMIN_EMAIL / VITE_MOCK_ADMIN_PASSWORD ne sont pas configures.')
+  }
+
   const normalizedEmail = String(email || '').trim().toLowerCase()
   const normalizedPassword = String(motDePasse || '')
 
   if (normalizedEmail !== MOCK_ADMIN_EMAIL || normalizedPassword !== MOCK_ADMIN_PASSWORD) {
-    throw new Error('Identifiants invalides. Utilisez admin@tiktokapp.local / admin123')
+    throw new Error('Identifiants invalides pour le mode demo local.')
   }
 
   const responseData = {

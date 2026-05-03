@@ -189,6 +189,7 @@ export function useRenderStep({
   scriptedIdea,
   selectedGeneratedIdea,
   goToStep,
+  triggerCheckShotstackWorkflow,
   triggerRenderTemplateWorkflow,
   fetchContentIdeas,
   waitForWorkflowRunCompletion,
@@ -227,7 +228,7 @@ export function useRenderStep({
     })
     showSuccess('Generation video lancee. La video apparaitra ici des qu elle sera prete.')
 
-    const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 90 * 1000)
+    const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 12 * 1000)
     let renderedIdea = null
 
     if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
@@ -239,7 +240,13 @@ export function useRenderStep({
     }
 
     if (!renderedIdea || !isRenderReady(renderedIdea)) {
-      renderedIdea = await waitForRenderedVideo(idea.id)
+      renderedIdea = await waitForRenderedVideo(idea.id, async () => {
+        await triggerCheckShotstackWorkflow({
+          source: 'backoffice-tiktok-step-render-status-check',
+          contentIdeaId: idea.id,
+          force: true,
+        })
+      })
     }
 
     setScriptedIdea(renderedIdea)

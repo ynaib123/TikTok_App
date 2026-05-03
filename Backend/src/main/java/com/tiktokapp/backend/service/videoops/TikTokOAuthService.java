@@ -116,6 +116,42 @@ public class TikTokOAuthService {
         );
     }
 
+    public String completeAuthorizationFromServerCallback(String code, String state) {
+        ensureConfigured();
+
+        Claims claims;
+        try {
+            claims = jwtService.parseTikTokOauthState(state);
+        } catch (RuntimeException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le state OAuth TikTok est invalide ou expire.", exception);
+        }
+
+        String redirectPath = normalizeRedirectPath(claims.get("redirectPath", String.class));
+        JsonNode tokenPayload = exchangeAuthorizationCode(code);
+        String openId = requiredText(tokenPayload, "open_id");
+        String scope = requiredText(tokenPayload, "scope");
+        String accessToken = requiredText(tokenPayload, "access_token");
+        String refreshToken = requiredText(tokenPayload, "refresh_token");
+        String tokenType = requiredText(tokenPayload, "token_type");
+
+        Map<String, Object> accountPayload = new LinkedHashMap<>();
+        accountPayload.put("open_id", openId);
+        accountPayload.put("access_token", cryptoService.encryptIfConfigured(accessToken));
+        accountPayload.put("refresh_token", cryptoService.encryptIfConfigured(refreshToken));
+        accountPayload.put("token_type", tokenType);
+        accountPayload.put("scope", scope);
+
+        JsonNode existingAccounts = supabaseGateway.findTikTokAccountsByOpenId(openId);
+        if (existingAccounts.isArray() && !existingAccounts.isEmpty()) {
+            long accountId = existingAccounts.get(0).path("id").asLong();
+            supabaseGateway.updateTikTokAccount(accountId, accountPayload);
+        } else {
+            supabaseGateway.createTikTokAccount(accountPayload);
+        }
+
+        return redirectPath;
+    }
+
     public JsonNode refreshAccessToken(String refreshToken) {
         ensureConfigured();
         String body = formBody(Map.of(

@@ -1,11 +1,44 @@
 $ErrorActionPreference = 'Stop'
 
+function Get-EnvValueFromDotEnv {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string] $Key
+  )
+
+  $envFile = Join-Path $PSScriptRoot '..\.env'
+  if (-not (Test-Path $envFile)) {
+    return $null
+  }
+
+  $prefix = "$Key="
+  foreach ($line in Get-Content $envFile) {
+    if ($line.StartsWith($prefix)) {
+      return $line.Substring($prefix.Length).Trim()
+    }
+  }
+
+  return $null
+}
+
+$adminPassword = $env:APP_ADMIN_PASSWORD
+if ([string]::IsNullOrWhiteSpace($adminPassword)) {
+  $adminPassword = Get-EnvValueFromDotEnv -Key 'APP_ADMIN_PASSWORD'
+}
+
+if ([string]::IsNullOrWhiteSpace($adminPassword)) {
+  throw 'APP_ADMIN_PASSWORD est requis. Definis la variable d environnement ou renseigne-la dans .env avant d executer ce script.'
+}
+
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $csrfToken = (Invoke-RestMethod -Method GET -Uri 'http://localhost:8080/api/admins/csrf-token' -WebSession $session).token
 $login = Invoke-RestMethod -Method POST -Uri 'http://localhost:8080/api/admins/login' -WebSession $session -Headers @{
   'X-XSRF-TOKEN' = $csrfToken
   'Content-Type' = 'application/json'
-} -Body '{"email":"admin@tiktokapp.local","motDePasse":"admin123"}'
+} -Body (@{
+  email = 'admin@tiktokapp.local'
+  motDePasse = $adminPassword
+} | ConvertTo-Json)
 
 $jwt = $login.token
 

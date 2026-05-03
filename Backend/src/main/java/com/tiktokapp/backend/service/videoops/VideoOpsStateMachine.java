@@ -23,7 +23,8 @@ public final class VideoOpsStateMachine {
     public static VideoPipelineStage requestedStage(VideoWorkflowType workflowType) {
         return switch (workflowType) {
             case MAIN_PIPELINE -> VideoPipelineStage.CREATION_REQUESTED;
-            case CHECK_SHOTSTACK -> VideoPipelineStage.SCRIPT_REQUESTED;
+            case SCRIPT_GENERATION -> VideoPipelineStage.SCRIPT_REQUESTED;
+            case CHECK_SHOTSTACK -> VideoPipelineStage.RENDERING_REQUESTED;
             case RENDER_TEMPLATE_VIDEO -> VideoPipelineStage.RENDERING_REQUESTED;
             case INIT_PUBLISH_TIKTOK -> VideoPipelineStage.UPLOAD_PREPARING;
             case TIKTOK_UPLOAD -> VideoPipelineStage.PUBLISH_INITIALIZED;
@@ -34,7 +35,8 @@ public final class VideoOpsStateMachine {
     public static VideoPipelineStage successStage(VideoWorkflowType workflowType, VideoPipelineStage currentStage) {
         return switch (workflowType) {
             case MAIN_PIPELINE -> VideoPipelineStage.IDEA_CREATED;
-            case CHECK_SHOTSTACK -> VideoPipelineStage.SCRIPT_READY;
+            case SCRIPT_GENERATION -> VideoPipelineStage.SCRIPT_READY;
+            case CHECK_SHOTSTACK -> VideoPipelineStage.RENDER_READY;
             case RENDER_TEMPLATE_VIDEO -> currentStage == VideoPipelineStage.RENDER_READY
                     ? VideoPipelineStage.RENDER_READY
                     : VideoPipelineStage.RENDERING_REQUESTED;

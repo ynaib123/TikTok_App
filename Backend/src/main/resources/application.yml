@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tiktok_app}
     username: ${SPRING_DATASOURCE_USERNAME:tiktok_app}
-    password: ${SPRING_DATASOURCE_PASSWORD:tiktok_app}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,28 +19,23 @@ server:
 app:
   security:
     admin-email: ${APP_ADMIN_EMAIL:admin@tiktokapp.local}
-    admin-password: ${APP_ADMIN_PASSWORD:admin123}
+    admin-password: ${APP_ADMIN_PASSWORD}
     admin-name: ${APP_ADMIN_NAME:Video Ops Admin}
     bootstrap-admin-on-startup: ${APP_BOOTSTRAP_ADMIN_ON_STARTUP:true}
-    jwt-secret: ${APP_JWT_SECRET:change-this-secret-before-production-1234567890}
+    jwt-secret: ${APP_JWT_SECRET}
     access-minutes: ${APP_ACCESS_MINUTES:30}
     refresh-days: ${APP_REFRESH_DAYS:14}
     refresh-cookie-name: ${APP_REFRESH_COOKIE_NAME:tiktok_app_admin_refresh}
     secure-cookies: ${APP_SECURE_COOKIES:false}
+    frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5174}
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.11.100:5174}
   video-ops:
-    supabase-url: ${APP_VIDEO_OPS_SUPABASE_URL:}
-    supabase-service-role-key: ${APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY:}
-    n8n-main-pipeline-webhook: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_WEBHOOK:}
-    n8n-check-shotstack-webhook: ${APP_VIDEO_OPS_N8N_CHECK_SHOTSTACK_WEBHOOK:}
-    n8n-render-template-webhook: ${APP_VIDEO_OPS_N8N_RENDER_TEMPLATE_WEBHOOK:}
-    n8n-publish-tiktok-webhook: ${APP_VIDEO_OPS_N8N_PUBLISH_TIKTOK_WEBHOOK:}
-    internal-api-secret: ${APP_VIDEO_OPS_INTERNAL_API_SECRET:}
-    workflow-callback-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET:}
-    workflow-callback-hmac-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET:}
+    internal-api-secret: ${APP_VIDEO_OPS_INTERNAL_API_SECRET}
+    workflow-callback-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET}
+    workflow-callback-hmac-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET}
     workflow-callback-max-skew-seconds: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_MAX_SKEW_SECONDS:300}
     allow-legacy-workflow-callback-secret: ${APP_VIDEO_OPS_ALLOW_LEGACY_WORKFLOW_CALLBACK_SECRET:true}
-    token-encryption-key: ${APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY:}
+    token-encryption-key: ${APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY}
     tiktok-client-key: ${APP_VIDEO_OPS_TIKTOK_CLIENT_KEY:}
     tiktok-client-secret: ${APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET:}
     tiktok-redirect-uri: ${APP_VIDEO_OPS_TIKTOK_REDIRECT_URI:}

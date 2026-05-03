@@ -8,12 +8,6 @@ import java.util.List;
 @ConfigurationProperties(prefix = "app.video-ops")
 public class VideoOpsProperties {
 
-    private String supabaseUrl = "";
-    private String supabaseServiceRoleKey = "";
-    private String n8nMainPipelineWebhook = "";
-    private String n8nCheckShotstackWebhook = "";
-    private String n8nRenderTemplateWebhook = "";
-    private String n8nPublishTikTokWebhook = "";
     private String internalApiSecret = "";
     private String workflowCallbackSecret = "";
     private String workflowCallbackHmacSecret = "";
@@ -34,54 +28,6 @@ public class VideoOpsProperties {
             "open.tiktokapis.com",
             "business-api.tiktok.com"
     ));
-
-    public String getSupabaseUrl() {
-        return supabaseUrl;
-    }
-
-    public void setSupabaseUrl(String supabaseUrl) {
-        this.supabaseUrl = supabaseUrl;
-    }
-
-    public String getSupabaseServiceRoleKey() {
-        return supabaseServiceRoleKey;
-    }
-
-    public void setSupabaseServiceRoleKey(String supabaseServiceRoleKey) {
-        this.supabaseServiceRoleKey = supabaseServiceRoleKey;
-    }
-
-    public String getN8nMainPipelineWebhook() {
-        return n8nMainPipelineWebhook;
-    }
-
-    public void setN8nMainPipelineWebhook(String n8nMainPipelineWebhook) {
-        this.n8nMainPipelineWebhook = n8nMainPipelineWebhook;
-    }
-
-    public String getN8nCheckShotstackWebhook() {
-        return n8nCheckShotstackWebhook;
-    }
-
-    public void setN8nCheckShotstackWebhook(String n8nCheckShotstackWebhook) {
-        this.n8nCheckShotstackWebhook = n8nCheckShotstackWebhook;
-    }
-
-    public String getN8nPublishTikTokWebhook() {
-        return n8nPublishTikTokWebhook;
-    }
-
-    public void setN8nPublishTikTokWebhook(String n8nPublishTikTokWebhook) {
-        this.n8nPublishTikTokWebhook = n8nPublishTikTokWebhook;
-    }
-
-    public String getN8nRenderTemplateWebhook() {
-        return n8nRenderTemplateWebhook;
-    }
-
-    public void setN8nRenderTemplateWebhook(String n8nRenderTemplateWebhook) {
-        this.n8nRenderTemplateWebhook = n8nRenderTemplateWebhook;
-    }
 
     public String getTiktokClientKey() {
         return tiktokClientKey;

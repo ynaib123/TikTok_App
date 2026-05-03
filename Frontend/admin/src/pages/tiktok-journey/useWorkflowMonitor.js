@@ -177,14 +177,23 @@ export function useWorkflowMonitor({
     throw new Error("La generation du script n'a pas fini dans le temps attendu.")
   }
 
-  const waitForRenderedVideo = async (ideaId) => {
+  const waitForRenderedVideo = async (ideaId, checkRenderStatus = null) => {
     const timeoutAt = Date.now() + 180_000
 
     while (Date.now() < timeoutAt) {
+      if (typeof checkRenderStatus === 'function') {
+        await checkRenderStatus()
+      }
+
+      const status = await fetchContentIdeaStatus(ideaId)
+      if (String(status?.pipelineStage || '').toUpperCase() === 'FAILED') {
+        throw new Error(status?.lastErrorMessage || "La generation de la video a echoue.")
+      }
+
       const ideas = await fetchContentIdeas()
       const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
       if (!nextIdea) {
-        await sleep(2000)
+        await sleep(4000)
         continue
       }
 
@@ -192,7 +201,7 @@ export function useWorkflowMonitor({
         return nextIdea
       }
 
-      await sleep(2000)
+      await sleep(4000)
     }
 
     throw new Error("La generation de la video n'a pas fini dans le temps attendu.")

@@ -1,6 +1,8 @@
 # Ready-To-Import n8n Workflows
 
-Ces fichiers sont des bases propres a importer dans n8n pour remplacer les workflows actuels.
+Ces fichiers sont des bases propres a importer dans n8n pour une instance distante, un reset local, ou une recreation controlee.
+
+Pour l instance locale de ce repo, la source de verite runtime reste `n8n-local/database.sqlite`. Verifie d abord les workflows actifs avant de reimporter un export JSON.
 
 ## Fichiers
 
@@ -22,10 +24,6 @@ Ces fichiers sont des bases propres a importer dans n8n pour remplacer les workf
 - `PEXELS_API_KEY`
 - `SHOTSTACK_API_KEY`
 
-## Credentials attendus
-
-- `Supabase account`
-
 ## Ordre d'import
 
 1. `init-publish-tiktok-fixed.json`
@@ -42,7 +40,9 @@ Ces fichiers sont des bases propres a importer dans n8n pour remplacer les workf
   - mode recommande: `X-Video-Ops-Callback-Timestamp` + `X-Video-Ops-Callback-Signature`
 - Les workflows webhook repondent toujours au backend, puis notent la completion via callback.
 - Les secrets TikTok ne sont plus hardcodes dans les nodes.
-- Pour les prochains workflows TikTok sensibles, utilise `tiktok-account-context-example.json` comme base afin d appeler `POST /api/video-ops/internal/tiktok/account-context` au lieu de lire les tokens TikTok depuis Supabase.
+- Les workflows courants de ce repo n utilisent plus de credential `Supabase account` pour `content_ideas` et `tiktok_accounts`.
+- Les fichiers d audit historiques comme `templaten8n.txt` et certains diffs peuvent encore contenir des noms legacy (`Supabase account`, anciens nodes, anciens endpoints) a titre documentaire.
+- Pour les prochains workflows TikTok sensibles, utilise `tiktok-account-context-example.json` comme base afin d appeler `POST /api/video-ops/internal/tiktok/account-context` au lieu de lire les tokens TikTok depuis une base externe.
 - Migration HMAC detaillee: [docs/n8n-hmac-callback-setup.md](../n8n-hmac-callback-setup.md)
 - Migration `account-context` detaillee: [docs/n8n-account-context-migration.md](../n8n-account-context-migration.md)
 - Migration vers backend proxy securise: [docs/n8n-secure-backend-proxy-migration.md](../n8n-secure-backend-proxy-migration.md)

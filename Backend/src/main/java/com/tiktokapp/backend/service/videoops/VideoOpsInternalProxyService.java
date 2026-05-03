@@ -99,9 +99,12 @@ public class VideoOpsInternalProxyService {
             String body = response.body();
             JsonNode payload = body == null || body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                String snippet = body != null && !body.isBlank()
+                        ? " — " + body.substring(0, Math.min(400, body.length()))
+                        : "";
                 throw new ResponseStatusException(
                         HttpStatus.BAD_GATEWAY,
-                        providerName + " a repondu " + response.statusCode() + "."
+                        providerName + " a repondu " + response.statusCode() + snippet
                 );
             }
             return payload;

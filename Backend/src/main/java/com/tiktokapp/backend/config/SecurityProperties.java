@@ -9,14 +9,15 @@ import java.util.List;
 public class SecurityProperties {
 
     private String adminEmail = "admin@tiktokapp.local";
-    private String adminPassword = "admin123";
+    private String adminPassword = "";
     private String adminName = "Video Ops Admin";
     private boolean bootstrapAdminOnStartup = true;
-    private String jwtSecret = "change-this-secret-before-production-1234567890";
+    private String jwtSecret = "";
     private long accessMinutes = 30;
     private long refreshDays = 14;
     private String refreshCookieName = "tiktok_app_admin_refresh";
     private boolean secureCookies = false;
+    private String frontendBaseUrl = "http://localhost:5174";
     private List<String> allowedOrigins = new ArrayList<>(List.of(
             "http://localhost:5173",
             "http://localhost:5174",
@@ -95,6 +96,14 @@ public class SecurityProperties {
 
     public void setSecureCookies(boolean secureCookies) {
         this.secureCookies = secureCookies;
+    }
+
+    public String getFrontendBaseUrl() {
+        return frontendBaseUrl;
+    }
+
+    public void setFrontendBaseUrl(String frontendBaseUrl) {
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     public List<String> getAllowedOrigins() {

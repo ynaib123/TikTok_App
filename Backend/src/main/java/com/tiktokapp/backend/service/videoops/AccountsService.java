@@ -89,7 +89,7 @@ public class AccountsService {
         String resolvedSecret = trimToNull(request.getSecretValue()) != null
                 ? trimToNull(request.getSecretValue())
                 : cryptoService.decryptIfNeeded(trimToNull(connection.getSecretValue()));
-        if (resolvedSecret == null) {
+        if (providerRequiresSecret(provider) && resolvedSecret == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le secret du service " + provider.name() + " est obligatoire.");
         }
 
@@ -122,7 +122,7 @@ public class AccountsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le profil ne correspond pas au provider demande.");
         }
         String secretValue = cryptoService.decryptIfNeeded(trimToNull(connection.getSecretValue()));
-        if (secretValue == null) {
+        if (providerRequiresSecret(provider) && secretValue == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le secret du profil selectionne est manquant.");
         }
         ServiceConnectionValidationResult validationResult = gatewayService.validate(
@@ -150,7 +150,7 @@ public class AccountsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le profil ne correspond pas au provider demande.");
         }
         String secretValue = cryptoService.decryptIfNeeded(trimToNull(connection.getSecretValue()));
-        if (secretValue == null) {
+        if (providerRequiresSecret(provider) && secretValue == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le secret du profil selectionne est manquant.");
         }
         ServiceConnectionValidationResult validationResult = gatewayService.validate(
@@ -186,16 +186,7 @@ public class AccountsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le profil ne correspond pas au provider demande.");
         }
 
-        boolean wasActive = connection.isActive();
         serviceConnectionRepository.delete(connection);
-        if (wasActive) {
-            serviceConnectionRepository.findAllByProviderKeyOrderByActiveDescIdDesc(provider).stream()
-                    .findFirst()
-                    .ifPresent(next -> {
-                        next.setActive(true);
-                        serviceConnectionRepository.save(next);
-                    });
-        }
     }
 
     @Transactional
@@ -213,7 +204,6 @@ public class AccountsService {
         }
 
         for (ServiceConnectionProvider provider : Arrays.asList(
-                ServiceConnectionProvider.SUPABASE,
                 ServiceConnectionProvider.N8N,
                 ServiceConnectionProvider.GROQ,
                 ServiceConnectionProvider.SHOTSTACK,
@@ -223,7 +213,7 @@ public class AccountsService {
                     provider.name().equalsIgnoreCase(connection.getProviderKey())
                             && connection.isActive()
                             && "CONNECTED".equalsIgnoreCase(connection.getStatus())
-                            && connection.isHasSecret()
+                            && (!providerRequiresSecret(provider) || connection.isHasSecret())
                             && "VALID".equalsIgnoreCase(connection.getValidationStatus())
             );
             if (!connected) {
@@ -281,6 +271,10 @@ public class AccountsService {
             logger.warn("accounts overview could not fetch TikTok accounts and will fall back to an empty list", exception);
             return List.of();
         }
+    }
+
+    private boolean providerRequiresSecret(ServiceConnectionProvider provider) {
+        return provider != ServiceConnectionProvider.N8N;
     }
 
     private void validateProviderConfiguration(ServiceConnectionProvider provider, ServiceConnectionRequest request) {

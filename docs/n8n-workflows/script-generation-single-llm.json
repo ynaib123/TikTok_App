@@ -87,7 +87,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = String($json.choices?.[0]?.message?.content || '').trim();\nconst cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (error) {\n  throw new Error('Reponse LLM non parseable en JSON: ' + cleaned);\n}\nreturn [{ json: {\n  contentIdeaId: Number($('Set Input').item.json.contentIdeaId || 0),\n  workflowRunId: Number($('Set Input').item.json.workflowRunId || 0),\n  script: String(parsed.script || '').trim(),\n  caption: String(parsed.caption || '').trim(),\n  background_keyword: String(parsed.background_keyword || '').trim()\n}}];"
+        "jsCode": "const raw = String($json.choices?.[0]?.message?.content || '').trim();\nconst cleaned = raw.replace(/^```json\\s*/i,'').replace(/^```/i,'').replace(/```$/i,'').trim();\nlet parsed;\ntry { parsed = JSON.parse(cleaned); } catch(e) { throw new Error('Reponse LLM non parseable: ' + cleaned.slice(0,200)); }\nreturn [{ json: { contentIdeaId: Number($('Set Input').item.json.contentIdeaId||0), workflowRunId: Number($('Set Input').item.json.workflowRunId||0), script: String(parsed.script||'').trim(), caption: String(parsed.caption||'').trim(), background_keyword: String(parsed.background_keyword||'').trim() } }];"
       },
       "id": "code-parse",
       "name": "Parse JSON",
@@ -101,74 +101,31 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '') + '/rest/v1/content_ideas?id=eq.' + $json.contentIdeaId }}",
+        "url": "=http://backend:8080/api/video-ops/internal/content-ideas/{{ $json.contentIdeaId }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
             },
             {
-              "name": "Prefer",
-              "value": "return=representation"
+              "name": "X-Video-Ops-Internal-Secret",
+              "value": "2nDq4MoyD9CVHiUq4toqv3_Rl2K05Eqs7Fpjf09iPuM"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "scripts",
-              "value": "={{ $json.script }}"
-            },
-            {
-              "name": "script_status",
-              "value": "done"
-            },
-            {
-              "name": "caption",
-              "value": "={{ $json.caption }}"
-            },
-            {
-              "name": "background_keyword",
-              "value": "={{ $json.background_keyword }}"
-            },
-            {
-              "name": "pipeline_status",
-              "value": "script_ready"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ scripts: $json.script, script_status: 'done', caption: $json.caption, background_keyword: $json.background_keyword, pipeline_status: 'script_ready' }) }}",
         "options": {}
       },
-      "id": "supabase-update",
-      "name": "HTTP Request Update",
+      "id": "backend-update",
+      "name": "Backend Update Script",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
         240,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Parse JSON').item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL manquante');\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: \"Script workflow termine.\",\n  responsePayload: JSON.stringify({ contentIdeaId: Number($('Parse JSON').item.json.contentIdeaId || 0) }),\n});\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const req = client.request({\n        protocol: url.protocol,\n        hostname: url.hostname,\n        port: url.port || (url.protocol === 'https:' ? 443 : 80),\n        path: url.pathname + url.search,\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'Content-Length': Buffer.byteLength(body),\n          'X-Video-Ops-Callback-Secret': callbackSecret,\n        },\n      }, (res) => {\n        let data = '';\n        res.on('data', (chunk) => { data += chunk; });\n        res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n      });\n      req.on('error', reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) {\n      break;\n    }\n    lastError = 'Callback backend refuse: ' + response.statusCode + ' ' + response.body;\n    if (response.statusCode !== 404 || attempt === 6) {\n      throw new Error(lastError);\n    }\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) {\n      throw error;\n    }\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error(lastError || 'Callback backend refuse.');\n}\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
-      },
-      "id": "callback-success",
-      "name": "Callback Success",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        760,
         120
       ]
     },
@@ -185,7 +142,20 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        780,
+        480,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nconst { URL } = require('url');\nconst baseUrl = 'http://backend:8080';\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Parse JSON').item.json.workflowRunId || 0);\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({ status: 'SUCCEEDED', message: 'Script workflow termine.', responsePayload: JSON.stringify({ contentIdeaId: Number($(\"Parse JSON\").item.json.contentIdeaId || 0) }) });\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nlet response = null; let lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt++) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const rq = http.request({ hostname: url.hostname, port: url.port || 80, path: url.pathname + url.search, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Video-Ops-Callback-Secret': callbackSecret } }, (res) => { let data = ''; res.on('data', (c) => { data += c; }); res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data })); });\n      rq.on('error', reject); rq.write(body); rq.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) break;\n    lastError = 'Callback refuse: ' + response.statusCode;\n    if (attempt === 6) throw new Error(lastError);\n  } catch (e) { lastError = e.message; if (attempt === 6) throw e; }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) throw new Error(lastError || 'Callback refuse.');\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
+      },
+      "id": "callback-success",
+      "name": "Callback Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
         120
       ]
     }
@@ -228,28 +198,14 @@
       "main": [
         [
           {
-            "node": "HTTP Request Update",
+            "node": "Backend Update Script",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase Update": {
-      "main": [
-        [
-          {
-            "node": "Callback Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Callback Success": {
-      "main": []
-    },
-    "HTTP Request Update": {
+    "Backend Update Script": {
       "main": [
         [
           {
@@ -270,6 +226,9 @@
           }
         ]
       ]
+    },
+    "Callback Success": {
+      "main": []
     }
   },
   "pinData": {},
