@@ -41,6 +41,9 @@ class VideoOpsServiceTest {
     private N8nWorkflowGateway n8nWorkflowGateway;
 
     @Mock
+    private VideoOpsInternalProxyService videoOpsInternalProxyService;
+
+    @Mock
     private TikTokUploadService tikTokUploadService;
 
     @Mock
@@ -81,6 +84,7 @@ class VideoOpsServiceTest {
         VideoOpsService service = new VideoOpsService(
                 supabaseGateway,
                 n8nWorkflowGateway,
+                videoOpsInternalProxyService,
                 tikTokUploadService,
                 callbackAuthService,
                 pipelineStateRepository,
@@ -104,25 +108,33 @@ class VideoOpsServiceTest {
     }
 
     @Test
-    void reusesRecentWorkflowRunForIdempotentRequest() {
+    void checkShotstackMarksRunSucceededWhenRenderIsAlreadyReady() {
         VideoOpsProperties properties = new VideoOpsProperties();
         properties.setIdempotencyWindowSeconds(120);
 
-        VideoWorkflowRun recentRun = new VideoWorkflowRun();
-        recentRun.setContentIdeaId(55L);
-        recentRun.setWorkflowType(VideoWorkflowType.CHECK_SHOTSTACK);
-        recentRun.setStatus(VideoWorkflowRunStatus.ACCEPTED);
-        recentRun.setAttemptNumber(2);
-        recentRun.setIdempotencyKey("CHECK_SHOTSTACK:55");
-        ReflectionTestUtils.setField(recentRun, "id", 12L);
-        ReflectionTestUtils.setField(recentRun, "createdAt", Instant.now());
+        doAnswer(invocation -> {
+            VideoWorkflowRun run = invocation.getArgument(0);
+            if (run.getId() == null) {
+                ReflectionTestUtils.setField(run, "id", 12L);
+            }
+            if (run.getCreatedAt() == null) {
+                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
+            }
+            return run;
+        }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
 
-        when(workflowRunRepository.findTopByContentIdeaIdAndWorkflowTypeOrderByCreatedAtDesc(55L, VideoWorkflowType.CHECK_SHOTSTACK))
-                .thenReturn(Optional.of(recentRun));
+        when(supabaseGateway.fetchContentIdeaById(55L))
+                .thenReturn(new ObjectMapper().valueToTree(java.util.List.of(Map.of(
+                        "id", 55,
+                        "shotstack_render_id", "render-123",
+                        "shotstack_status", "done",
+                        "shotstack_url", "https://cdn.example.com/video.mp4"
+                ))));
 
         VideoOpsService service = new VideoOpsService(
                 supabaseGateway,
                 n8nWorkflowGateway,
+                videoOpsInternalProxyService,
                 tikTokUploadService,
                 callbackAuthService,
                 pipelineStateRepository,
@@ -139,9 +151,55 @@ class VideoOpsServiceTest {
 
         VideoWorkflowActionResponse response = service.triggerCheckShotstack(request, "admin@tiktokapp.local");
 
-        assertTrue(response.isReused());
+        assertTrue(!response.isReused());
         assertEquals(12L, response.getRunId());
-        assertEquals("ACCEPTED", response.getStatus());
+        assertEquals("SUCCEEDED", response.getStatus());
         verify(n8nWorkflowGateway, never()).trigger(any(), any());
+    }
+
+    @Test
+    void triggerRenderTemplateAcceptsEmptyInlineWebhookBody() {
+        VideoOpsProperties properties = new VideoOpsProperties();
+        properties.setIdempotencyWindowSeconds(120);
+
+        doAnswer(invocation -> {
+            VideoWorkflowRun run = invocation.getArgument(0);
+            if (run.getId() == null) {
+                ReflectionTestUtils.setField(run, "id", 34L);
+            }
+            if (run.getCreatedAt() == null) {
+                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
+            }
+            return run;
+        }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
+
+        when(workflowRunRepository.countByContentIdeaIdAndWorkflowType(19L, VideoWorkflowType.RENDER_TEMPLATE_VIDEO))
+                .thenReturn(0L);
+        when(n8nWorkflowGateway.trigger(eq(VideoWorkflowType.RENDER_TEMPLATE_VIDEO), any()))
+                .thenReturn(new ObjectMapper().createObjectNode());
+
+        VideoOpsService service = new VideoOpsService(
+                supabaseGateway,
+                n8nWorkflowGateway,
+                videoOpsInternalProxyService,
+                tikTokUploadService,
+                callbackAuthService,
+                pipelineStateRepository,
+                workflowRunRepository,
+                eventRepository,
+                properties,
+                new ObjectMapper()
+        );
+
+        WorkflowTriggerRequest request = new WorkflowTriggerRequest();
+        request.setContentIdeaId(19L);
+        request.setSource("test");
+        request.setForce(true);
+
+        VideoWorkflowActionResponse response = service.triggerRenderTemplate(request, "admin@tiktokapp.local");
+
+        assertEquals(34L, response.getRunId());
+        assertEquals("ACCEPTED", response.getStatus());
+        verify(n8nWorkflowGateway).trigger(eq(VideoWorkflowType.RENDER_TEMPLATE_VIDEO), any());
     }
 }

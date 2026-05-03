@@ -27,13 +27,17 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tiktokapp.backend.dto.videoops.ContentIdeaCreateRequest;
 import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
+import com.tiktokapp.backend.service.videoops.VideoOpsDataService;
 import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -50,13 +54,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/video-ops")
 public class VideoOpsController {
 
     private final VideoOpsService videoOpsService;
+    private final VideoOpsDataService videoOpsDataService;
     private final AccountsService accountsService;
     private final TikTokOAuthService tikTokOAuthService;
     private final TikTokInternalAccountContextService tikTokInternalAccountContextService;
@@ -67,6 +76,7 @@ public class VideoOpsController {
 
     public VideoOpsController(
             VideoOpsService videoOpsService,
+            VideoOpsDataService videoOpsDataService,
             AccountsService accountsService,
             TikTokOAuthService tikTokOAuthService,
             TikTokInternalAccountContextService tikTokInternalAccountContextService,
@@ -76,6 +86,7 @@ public class VideoOpsController {
             ObjectMapper objectMapper
     ) {
         this.videoOpsService = videoOpsService;
+        this.videoOpsDataService = videoOpsDataService;
         this.accountsService = accountsService;
         this.tikTokOAuthService = tikTokOAuthService;
         this.tikTokInternalAccountContextService = tikTokInternalAccountContextService;
@@ -266,6 +277,14 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.triggerMainPipeline(request == null ? new WorkflowTriggerRequest() : request, authentication.getName()));
     }
 
+    @PostMapping("/workflows/script-generation")
+    public ResponseEntity<VideoWorkflowActionResponse> triggerScriptGeneration(
+            @Valid @RequestBody WorkflowTriggerRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(videoOpsService.triggerScriptGeneration(request, authentication.getName()));
+    }
+
     @PostMapping("/workflows/check-shotstack")
     public ResponseEntity<VideoWorkflowActionResponse> triggerCheckShotstack(
             @Valid @RequestBody WorkflowTriggerRequest request,
@@ -313,6 +332,55 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.markPublishComplete(contentIdeaId, authentication.getName()));
     }
 
+    // ── Endpoints internes pour les workflows n8n (CRUD PostgreSQL direct) ──
+
+    @PostMapping("/internal/content-ideas")
+    public ResponseEntity<JsonNode> createContentIdea(
+            @RequestBody ContentIdeaCreateRequest request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.status(HttpStatus.CREATED).body(videoOpsDataService.createContentIdea(request));
+    }
+
+    @GetMapping("/internal/content-ideas/{id}")
+    public ResponseEntity<JsonNode> getContentIdea(
+            @PathVariable long id,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsDataService.getContentIdea(id));
+    }
+
+    @PatchMapping("/internal/content-ideas/{id}")
+    public ResponseEntity<JsonNode> patchContentIdea(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> patch,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsDataService.patchContentIdea(id, patch));
+    }
+
+    @GetMapping("/internal/tiktok-accounts")
+    public ResponseEntity<JsonNode> getTikTokAccountByOpenId(
+            @RequestParam String openId,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsDataService.getTikTokAccountByOpenId(openId));
+    }
+
+    @PatchMapping("/internal/tiktok-accounts/{id}")
+    public ResponseEntity<JsonNode> patchTikTokAccount(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> patch,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsDataService.patchTikTokAccount(id, patch));
+    }
+
     @PostMapping("/workflow-runs/{runId}/complete")
     public ResponseEntity<VideoWorkflowRunDetailResponse> completeWorkflowRun(
             @PathVariable long runId,
@@ -330,11 +398,129 @@ public class VideoOpsController {
                 callbackSignature,
                 callbackSecret
         );
+        VideoWorkflowRunCompletionRequest request = parseWorkflowCompletionRequest(rawBody);
+        return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
+    }
+
+    private VideoWorkflowRunCompletionRequest parseWorkflowCompletionRequest(String rawBody) {
+        if (rawBody == null || rawBody.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload callback workflow invalide.");
+        }
+
+        VideoWorkflowRunCompletionRequest request = tryParseWorkflowCompletionRequest(rawBody);
+        if (request != null) {
+            return request;
+        }
+
+        try {
+            String nestedJson = objectMapper.readValue(rawBody, String.class);
+            request = tryParseWorkflowCompletionRequest(nestedJson);
+            if (request != null) {
+                return request;
+            }
+        } catch (Exception ignored) {
+            // Ignore and continue with other fallbacks.
+        }
+
+        request = parseWorkflowCompletionRequestFromForm(rawBody);
+        if (request != null) {
+            return request;
+        }
+
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload callback workflow invalide.");
+    }
+
+    private VideoWorkflowRunCompletionRequest tryParseWorkflowCompletionRequest(String rawBody) {
         try {
             VideoWorkflowRunCompletionRequest request = objectMapper.readValue(rawBody, VideoWorkflowRunCompletionRequest.class);
-            return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
-        } catch (Exception exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload callback workflow invalide.", exception);
+            return hasWorkflowCompletionStatus(request) ? request : null;
+        } catch (Exception ignored) {
+            // Ignore and continue with JsonNode fallback.
         }
+
+        try {
+            return toWorkflowCompletionRequest(objectMapper.readTree(rawBody));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private VideoWorkflowRunCompletionRequest toWorkflowCompletionRequest(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        if (node.isTextual()) {
+            return tryParseWorkflowCompletionRequest(node.asText());
+        }
+        if (!node.isObject()) {
+            return null;
+        }
+
+        VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
+        request.setStatus(textOrNull(node.get("status")));
+        request.setMessage(textOrNull(node.get("message")));
+        request.setErrorMessage(textOrNull(node.get("errorMessage")));
+
+        JsonNode responsePayloadNode = node.get("responsePayload");
+        if (responsePayloadNode != null && !responsePayloadNode.isNull()) {
+            if (responsePayloadNode.isTextual()) {
+                request.setResponsePayload(textOrNull(responsePayloadNode));
+            } else {
+                try {
+                    request.setResponsePayload(objectMapper.writeValueAsString(responsePayloadNode));
+                } catch (Exception ignored) {
+                    request.setResponsePayload(textOrNull(responsePayloadNode));
+                }
+            }
+        }
+
+        return hasWorkflowCompletionStatus(request) ? request : null;
+    }
+
+    private VideoWorkflowRunCompletionRequest parseWorkflowCompletionRequestFromForm(String rawBody) {
+        if (rawBody == null || !rawBody.contains("=")) {
+            return null;
+        }
+
+        Map<String, String> values = new LinkedHashMap<>();
+        for (String pair : rawBody.split("&")) {
+            if (pair == null || pair.isBlank()) {
+                continue;
+            }
+            int separatorIndex = pair.indexOf('=');
+            String key = separatorIndex >= 0 ? pair.substring(0, separatorIndex) : pair;
+            String value = separatorIndex >= 0 ? pair.substring(separatorIndex + 1) : "";
+            values.put(
+                    URLDecoder.decode(key, StandardCharsets.UTF_8),
+                    URLDecoder.decode(value, StandardCharsets.UTF_8)
+            );
+        }
+
+        if (!values.containsKey("status")) {
+            return null;
+        }
+
+        VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
+        request.setStatus(textOrNull(values.get("status")));
+        request.setMessage(textOrNull(values.get("message")));
+        request.setErrorMessage(textOrNull(values.get("errorMessage")));
+        request.setResponsePayload(textOrNull(values.get("responsePayload")));
+        return hasWorkflowCompletionStatus(request) ? request : null;
+    }
+
+    private boolean hasWorkflowCompletionStatus(VideoWorkflowRunCompletionRequest request) {
+        return request != null && request.getStatus() != null && !request.getStatus().isBlank();
+    }
+
+    private String textOrNull(JsonNode node) {
+        return node == null ? null : textOrNull(node.asText(null));
+    }
+
+    private String textOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

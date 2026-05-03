@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -292,6 +293,26 @@ class VideoOpsSecurityIntegrationTest {
                 eq("video-ops-callback-123")
         );
         verify(videoOpsService).completeWorkflowRun(eq(99L), any(VideoWorkflowRunCompletionRequest.class));
+    }
+
+    @Test
+    void acceptsWorkflowCompletionCallbackWhenResponsePayloadIsAnObject() throws Exception {
+        mockMvc.perform(post("/api/video-ops/workflow-runs/99/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Callback-Secret", "video-ops-callback-123")
+                        .content("""
+                                {"status":"SUCCEEDED","message":"Workflow termine","responsePayload":{"contentIdeaId":42,"uploadUrl":"https://example.test/upload"}}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(99))
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
+        verify(videoOpsService).completeWorkflowRun(
+                eq(99L),
+                argThat(request -> "SUCCEEDED".equals(request.getStatus())
+                        && request.getResponsePayload() != null
+                        && request.getResponsePayload().contains("\"contentIdeaId\":42"))
+        );
     }
 
     @Test

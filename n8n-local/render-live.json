@@ -1,460 +1,356 @@
-[
-  {
-    "updatedAt": "2026-04-30T03:24:20.000Z",
-    "createdAt": "2026-04-30T01:59:00.942Z",
-    "id": "0d1fe204-62f0-4ba5-9fd1-20a405e8d300",
-    "name": "render-template-video-with-callback",
-    "description": null,
-    "active": true,
-    "isArchived": false,
-    "nodes": [
-      {
-        "parameters": {
-          "httpMethod": "POST",
-          "path": "render-template-video",
-          "responseMode": "responseNode",
-          "options": {}
-        },
-        "id": "webhook",
-        "name": "Webhook",
-        "type": "n8n-nodes-base.webhook",
-        "typeVersion": 2.1,
-        "position": [
-          -980,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "assignments": {
-            "assignments": [
-              {
-                "name": "contentIdeaId",
-                "value": "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
-                "type": "number"
-              },
-              {
-                "name": "topic",
-                "value": "={{ String($json.body.topic || $json.topic || '').trim() }}",
-                "type": "string"
-              },
-              {
-                "name": "script",
-                "value": "={{ String($json.body.script || $json.script || '').trim() }}",
-                "type": "string"
-              },
-              {
-                "name": "caption",
-                "value": "={{ String($json.body.caption || $json.caption || '').trim() }}",
-                "type": "string"
-              },
-              {
-                "name": "keyword",
-                "value": "={{ String($json.body.keyword || $json.keyword || '').trim() }}",
-                "type": "string"
-              },
-              {
-                "name": "workflowRunId",
-                "value": "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
-                "type": "number"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "id": "set-input",
-        "name": "Set Input",
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          -740,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "https://api.groq.com/openai/v1/chat/completions",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "name": "Authorization",
-                "value": "={{ 'Bearer ' + $env.GROQ_API_KEY }}"
-              }
-            ]
-          },
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [ { role: 'user', content: 'Create one realistic visual prompt for a vertical TikTok business video about this topic: ' + $json.topic + '. Script: ' + $json.script + '. Keyword: ' + ($json.keyword || $json.topic) + '. One sentence only.' } ] }) }}",
-          "options": {}
-        },
-        "id": "groq-prompt",
-        "name": "HTTP Request Image Prompt",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4,
-        "position": [
-          -500,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "url": "={{ (() => { const raw = String($('Set Input').item.json.keyword || $('Set Input').item.json.topic || 'business'); const normalized = raw.replace(/[\"'&]/g, ' ').replace(/[^\\w\\s-]/g, ' ').replace(/\\s+/g, ' ').trim(); const query = (normalized || 'business').split(' ').slice(0, 4).join(' ') || 'business'; return 'https://api.pexels.com/videos/search?query=' + encodeURIComponent(query) + '&per_page=5&orientation=portrait'; })() }}",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "Authorization",
-                "value": "={{ $env.PEXELS_API_KEY }}"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "id": "pexels",
-        "name": "HTTP Request Pexels",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4,
-        "position": [
-          -260,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "jsCode": "const videos = $json.videos || [];\nif (!videos.length) {\n  throw new Error('Aucune video Pexels retournee');\n}\nconst preferred = [];\nconst fallback = [];\nfor (const video of videos) {\n  for (const file of video.video_files || []) {\n    if (!file?.link || file.file_type !== 'video/mp4') continue;\n    const width = Number(file.width || video.width || 0);\n    const height = Number(file.height || video.height || 0);\n    if (!width || !height || height <= width) continue;\n    const item = { link: file.link, width, height };\n    if ((width === 1080 && height === 1920) || (width === 720 && height === 1280) || (width === 540 && height === 960)) {\n      preferred.push(item);\n    } else {\n      fallback.push(item);\n    }\n  }\n}\nconst pick = (preferred[0] || fallback.sort((a, b) => (b.height * b.width) - (a.height * a.width))[0]);\nif (!pick) {\n  throw new Error('Aucune video portrait exploitable retournee par Pexels');\n}\nreturn [{ json: {\n  id: $('Set Input').item.json.contentIdeaId,\n  workflowRunId: $('Set Input').item.json.workflowRunId,\n  topic: $('Set Input').item.json.topic,\n  scripts: $('Set Input').item.json.script,\n  caption: $('Set Input').item.json.caption,\n  image_prompt: String($('HTTP Request Image Prompt').item.json.choices?.[0]?.message?.content || '').trim(),\n  background_video_url: pick.link\n}}];"
-        },
-        "id": "select-media",
-        "name": "Select Portrait Media",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -20,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "method": "PATCH",
-          "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '') + '/rest/v1/content_ideas?id=eq.' + $json.id }}",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "apikey",
-                "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-              },
-              {
-                "name": "Authorization",
-                "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-              },
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "name": "Prefer",
-                "value": "return=representation"
-              }
-            ]
-          },
-          "sendBody": true,
-          "bodyParameters": {
-            "parameters": [
-              {
-                "name": "shotstack_status",
-                "value": "preparing"
-              },
-              {
-                "name": "final_video_status",
-                "value": "processing"
-              },
-              {
-                "name": "render_payload",
-                "value": "={{ JSON.stringify($json) }}"
-              },
-              {
-                "name": "render_status",
-                "value": "prepared"
-              },
-              {
-                "name": "pipeline_status",
-                "value": "rendering_requested"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "id": "update-preparing",
-        "name": "HTTP Request Update Preparing",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4,
-        "position": [
-          220,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/shotstack/render' }}",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "name": "X-Video-Ops-Internal-Secret",
-                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
-              }
-            ]
-          },
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify((() => { const cleanText = (value) => String(value || '').normalize('NFKD').replace(/[^\\x20-\\x7E]/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 120); const lines = String($json.scripts || '').split('\\n').map((line) => cleanText(line)).filter(Boolean); const fallbackTopic = cleanText($('Set Input').item.json.topic || 'Video business'); const textLines = (lines.length ? lines : [fallbackTopic]).slice(0, 3); const titleClips = textLines.filter(Boolean).map((line, index) => ({ asset: { type: 'title', text: line, style: 'minimal', color: '#ffffff', background: 'rgba(15,15,15,0.55)' }, start: index * 3, length: 3, position: 'center' })); return { timeline: { background: '#0f0f0f', tracks: [ { clips: [ { asset: { type: 'video', src: $json.background_video_url }, start: 0, length: 15, fit: 'cover' } ] }, ...(titleClips.length ? [{ clips: titleClips }] : []) ] }, output: { format: 'mp4', aspectRatio: '9:16', resolution: 'hd' } }; })()) }}",
-          "options": {}
-        },
-        "id": "shotstack-render",
-        "name": "HTTP Request Shotstack Render",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4,
-        "position": [
-          460,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "method": "PATCH",
-          "url": "={{ String($env.APP_VIDEO_OPS_SUPABASE_URL || '') + '/rest/v1/content_ideas?id=eq.' + $('Select Portrait Media').item.json.id }}",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "apikey",
-                "value": "={{ $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-              },
-              {
-                "name": "Authorization",
-                "value": "={{ 'Bearer ' + $env.APP_VIDEO_OPS_SUPABASE_SERVICE_ROLE_KEY }}"
-              },
-              {
-                "name": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "name": "Prefer",
-                "value": "return=representation"
-              }
-            ]
-          },
-          "sendBody": true,
-          "bodyParameters": {
-            "parameters": [
-              {
-                "name": "shotstack_render_id",
-                "value": "={{ $json.response?.id || $json.id }}"
-              },
-              {
-                "name": "shotstack_status",
-                "value": "queued"
-              },
-              {
-                "name": "final_video_status",
-                "value": "processing"
-              },
-              {
-                "name": "pipeline_status",
-                "value": "rendering_requested"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "id": "update-render-id",
-        "name": "HTTP Request Update Render Id",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4,
-        "position": [
-          700,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "jsCode": "const http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Set Input').item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL manquante');\nif (!callbackSecret) throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante');\nif (!workflowRunId) throw new Error('workflowRunId manquant');\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: \"Render Shotstack demande.\",\n  responsePayload: JSON.stringify({ contentIdeaId: Number($('Set Input').item.json.contentIdeaId || 0), shotstackRenderId: $('HTTP Request Shotstack Render').item.json.response?.id || $('HTTP Request Shotstack Render').item.json.id || '' }),\n});\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt <= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) => {\n      const req = client.request({\n        protocol: url.protocol,\n        hostname: url.hostname,\n        port: url.port || (url.protocol === 'https:' ? 443 : 80),\n        path: url.pathname + url.search,\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'Content-Length': Buffer.byteLength(body),\n          'X-Video-Ops-Callback-Secret': callbackSecret,\n        },\n      }, (res) => {\n        let data = '';\n        res.on('data', (chunk) => { data += chunk; });\n        res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n      });\n      req.on('error', reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode >= 200 && response.statusCode < 300) {\n      break;\n    }\n    lastError = 'Callback backend refuse: ' + response.statusCode + ' ' + response.body;\n    if (response.statusCode !== 404 || attempt === 6) {\n      throw new Error(lastError);\n    }\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) {\n      throw error;\n    }\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error(lastError || 'Callback backend refuse.');\n}\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
-        },
-        "id": "callback",
-        "name": "Callback Success",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          1180,
-          100
-        ]
-      },
-      {
-        "parameters": {
-          "respondWith": "json",
-          "responseBody": "={{ { ok: true, contentIdeaId: $('Set Input').item.json.contentIdeaId, shotstackRenderId: $('HTTP Request Shotstack Render').item.json.response?.id || $('HTTP Request Shotstack Render').item.json.id, status: 'render_requested' } }}",
-          "options": {
-            "responseCode": 200
-          }
-        },
-        "id": "respond",
-        "name": "Respond to Webhook",
-        "type": "n8n-nodes-base.respondToWebhook",
-        "typeVersion": 1.5,
-        "position": [
-          1180,
-          100
-        ]
-      }
-    ],
-    "connections": {
-      "Webhook": {
-        "main": [
-          [
-            {
-              "node": "Set Input",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Set Input": {
-        "main": [
-          [
-            {
-              "node": "HTTP Request Image Prompt",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "HTTP Request Image Prompt": {
-        "main": [
-          [
-            {
-              "node": "HTTP Request Pexels",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "HTTP Request Pexels": {
-        "main": [
-          [
-            {
-              "node": "Select Portrait Media",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Select Portrait Media": {
-        "main": [
-          [
-            {
-              "node": "HTTP Request Update Preparing",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "HTTP Request Shotstack Render": {
-        "main": [
-          [
-            {
-              "node": "HTTP Request Update Render Id",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Callback Success": {
-        "main": []
-      },
-      "HTTP Request Update Preparing": {
-        "main": [
-          [
-            {
-              "node": "HTTP Request Shotstack Render",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "HTTP Request Update Render Id": {
-        "main": [
-          [
-            {
-              "node": "Respond to Webhook",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Respond to Webhook": {
-        "main": [
-          [
-            {
-              "node": "Callback Success",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      }
-    },
-    "settings": {},
-    "staticData": null,
-    "meta": {
-      "templateCredsSetupCompleted": true
-    },
-    "pinData": {},
-    "versionId": "56166291-bd03-4a34-acd5-f332556c4802",
-    "activeVersionId": "56166291-bd03-4a34-acd5-f332556c4802",
-    "versionCounter": 17,
-    "triggerCount": 1,
-    "tags": [],
-    "shared": [
-      {
-        "updatedAt": "2026-04-30T01:59:00.944Z",
-        "createdAt": "2026-04-30T01:59:00.944Z",
-        "role": "workflow:owner",
-        "workflowId": "0d1fe204-62f0-4ba5-9fd1-20a405e8d300",
-        "projectId": "FguAIXCXAEmDp8ri",
-        "project": {
-          "updatedAt": "2026-04-30T01:59:12.417Z",
-          "createdAt": "2026-04-30T01:11:03.676Z",
-          "id": "FguAIXCXAEmDp8ri",
-          "name": "naib youssef <youssefnaib47@icloud.com>",
-          "type": "personal",
-          "icon": null,
-          "description": null,
-          "creatorId": "decd1a7a-b0c1-416f-86c4-a90b89c828b7"
-        }
-      }
-    ],
-    "versionMetadata": {
-      "name": null,
-      "description": null
-    }
-  }
-]
+﻿{
+    "updatedAt":  "2026-05-02T13:48:24.882Z",
+    "createdAt":  "2026-04-30T02:10:00.000Z",
+    "id":  "0d1fe204-62f0-4ba5-9fd1-20a405e8d300",
+    "name":  "render-template-video-with-callback",
+    "description":  null,
+    "active":  true,
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "render-template-video",
+                                         "responseMode":  "lastNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "webhook",
+                      "name":  "Webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       -980,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "assignments":  {
+                                                             "assignments":  [
+                                                                                 {
+                                                                                     "name":  "contentIdeaId",
+                                                                                     "value":  "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
+                                                                                     "type":  "number"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "topic",
+                                                                                     "value":  "={{ String($json.body.topic || $json.topic || \u0027\u0027).trim() }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "script",
+                                                                                     "value":  "={{ String($json.body.script || $json.script || \u0027\u0027).trim() }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "caption",
+                                                                                     "value":  "={{ String($json.body.caption || $json.caption || \u0027\u0027).trim() }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "keyword",
+                                                                                     "value":  "={{ String($json.body.keyword || $json.keyword || \u0027\u0027).trim() }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "workflowRunId",
+                                                                                     "value":  "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
+                                                                                     "type":  "number"
+                                                                                 }
+                                                                             ]
+                                                         },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "set-input",
+                      "name":  "Set Input",
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       -740,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.groq.com/openai/v1/chat/completions",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "Authorization",
+                                                                                         "value":  "={{ \u0027Bearer \u0027 + $env.GROQ_API_KEY }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ model: \u0027llama-3.1-8b-instant\u0027, messages: [ { role: \u0027user\u0027, content: \u0027Create one realistic visual prompt for a vertical TikTok business video about this topic: \u0027 + $json.topic + \u0027. Script: \u0027 + $json.script + \u0027. Keyword: \u0027 + ($json.keyword || $json.topic) + \u0027. One sentence only.\u0027 } ] }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "groq-prompt",
+                      "name":  "HTTP Request Image Prompt",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -500,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ (() =\u003e { const raw = String($(\u0027Set Input\u0027).item.json.keyword || $(\u0027Set Input\u0027).item.json.topic || \u0027business\u0027); const normalized = raw.replace(/[\"\u0027\u0026]/g, \u0027 \u0027).replace(/[^\\w\\s-]/g, \u0027 \u0027).replace(/\\s+/g, \u0027 \u0027).trim(); const query = (normalized || \u0027business\u0027).split(\u0027 \u0027).slice(0, 4).join(\u0027 \u0027) || \u0027business\u0027; return \u0027https://api.pexels.com/videos/search?query=\u0027 + encodeURIComponent(query) + \u0027\u0026per_page=15\u0026orientation=portrait\u0027; })() }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Authorization",
+                                                                                         "value":  "={{ $env.PEXELS_API_KEY }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "pexels",
+                      "name":  "HTTP Request Pexels",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -260,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const videos = $json.videos || [];\nif (!videos.length) throw new Error(\u0027Aucune video Pexels retournee\u0027);\nconst buckets = { directPreferred: [], directFallback: [], otherPreferred: [], otherFallback: [] };\nconst classify = (link, width, height) =\u003e {\n  let hostname = \u0027\u0027;\n  try { hostname = new URL(link).hostname; } catch {}\n  const isDirectPexels = hostname === \u0027videos.pexels.com\u0027;\n  const isPreferred = (width === 1080 \u0026\u0026 height === 1920) || (width === 720 \u0026\u0026 height === 1280) || (width === 540 \u0026\u0026 height === 960);\n  if (isDirectPexels \u0026\u0026 isPreferred) return buckets.directPreferred;\n  if (isDirectPexels) return buckets.directFallback;\n  if (isPreferred) return buckets.otherPreferred;\n  return buckets.otherFallback;\n};\nfor (const video of videos) {\n  for (const file of video.video_files || []) {\n    if (!file?.link || file.file_type !== \u0027video/mp4\u0027) continue;\n    const width = Number(file.width || video.width || 0);\n    const height = Number(file.height || video.height || 0);\n    if (!width || !height || height \u003c= width) continue;\n    classify(file.link, width, height).push({ link: file.link, width, height });\n  }\n}\nconst byArea = (a, b) =\u003e (b.height * b.width) - (a.height * a.width);\nconst pick = buckets.directPreferred[0] || buckets.directFallback.sort(byArea)[0] || buckets.otherPreferred[0] || buckets.otherFallback.sort(byArea)[0];\nif (!pick) throw new Error(\u0027Aucune video portrait exploitable retournee par Pexels\u0027);\nreturn [{ json: { id: $(\u0027Set Input\u0027).item.json.contentIdeaId, workflowRunId: $(\u0027Set Input\u0027).item.json.workflowRunId, topic: $(\u0027Set Input\u0027).item.json.topic, scripts: $(\u0027Set Input\u0027).item.json.script, caption: $(\u0027Set Input\u0027).item.json.caption, image_prompt: String($(\u0027HTTP Request Image Prompt\u0027).item.json.choices?.[0]?.message?.content || \u0027\u0027).trim(), background_video_url: pick.link } }];"
+                                     },
+                      "id":  "select-media",
+                      "name":  "Select Portrait Media",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -20,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "PATCH",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.id }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ shotstack_status: \u0027preparing\u0027, final_video_status: \u0027processing\u0027, render_payload: JSON.stringify($json), render_status: \u0027prepared\u0027, pipeline_status: \u0027rendering_requested\u0027 }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "update-preparing",
+                      "name":  "Backend Update Preparing",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       220,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/shotstack/render\u0027 }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify((() =\u003e { const selected = $(\u0027Select Portrait Media\u0027).item.json; const cleanText = (value) =\u003e String(value || \u0027\u0027).normalize(\u0027NFKD\u0027).replace(/[^\\x20-\\x7E]/g, \u0027 \u0027).replace(/\\s+/g, \u0027 \u0027).trim().slice(0, 120); const lines = String(selected.scripts || \u0027\u0027).split(\u0027\\n\u0027).map((line) =\u003e cleanText(line)).filter(Boolean); const fallbackTopic = cleanText(selected.topic || $(\u0027Set Input\u0027).item.json.topic || \u0027Video business\u0027); const textLines = (lines.length ? lines : [fallbackTopic]).slice(0, 3); const titleClips = textLines.filter(Boolean).map((line, index) =\u003e ({ asset: { type: \u0027title\u0027, text: line, style: \u0027minimal\u0027, color: \u0027#ffffff\u0027, background: \u0027rgba(15,15,15,0.55)\u0027 }, start: index * 3, length: 3, position: \u0027center\u0027 })); return { timeline: { background: \u0027#0f0f0f\u0027, tracks: [ { clips: [ { asset: { type: \u0027video\u0027, src: selected.background_video_url }, start: 0, length: 15, fit: \u0027cover\u0027 } ] }, ...(titleClips.length ? [{ clips: titleClips }] : []) ] }, output: { format: \u0027mp4\u0027, aspectRatio: \u00279:16\u0027, resolution: \u0027hd\u0027 } }; })()) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "shotstack-render",
+                      "name":  "HTTP Request Shotstack Render",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       460,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "PATCH",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $(\u0027Select Portrait Media\u0027).item.json.id }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ shotstack_render_id: $json.response?.id || $json.id, shotstack_status: \u0027queued\u0027, final_video_status: \u0027processing\u0027, pipeline_status: \u0027rendering_requested\u0027 }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "update-render-id",
+                      "name":  "Backend Update Render Id",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       700,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($(\u0027Set Input\u0027).item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error(\u0027APP_VIDEO_OPS_BACKEND_BASE_URL manquante\u0027);\nif (!callbackSecret) throw new Error(\u0027APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante\u0027);\nif (!workflowRunId) throw new Error(\u0027workflowRunId manquant\u0027);\nconst body = JSON.stringify({ status: \u0027SUCCEEDED\u0027, message: \u0027Render Shotstack demande.\u0027, responsePayload: JSON.stringify({ contentIdeaId: Number($(\u0027Set Input\u0027).item.json.contentIdeaId || 0), shotstackRenderId: $(\u0027HTTP Request Shotstack Render\u0027).item.json.response?.id || $(\u0027HTTP Request Shotstack Render\u0027).item.json.id || \u0027\u0027 }) });\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\nconst sleep = (ms) =\u003e new Promise((resolve) =\u003e setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt \u003c= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) =\u003e {\n      const req = client.request({ protocol: url.protocol, hostname: url.hostname, port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80), path: url.pathname + url.search, method: \u0027POST\u0027, headers: { \u0027Content-Type\u0027: \u0027application/json\u0027, \u0027Content-Length\u0027: Buffer.byteLength(body), \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret } }, (res) =\u003e { let data = \u0027\u0027; res.on(\u0027data\u0027, (chunk) =\u003e { data += chunk; }); res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0, body: data })); });\n      req.on(\u0027error\u0027, reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode \u003e= 200 \u0026\u0026 response.statusCode \u003c 300) break;\n    lastError = \u0027Callback backend refuse: \u0027 + response.statusCode;\n    if (response.statusCode !== 404 || attempt === 6) throw new Error(lastError);\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) throw error;\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode \u003c 200 || response.statusCode \u003e= 300) throw new Error(lastError || \u0027Callback backend refuse.\u0027);\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
+                                     },
+                      "id":  "callback",
+                      "name":  "Callback Success",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1180,
+                                       100
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Set Input",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Set Input":  {
+                                          "main":  [
+                                                       [
+                                                           {
+                                                               "node":  "HTTP Request Image Prompt",
+                                                               "type":  "main",
+                                                               "index":  0
+                                                           }
+                                                       ]
+                                                   ]
+                                      },
+                        "HTTP Request Image Prompt":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "HTTP Request Pexels",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ]
+                                                      },
+                        "HTTP Request Pexels":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Select Portrait Media",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Select Portrait Media":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Backend Update Preparing",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Backend Update Preparing":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "HTTP Request Shotstack Render",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "HTTP Request Shotstack Render":  {
+                                                              "main":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "Backend Update Render Id",
+                                                                                   "type":  "main",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                          },
+                        "Backend Update Render Id":  {
+                                                         "main":  [
+
+                                                                  ]
+                                                     },
+                        "Callback Success":  {
+                                                 "main":  [
+
+                                                          ]
+                                             }
+                    },
+    "pinData":  {
+
+                },
+    "meta":  {
+                 "templateCredsSetupCompleted":  true
+             }
+}
