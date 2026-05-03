@@ -10,7 +10,8 @@
       "Bash(npx eslint *)",
       "Bash(curl -s http://localhost:5174/accounts)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git revert *)"
     ]
   }
 }

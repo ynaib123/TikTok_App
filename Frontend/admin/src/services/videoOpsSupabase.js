@@ -21,34 +21,14 @@ export async function fetchContentIdeaStatus(contentIdeaId) {
 }
 
 export async function fetchTikTokAccounts() {
-  if (USE_MOCK) {
-    return []
-  }
   return apiGet('/video-ops/tiktok-accounts')
 }
 
 export async function fetchAccountsOverview() {
-  if (USE_MOCK) {
-    return {
-      tiktokAccounts: [],
-      serviceConnections: [],
-      readiness: {
-        ready: false,
-        connectedTikTokAccounts: 0,
-        missingItems: [],
-      },
-    }
-  }
   return apiGet('/video-ops/accounts')
 }
 
 export async function fetchAccountsReadiness() {
-  if (USE_MOCK) {
-    return {
-      ready: false,
-      missingItems: [],
-    }
-  }
   return apiGet('/video-ops/accounts/readiness')
 }
 
@@ -57,9 +37,6 @@ export async function saveServiceConnection(providerKey, payload = {}) {
     throw new Error('Le providerKey est obligatoire.')
   }
 
-  if (USE_MOCK) {
-    return { id: Math.random(), providerKey, ...payload, active: true }
-  }
   return apiPut(`/video-ops/accounts/services/${providerKey}`, payload)
 }
 
@@ -68,9 +45,6 @@ export async function activateServiceConnection(providerKey, connectionId) {
     throw new Error('Le providerKey et le connectionId sont obligatoires.')
   }
 
-  if (USE_MOCK) {
-    return { success: true }
-  }
   return apiPost(`/video-ops/accounts/services/${providerKey}/${connectionId}/activate`, {})
 }
 
@@ -79,9 +53,6 @@ export async function validateServiceConnection(providerKey, connectionId) {
     throw new Error('Le providerKey et le connectionId sont obligatoires.')
   }
 
-  if (USE_MOCK) {
-    return { validationStatus: 'valid' }
-  }
   return apiPost(`/video-ops/accounts/services/${providerKey}/${connectionId}/validate`, {})
 }
 
@@ -90,9 +61,6 @@ export async function deleteServiceConnection(providerKey, connectionId) {
     throw new Error('Le providerKey et le connectionId sont obligatoires.')
   }
 
-  if (USE_MOCK) {
-    return { success: true }
-  }
   return apiDelete(`/video-ops/accounts/services/${providerKey}/${connectionId}`)
 }
 
@@ -101,9 +69,6 @@ export async function disconnectServiceConnection(providerKey) {
     throw new Error('Le providerKey est obligatoire.')
   }
 
-  if (USE_MOCK) {
-    return { success: true }
-  }
   return apiDelete(`/video-ops/accounts/services/${providerKey}`)
 }
 
@@ -112,9 +77,6 @@ export async function disconnectTikTokAccount(accountId) {
     throw new Error('Le compte TikTok est obligatoire.')
   }
 
-  if (USE_MOCK) {
-    return { success: true }
-  }
   return apiDelete(`/video-ops/tiktok-accounts/${accountId}`)
 }
 
