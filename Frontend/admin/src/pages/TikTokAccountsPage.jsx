@@ -263,7 +263,7 @@ export default function TikTokAccountsPage() {
       ) || null
       validateServiceForm(providerKey, serviceForms[providerKey] || {}, editedConnection)
       await saveServiceConnection(providerKey, serviceForms[providerKey] || {})
-      startNewServiceProfile(providerKey)
+      closeModal(providerKey)
       await refreshAccounts()
       setFeedbackMessage(`${SERVICE_CONNECTION_FIELDS[providerKey].title} valide et active.`)
     } catch (requestError) {

@@ -1,6 +1,40 @@
 import { apiDelete, apiGet, apiPost, apiPut } from './adminApiClient.js'
+import { getMockTikTokAccounts, removeMockTikTokAccount } from './tiktokOAuthApi.js'
 
 const USE_MOCK = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH === 'true'
+
+// Mock state storage (in-memory, resets on page reload)
+const mockState = {
+  tiktokAccounts: [],
+  serviceConnections: [],
+}
+
+// Mock helper functions
+function addMockTikTokAccount(account) {
+  mockState.tiktokAccounts.push(account)
+}
+
+function addMockServiceConnection(providerKey, connection) {
+  mockState.serviceConnections.push({
+    id: 'conn-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9),
+    providerKey,
+    displayName: connection.displayName || '',
+    baseUrl: connection.baseUrl || '',
+    accountIdentifier: connection.accountIdentifier || '',
+    metadataJson: connection.metadataJson || '',
+    status: 'ACTIVE',
+    validationStatus: 'VALID',
+    active: true,
+    hasSecret: !!connection.secretValue,
+    createdAt: new Date().toISOString(),
+  })
+}
+
+
+function removeMockServiceConnection(connectionId) {
+  const idx = mockState.serviceConnections.findIndex(c => c.id === connectionId)
+  if (idx >= 0) mockState.serviceConnections.splice(idx, 1)
+}
 
 export async function fetchContentIdeas() {
   if (USE_MOCK) {
@@ -22,19 +56,20 @@ export async function fetchContentIdeaStatus(contentIdeaId) {
 
 export async function fetchTikTokAccounts() {
   if (USE_MOCK) {
-    return []
+    return getMockTikTokAccounts()
   }
   return apiGet('/video-ops/tiktok-accounts')
 }
 
 export async function fetchAccountsOverview() {
   if (USE_MOCK) {
+    const tiktokAccounts = getMockTikTokAccounts()
     return {
-      tiktokAccounts: [],
-      serviceConnections: [],
+      tiktokAccounts,
+      serviceConnections: mockState.serviceConnections,
       readiness: {
-        ready: false,
-        connectedTikTokAccounts: 0,
+        ready: tiktokAccounts.length > 0 && mockState.serviceConnections.length >= 2,
+        connectedTikTokAccounts: tiktokAccounts.length,
         missingItems: [],
       },
     }
@@ -58,7 +93,8 @@ export async function saveServiceConnection(providerKey, payload = {}) {
   }
 
   if (USE_MOCK) {
-    return { id: Math.random(), providerKey, ...payload, active: true }
+    addMockServiceConnection(providerKey, payload)
+    return { success: true }
   }
   return apiPut(`/video-ops/accounts/services/${providerKey}`, payload)
 }
@@ -91,6 +127,7 @@ export async function deleteServiceConnection(providerKey, connectionId) {
   }
 
   if (USE_MOCK) {
+    removeMockServiceConnection(connectionId)
     return { success: true }
   }
   return apiDelete(`/video-ops/accounts/services/${providerKey}/${connectionId}`)
@@ -113,6 +150,8 @@ export async function disconnectTikTokAccount(accountId) {
   }
 
   if (USE_MOCK) {
+    // Import the function from tiktokOAuthApi
+    removeMockTikTokAccount(accountId)
     return { success: true }
   }
   return apiDelete(`/video-ops/tiktok-accounts/${accountId}`)
