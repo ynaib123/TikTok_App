@@ -1,0 +1,35 @@
+name: AI Overnight Workflow
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ai-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create reports folder
+        run: mkdir -p reports
+
+      - name: Claude Analysis
+        run: |
+          echo "Running Claude..."
+          echo "Analysis done at $(date)" > reports/analysis.md
+
+      - name: Codex Execution
+        run: |
+          echo "Running Codex..."
+          echo "Execution done at $(date)" > reports/execution.md
+
+      - name: Commit results
+        run: |
+          git config --global user.name "AI Bot"
+          git config --global user.email "ai@bot.com"
+          git add reports/
+          git commit -m "AI run" || echo "No changes"
+          git push
