@@ -26,7 +26,6 @@ interface TikTokStepScreenProps {
   handleUploadVideo: () => Promise<void> | void
   handleValidateCreation: () => Promise<void> | void
   handleValidateInitPublish: () => void
-  handleValidateScript: () => Promise<void> | void
   handleValidateUpload: () => void
   hasConnectedTikTokAccount: boolean
   isBusy: boolean
@@ -71,7 +70,6 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
     handleUploadVideo,
     handleValidateCreation,
     handleValidateInitPublish,
-    handleValidateScript,
     handleValidateUpload,
     hasConnectedTikTokAccount,
     isBusy,
@@ -108,14 +106,6 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
             </div>
           ) : null}
           <div className="tiktok-step-form">
-            {hasConnectedTikTokAccount ? (
-              <div className="video-preview-block">
-                <span>Compte TikTok cible</span>
-                <p>{connectedTikTokAccount?.nickname || '-'}</p>
-                <p>Open ID: {formatShortOpenId(selectedGeneratedIdea?.tiktokAccountOpenId || connectedTikTokAccount?.openId)}</p>
-                <p>Scope: {connectedTikTokAccount?.scope || '-'}</p>
-              </div>
-            ) : null}
             <label className="tiktok-step-field">
               <span>Categorie</span>
               <div className="tiktok-step-toolbar-select">
@@ -159,41 +149,20 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
                 ) : null}
               </div>
             </label>
-            <label className="tiktok-step-field">
-              <span>Count</span>
-              <input
-                type="number"
-                min="1"
-                max={maxIdeaBatchSize}
-                step="1"
-                value={generationCount}
-                onChange={(event) => {
-                  const rawValue = String(event.target.value || '').replace(/\D/g, '').slice(0, 1)
-                  if (!rawValue) {
-                    setGenerationCount('')
-                    return
-                  }
-
-                  const nextValue = Math.max(1, Math.min(maxIdeaBatchSize, Number(rawValue)))
-                  setGenerationCount(String(nextValue))
-                }}
-                disabled={isBusy || !isJourneyReady}
-              />
-            </label>
           </div>
           {isGeneratingIdeas ? (
             <div
               className="tiktok-generate-loading"
               role="progressbar"
-              aria-label="Generation des idees en cours"
-              aria-valuetext="Generation des idees en cours"
+              aria-label="Generation en cours"
+              aria-valuetext="Generation en cours"
             >
               <span className="tiktok-generate-loading-bar" aria-hidden="true" />
               <strong>Generation en cours...</strong>
             </div>
           ) : (
             <button type="button" className="video-action-btn" onClick={() => void handleGenerateIdea()} disabled={isBusy || !isJourneyReady}>
-              {displayedGeneratedIdeas.length ? 'Regenerer des idees' : 'Generer'}
+              {displayedGeneratedIdeas.length ? 'Regenerer' : 'Generer'}
             </button>
           )}
           {!isJourneyReady ? (
@@ -201,93 +170,42 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
               Ouvrir Accounts
             </button>
           ) : null}
-          <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateCreation()} disabled={isBusy || !selectedGeneratedIdea || !isJourneyReady}>
-            Valider
+          <button type="button" className="video-action-btn primary" onClick={() => void handleValidateCreation()} disabled={isBusy || !selectedGeneratedIdea || !isJourneyReady}>
+            Generer video
           </button>
         </div>
       ),
       result: (
         <div className="tiktok-step-result">
           {isGeneratingIdeas ? (
-            <div className="tiktok-loading-state" aria-live="polite" aria-label="Generation des idees en cours">
+            <div className="tiktok-loading-state" aria-live="polite" aria-label="Generation en cours">
               <div className="tiktok-loading-state-spinner" aria-hidden="true" />
               <div className="tiktok-loading-state-copy">
                 <strong>Generation en cours</strong>
-                <span>Preparation des nouvelles idees...</span>
+                <span>Preparation de l idee et du script...</span>
               </div>
             </div>
           ) : null}
-          {displayedGeneratedIdeas.length ? (
-            <div className="tiktok-ideas-list">
-              {displayedGeneratedIdeas.map((idea, index) => {
-                const isSelected = Number(idea.id) === Number(selectedGeneratedIdea?.id)
-                const previewText = idea.caption || idea.script
-
-                return (
-                  <button
-                    key={idea.id}
-                    type="button"
-                    className={`tiktok-idea-preview ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedGeneratedIdeaId(idea.id)}
-                  >
-                    <div className="tiktok-idea-preview-head">
-                      <span className="tiktok-idea-preview-kicker">{isSelected ? 'Selectionnee' : `Idee ${index + 1}`}</span>
-                      <span className={`tiktok-idea-preview-indicator ${isSelected ? 'is-selected' : ''}`} aria-hidden="true" />
-                    </div>
-                    <strong>{idea.topic || `Video #${idea.id}`}</strong>
-                    {previewText ? <p>{previewText}</p> : null}
-                  </button>
-                )
-              })}
+          {scriptedIdea ? (
+            <div className="tiktok-result-stack">
+              <div className="tiktok-result-block">
+                <div className="tiktok-result-label">Topic</div>
+                <div className="tiktok-result-value">{scriptedIdea?.topic || '-'}</div>
+              </div>
+              <div className="tiktok-result-block">
+                <div className="tiktok-result-label">Script</div>
+                <div className="tiktok-result-value">{scriptedIdea?.script || 'En attente'}</div>
+              </div>
+              <div className="tiktok-result-block">
+                <div className="tiktok-result-label">Caption</div>
+                <div className="tiktok-result-value">{scriptedIdea?.caption || 'En attente'}</div>
+              </div>
+              <div className="tiktok-result-block">
+                <div className="tiktok-result-label">Keyword</div>
+                <div className="tiktok-result-value">{scriptedIdea?.keyword || 'En attente'}</div>
+              </div>
             </div>
           ) : null}
-        </div>
-      ),
-    }
-  }
-
-  if (currentStep.id === 'script') {
-    return {
-      actions: (
-        <div className="tiktok-step-actions">
-          <button type="button" className="video-action-btn" onClick={() => void handleRegenerateScript()} disabled={isBusy}>
-            Regenerer script
-          </button>
-          <button type="button" className="video-action-btn ghost" onClick={() => void handleValidateScript()} disabled={isBusy || !scriptedIdea}>
-            Valider
-          </button>
-        </div>
-      ),
-      result: (
-        <div className="tiktok-step-result">
-          {isGeneratingScript && !scriptedIdea ? (
-            <div className="tiktok-loading-state" aria-live="polite" aria-label="Generation du script en cours">
-              <div className="tiktok-loading-state-spinner" aria-hidden="true" />
-              <div className="tiktok-loading-state-copy">
-                <strong>Generation script en cours</strong>
-                <span>Le resultat de l idee selectionnee apparaitra ici des qu il sera pret.</span>
-              </div>
-            </div>
-          ) : (
-            <div className="video-preview-stack">
-              <div className="video-preview-block">
-                <span>Topic</span>
-                <p>{scriptedIdea?.topic || '-'}</p>
-              </div>
-              <div className="video-preview-block">
-                <span>Script</span>
-                <p>{scriptedIdea?.script || 'En attente'}</p>
-              </div>
-              <div className="video-preview-block">
-                <span>Caption</span>
-                <p>{scriptedIdea?.caption || 'En attente'}</p>
-              </div>
-              <div className="video-preview-block">
-                <span>Keyword</span>
-                <p>{scriptedIdea?.keyword || 'En attente'}</p>
-              </div>
-            </div>
-          )}
         </div>
       ),
     }
@@ -305,6 +223,30 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
           <button type="button" className="video-action-btn ghost" onClick={handleValidateInitPublish} disabled={isBusy || !previewUrl}>
             Valider
           </button>
+
+          {scriptedIdea ? (
+            <>
+              <div style={{ height: '16px' }} />
+              <div className="tiktok-result-stack">
+                <div className="tiktok-result-block">
+                  <div className="tiktok-result-label">Topic</div>
+                  <div className="tiktok-result-value">{scriptedIdea?.topic || '-'}</div>
+                </div>
+                <div className="tiktok-result-block">
+                  <div className="tiktok-result-label">Script</div>
+                  <div className="tiktok-result-value">{scriptedIdea?.script || 'En attente'}</div>
+                </div>
+                <div className="tiktok-result-block">
+                  <div className="tiktok-result-label">Caption</div>
+                  <div className="tiktok-result-value">{scriptedIdea?.caption || 'En attente'}</div>
+                </div>
+                <div className="tiktok-result-block">
+                  <div className="tiktok-result-label">Keyword</div>
+                  <div className="tiktok-result-value">{scriptedIdea?.keyword || 'En attente'}</div>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       ),
       result: (

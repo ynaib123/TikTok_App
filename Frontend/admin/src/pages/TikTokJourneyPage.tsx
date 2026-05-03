@@ -32,8 +32,6 @@ import {
   useUploadStep,
 } from './tiktok-journey/useTikTokJourneySteps'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
-import WorkflowObservabilityPanel from './tiktok-journey/WorkflowObservabilityPanel'
-import WorkflowStatusPanel from './tiktok-journey/WorkflowStatusPanel'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
 import '../styles/themes/products-dark.css'
@@ -41,7 +39,6 @@ import type { ContentIdea, TikTokAccount } from '../types'
 
 const STEPS = [
   { id: 'creation', label: 'Creation' },
-  { id: 'script', label: 'Script' },
   { id: 'init-publish', label: 'Video' },
   { id: 'upload', label: 'Upload' },
   { id: 'publish', label: 'Publish' },
@@ -188,19 +185,9 @@ function StepProgress({
   return (
     <div className="tiktok-flow-progress" aria-label="Progression">
       <div className="tiktok-flow-progress-bar">
-        <span style={{ width: `${progressPercent}%` }} />
+        <span style={{ width: `${progressPercent}%`, backgroundColor: '#fff' }} />
       </div>
       <div className="tiktok-flow-progress-steps-row">
-        <button
-          type="button"
-          className="tiktok-step-back-btn"
-          onClick={onBack}
-          disabled={isWorking}
-          aria-label="Revenir en arriere"
-          title="Revenir en arriere"
-        >
-          <BackChevronIcon />
-        </button>
         <div className="tiktok-flow-progress-steps">
           {STEPS.map((step, index) => (
             <div
@@ -232,7 +219,6 @@ export default function TikTokJourneyPage() {
     accountsReadiness,
     contentIdeas,
     contentIdeasQuery,
-    observability,
     refreshPipelineData,
     tiktokAccounts,
   } = useTikTokWorkflow()
@@ -337,13 +323,14 @@ export default function TikTokJourneyPage() {
     fetchWorkflowRun,
   })
 
-  const { handleGenerateIdea } = useCreationStep({
+  const { handleGenerateIdea, handleRegenerateScript } = useCreationStep({
     displayedGeneratedIdeas,
     generationCategory,
     generationCount,
     connectedTikTokAccount,
     fetchContentIdeas,
     triggerMainContentPipeline,
+    triggerScriptGenerationWorkflow,
     refreshPipelineData,
     resetGeneratedIdeasState,
     setGeneratedIdeas,
@@ -354,25 +341,9 @@ export default function TikTokJourneyPage() {
     setLastGenerationBaselineId,
     setLastGenerationExpectedCount,
     waitForNewIdeas: workflowMonitor.waitForNewIdeas,
-    showSuccess,
-    showError,
-    runAction,
-    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
-    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
-  })
-
-  const { handleValidateCreation, handleRegenerateScript } = useScriptStep({
-    selectedGeneratedIdea,
-    scriptedIdea,
-    goToStep,
-    triggerScriptGenerationWorkflow,
-    fetchContentIdeas,
     waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,
     waitForContentIdeaStatus: workflowMonitor.waitForContentIdeaStatus,
     waitForScriptGeneration: workflowMonitor.waitForScriptGeneration,
-    refreshPipelineData,
-    setScriptedIdea,
-    setGeneratedIdeas,
     showSuccess,
     showError,
     runAction,
@@ -380,7 +351,16 @@ export default function TikTokJourneyPage() {
     markWorkflowFinished: workflowMonitor.markWorkflowFinished,
   })
 
-  const { handleValidateScript, handleRetryInitPublish } = useRenderStep({
+  const handleValidateCreation = async () => {
+    if (!selectedGeneratedIdea?.id) {
+      showError('Genere une idee avant de valider cette etape.')
+      return
+    }
+    goToStep('init-publish')
+    await handleRetryInitPublish()
+  }
+
+  const { handleRetryInitPublish } = useRenderStep({
     scriptedIdea,
     selectedGeneratedIdea,
     goToStep,
@@ -477,7 +457,6 @@ export default function TikTokJourneyPage() {
     handleUploadVideo,
     handleValidateCreation,
     handleValidateInitPublish,
-    handleValidateScript,
     handleValidateUpload,
     hasConnectedTikTokAccount,
     isBusy,
@@ -553,9 +532,6 @@ export default function TikTokJourneyPage() {
               <div className="tiktok-page-toolbar tiktok-flow-topbar">
                 <StepProgress currentStepIndex={currentStepIndex} onBack={goBackInFlow} isWorking={isBusy} />
               </div>
-
-              <WorkflowStatusPanel status={workflowMonitor.workflowStatus} />
-              <WorkflowObservabilityPanel observability={observability} />
 
               <div className="tiktok-step-screen">
                 <section className="tiktok-step-pane is-left">

@@ -1,256 +1,172 @@
-﻿{
-    "updatedAt":  "2026-05-02T13:48:24.882Z",
-    "createdAt":  "2026-04-30T02:05:00.000Z",
-    "id":  "25c5bac1-7098-43c5-a7dd-c6c8851c6ac8",
-    "name":  "script-generation-single-llm",
-    "description":  null,
-    "active":  true,
-    "isArchived":  false,
-    "nodes":  [
-                  {
-                      "parameters":  {
-                                         "httpMethod":  "POST",
-                                         "path":  "script-generation",
-                                         "responseMode":  "responseNode",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "id":  "webhook-script",
-                      "name":  "Webhook",
-                      "type":  "n8n-nodes-base.webhook",
-                      "typeVersion":  2.1,
-                      "position":  [
-                                       -840,
-                                       120
-                                   ]
-                  },
-                  {
-                      "parameters":  {
-                                         "assignments":  {
-                                                             "assignments":  [
-                                                                                 {
-                                                                                     "name":  "contentIdeaId",
-                                                                                     "value":  "={{ Number($json.body.contentIdeaId || $json.contentIdeaId || 0) }}",
-                                                                                     "type":  "number"
-                                                                                 },
-                                                                                 {
-                                                                                     "name":  "topic",
-                                                                                     "value":  "={{ String($json.body.topic || $json.topic || \u0027\u0027).trim() }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "name":  "category",
-                                                                                     "value":  "={{ String($json.body.category || $json.category || \u0027\u0027).trim() }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "name":  "workflowRunId",
-                                                                                     "value":  "={{ Number($json.body.workflowRunId || $json.workflowRunId || 0) }}",
-                                                                                     "type":  "number"
-                                                                                 }
-                                                                             ]
-                                                         },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "id":  "set-input",
-                      "name":  "Set Input",
-                      "type":  "n8n-nodes-base.set",
-                      "typeVersion":  3.4,
-                      "position":  [
-                                       -600,
-                                       120
-                                   ]
-                  },
-                  {
-                      "parameters":  {
-                                         "method":  "POST",
-                                         "url":  "https://api.groq.com/openai/v1/chat/completions",
-                                         "sendHeaders":  true,
-                                         "headerParameters":  {
-                                                                  "parameters":  [
-                                                                                     {
-                                                                                         "name":  "Content-Type",
-                                                                                         "value":  "application/json"
-                                                                                     },
-                                                                                     {
-                                                                                         "name":  "Authorization",
-                                                                                         "value":  "={{ \u0027Bearer \u0027 + $env.GROQ_API_KEY }}"
-                                                                                     }
-                                                                                 ]
-                                                              },
-                                         "sendBody":  true,
-                                         "specifyBody":  "json",
-                                         "jsonBody":  "={{ JSON.stringify({ model: \u0027llama-3.3-70b-versatile\u0027, temperature: 0.7, messages: [ { role: \u0027system\u0027, content: \u0027Tu generes du contenu TikTok. Retourne uniquement un JSON valide avec les cles script, caption, background_keyword.\u0027 }, { role: \u0027user\u0027, content: \u0027Categorie: \u0027 + $json.category + \u0027\\nTopic: \u0027 + $json.topic + \u0027\\nContraintes:\\n- script: francais, naturel, court, pret pour une video TikTok\\n- caption: concise avec hashtags\\n- background_keyword: un seul mot-cle visuel exploitable\\nRetourne uniquement le JSON.\u0027 } ] }) }}",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "id":  "http-groq",
-                      "name":  "HTTP Request Groq",
-                      "type":  "n8n-nodes-base.httpRequest",
-                      "typeVersion":  4.4,
-                      "position":  [
-                                       -320,
-                                       120
-                                   ]
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const raw = String($json.choices?.[0]?.message?.content || \u0027\u0027).trim();\nconst cleaned = raw.replace(/^```json\\s*/i, \u0027\u0027).replace(/^```/i, \u0027\u0027).replace(/```$/i, \u0027\u0027).trim();\nlet parsed;\ntry { parsed = JSON.parse(cleaned); } catch (error) { throw new Error(\u0027Reponse LLM non parseable en JSON: \u0027 + cleaned); }\nreturn [{ json: { contentIdeaId: Number($(\u0027Set Input\u0027).item.json.contentIdeaId || 0), workflowRunId: Number($(\u0027Set Input\u0027).item.json.workflowRunId || 0), script: String(parsed.script || \u0027\u0027).trim(), caption: String(parsed.caption || \u0027\u0027).trim(), background_keyword: String(parsed.background_keyword || \u0027\u0027).trim() } }];"
-                                     },
-                      "id":  "code-parse",
-                      "name":  "Parse JSON",
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -40,
-                                       120
-                                   ]
-                  },
-                  {
-                      "parameters":  {
-                                         "method":  "PATCH",
-                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.contentIdeaId }}",
-                                         "sendHeaders":  true,
-                                         "headerParameters":  {
-                                                                  "parameters":  [
-                                                                                     {
-                                                                                         "name":  "Content-Type",
-                                                                                         "value":  "application/json"
-                                                                                     },
-                                                                                     {
-                                                                                         "name":  "X-Video-Ops-Internal-Secret",
-                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
-                                                                                     }
-                                                                                 ]
-                                                              },
-                                         "sendBody":  true,
-                                         "specifyBody":  "json",
-                                         "jsonBody":  "={{ JSON.stringify({ scripts: $json.script, script_status: \u0027done\u0027, caption: $json.caption, background_keyword: $json.background_keyword, pipeline_status: \u0027script_ready\u0027 }) }}",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "id":  "backend-update",
-                      "name":  "Backend Update Script",
-                      "type":  "n8n-nodes-base.httpRequest",
-                      "typeVersion":  4.4,
-                      "position":  [
-                                       240,
-                                       120
-                                   ]
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Parse JSON\u0027).item.json.contentIdeaId, workflowRunId: $(\u0027Parse JSON\u0027).item.json.workflowRunId, status: \u0027script_ready\u0027 } }}",
-                                         "options":  {
-                                                         "responseCode":  200
-                                                     }
-                                     },
-                      "id":  "respond",
-                      "name":  "Respond to Webhook",
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.5,
-                      "position":  [
-                                       480,
-                                       120
-                                   ]
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($(\u0027Parse JSON\u0027).item.json.workflowRunId || 0);\nif (!baseUrl) throw new Error(\u0027APP_VIDEO_OPS_BACKEND_BASE_URL manquante\u0027);\nif (!callbackSecret) throw new Error(\u0027APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET manquante\u0027);\nif (!workflowRunId) throw new Error(\u0027workflowRunId manquant\u0027);\nconst body = JSON.stringify({ status: \u0027SUCCEEDED\u0027, message: \u0027Script workflow termine.\u0027, responsePayload: JSON.stringify({ contentIdeaId: Number($(\u0027Parse JSON\u0027).item.json.contentIdeaId || 0) }) });\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\nconst sleep = (ms) =\u003e new Promise((resolve) =\u003e setTimeout(resolve, ms));\nlet response = null;\nlet lastError = null;\nfor (let attempt = 1; attempt \u003c= 6; attempt += 1) {\n  try {\n    response = await new Promise((resolve, reject) =\u003e {\n      const req = client.request({ protocol: url.protocol, hostname: url.hostname, port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80), path: url.pathname + url.search, method: \u0027POST\u0027, headers: { \u0027Content-Type\u0027: \u0027application/json\u0027, \u0027Content-Length\u0027: Buffer.byteLength(body), \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret } }, (res) =\u003e { let data = \u0027\u0027; res.on(\u0027data\u0027, (chunk) =\u003e { data += chunk; }); res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0, body: data })); });\n      req.on(\u0027error\u0027, reject);\n      req.write(body);\n      req.end();\n    });\n    if (response.statusCode \u003e= 200 \u0026\u0026 response.statusCode \u003c 300) break;\n    lastError = \u0027Callback backend refuse: \u0027 + response.statusCode;\n    if (response.statusCode !== 404 || attempt === 6) throw new Error(lastError);\n  } catch (error) {\n    lastError = error.message || String(error);\n    if (attempt === 6) throw error;\n  }\n  await sleep(500 * attempt);\n}\nif (!response || response.statusCode \u003c 200 || response.statusCode \u003e= 300) throw new Error(lastError || \u0027Callback backend refuse.\u0027);\nreturn [{ json: { ...$json, callbackStatusCode: response.statusCode } }];"
-                                     },
-                      "id":  "callback-success",
-                      "name":  "Callback Success",
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       720,
-                                       120
-                                   ]
-                  }
-              ],
-    "connections":  {
-                        "Webhook":  {
-                                        "main":  [
-                                                     [
-                                                         {
-                                                             "node":  "Set Input",
-                                                             "type":  "main",
-                                                             "index":  0
-                                                         }
-                                                     ]
-                                                 ]
-                                    },
-                        "Set Input":  {
-                                          "main":  [
-                                                       [
-                                                           {
-                                                               "node":  "HTTP Request Groq",
-                                                               "type":  "main",
-                                                               "index":  0
-                                                           }
-                                                       ]
-                                                   ]
-                                      },
-                        "HTTP Request Groq":  {
-                                                  "main":  [
-                                                               [
-                                                                   {
-                                                                       "node":  "Parse JSON",
-                                                                       "type":  "main",
-                                                                       "index":  0
-                                                                   }
-                                                               ]
-                                                           ]
-                                              },
-                        "Parse JSON":  {
-                                           "main":  [
-                                                        [
-                                                            {
-                                                                "node":  "Backend Update Script",
-                                                                "type":  "main",
-                                                                "index":  0
-                                                            }
-                                                        ]
-                                                    ]
-                                       },
-                        "Backend Update Script":  {
-                                                      "main":  [
-                                                                   [
-                                                                       {
-                                                                           "node":  "Respond to Webhook",
-                                                                           "type":  "main",
-                                                                           "index":  0
-                                                                       }
-                                                                   ]
-                                                               ]
-                                                  },
-                        "Respond to Webhook":  {
-                                                   "main":  [
-                                                                [
-                                                                    {
-                                                                        "node":  "Callback Success",
-                                                                        "type":  "main",
-                                                                        "index":  0
-                                                                    }
-                                                                ]
-                                                            ]
-                                               },
-                        "Callback Success":  {
-                                                 "main":  [
-
-                                                          ]
-                                             }
-                    },
-    "pinData":  {
-
-                },
-    "meta":  {
-                 "templateCredsSetupCompleted":  true
-             }
+{
+  "updatedAt": "2026-05-03T00:00:00.000Z",
+  "createdAt": "2026-04-30T02:05:00.000Z",
+  "id": "25c5bac1-7098-43c5-a7dd-c6c8851c6ac8",
+  "name": "script-generation-professional",
+  "description": "High-quality script generation with LLM optimization and quality gates",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "script-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-script",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-840, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const contentIdeaId = Number($json.body?.contentIdeaId || $json.contentIdeaId || 0);\nconst topic = String($json.body?.topic || $json.topic || '').trim();\nconst category = String($json.body?.category || $json.category || '').trim();\nconst workflowRunId = Number($json.body?.workflowRunId || $json.workflowRunId || 0);\n\nif (!contentIdeaId || contentIdeaId <= 0) throw new Error('contentIdeaId invalide');\nif (!topic) throw new Error('topic manquant');\nif (!category) throw new Error('category manquant');\nif (!workflowRunId || workflowRunId <= 0) throw new Error('workflowRunId invalide');\n\nif (topic.length > 200) throw new Error('topic trop long (max 200 chars)');\nif (category.length > 50) throw new Error('category trop long (max 50 chars)');\n\nreturn [{ json: { contentIdeaId, topic, category, workflowRunId } }];"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "Authorization", "value": "={{ 'Bearer ' + $env.GROQ_API_KEY }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.6, max_tokens: 500, messages: [ { role: 'system', content: 'Tu es un expert en création de contenu viral TikTok. Tu generes des scripts courts, punchant et optimisés pour mobile. Retourne UNIQUEMENT un JSON valide sans markdown.' }, { role: 'user', content: 'Categorie: ' + $json.category + '\\nTopic: ' + $json.topic + '\\n\\nGenere un script TikTok professionnel:\\n- Script: 1-3 phrases courtes et impactantes, francais naturel et conversationnel\\n- Caption: 1-2 phrases accrochantes avec 2-3 hashtags pertinents\\n- Hook: une premiere phrase engageante pour accrocher en 1s\\n- Tone: professionnel mais accessible\\n\\nRetourne ce JSON exactement:\\n{\"script\":\"...\",\"caption\":\"...\",\"hook\":\"...\",\"background_keyword\":\"...\"}' } ] }) }}",
+        "options": {
+          "retry": {"maxRetries": 2, "delayMultiplier": 2, "initialDelay": 1000},
+          "timeout": 30000
+        }
+      },
+      "id": "http-groq-script",
+      "name": "HTTP: Groq Script Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-320, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.choices?.[0]?.message?.content || '').trim();\nconst cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();\nlet parsed;\ntry { parsed = JSON.parse(cleaned); } catch (error) {\n  throw new Error('Reponse LLM non parseable: ' + cleaned.slice(0, 200));\n}\n\nif (!parsed.script) throw new Error('script manquant dans la reponse LLM');\nif (!parsed.caption) throw new Error('caption manquant dans la reponse LLM');\nif (!parsed.hook) throw new Error('hook manquant dans la reponse LLM');\nif (!parsed.background_keyword) throw new Error('background_keyword manquant');\n\nconst script = String(parsed.script).trim().slice(0, 300);\nconst caption = String(parsed.caption).trim().slice(0, 150);\nconst hook = String(parsed.hook).trim().slice(0, 100);\nconst background_keyword = String(parsed.background_keyword).trim().slice(0, 50);\n\nif (script.length < 10) throw new Error('script trop court');\nif (caption.length < 5) throw new Error('caption trop court');\nif (hook.length < 5) throw new Error('hook trop court');\n\nreturn [{ json: { contentIdeaId: Number($('Validate Input').item.json.contentIdeaId || 0), workflowRunId: Number($('Validate Input').item.json.workflowRunId || 0), script, caption, hook, background_keyword, topic: $('Validate Input').item.json.topic } }];"
+      },
+      "id": "parse-and-validate",
+      "name": "Parse & Validate Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-40, 120]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/content-ideas/' + $json.contentIdeaId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ scripts: $json.script, script_status: 'done', script_hook: $json.hook, caption: $json.caption, background_keyword: $json.background_keyword, pipeline_status: 'script_ready', llm_model: 'llama-3.3-70b-versatile' }) }}",
+        "options": {
+          "retry": {"maxRetries": 2, "delayMultiplier": 2, "initialDelay": 1000},
+          "timeout": 20000
+        }
+      },
+      "id": "backend-update",
+      "name": "HTTP: Update Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [240, 120]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, contentIdeaId: $('Parse & Validate Script').item.json.contentIdeaId, workflowRunId: $('Parse & Validate Script').item.json.workflowRunId, status: 'script_ready', script_length: ($('Parse & Validate Script').item.json.script || '').length } }}",
+        "options": {"responseCode": 200}
+      },
+      "id": "respond",
+      "name": "Respond: Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [480, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst contentIdeaId = Number($('Parse & Validate Script').item.json.contentIdeaId || 0);\nconst workflowRunId = Number($('Parse & Validate Script').item.json.workflowRunId || 0);\nconst scriptLength = ($('Parse & Validate Script').item.json.script || '').length;\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  throw new Error('Missing callback config');\n}\n\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: 'Script generation complete.',\n  responsePayload: JSON.stringify({ contentIdeaId, scriptLength })\n});\n\nconst http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\n\nconst response = await new Promise((resolve, reject) => {\n  let attempts = 0;\n  const maxAttempts = 3;\n\n  const tryRequest = () => {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === 'https:' ? 443 : 80),\n      path: url.pathname + url.search,\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Content-Length': Buffer.byteLength(body),\n        'X-Video-Ops-Callback-Secret': callbackSecret,\n        'X-Request-Timestamp': Date.now().toString()\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', (chunk) => { data += chunk; });\n      res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n    });\n\n    req.on('error', (err) => {\n      attempts++;\n      if (attempts < maxAttempts) {\n        setTimeout(tryRequest, Math.pow(2, attempts) * 1000);\n      } else {\n        reject(err);\n      }\n    });\n\n    req.setTimeout(15000, () => {\n      req.destroy();\n      attempts++;\n      if (attempts < maxAttempts) {\n        setTimeout(tryRequest, Math.pow(2, attempts) * 1000);\n      } else {\n        reject(new Error('Callback timeout'));\n      }\n    });\n\n    req.write(body);\n    req.end();\n  };\n\n  tryRequest();\n});\n\nif (response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error('Callback failed: ' + response.statusCode);\n}\n\nreturn [{ json: { ok: true, callbackStatusCode: response.statusCode } }];"
+      },
+      "id": "callback-success",
+      "name": "Callback: Success (with retry)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst contentIdeaId = Number($('Validate Input').item.json.contentIdeaId || 0);\nconst workflowRunId = Number($('Validate Input').item.json.workflowRunId || 0);\nconst error = $json;\n\nlet errorMessage = 'Unknown error';\nif (typeof error === 'string') errorMessage = error;\nelse if (error.message) errorMessage = error.message;\nelse if (error.error?.message) errorMessage = error.error.message;\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  return [{ json: { status: 'FAILED', message: 'Missing config' } }];\n}\n\nconst body = JSON.stringify({\n  status: 'FAILED',\n  message: 'Script generation failed: ' + errorMessage.slice(0, 200),\n  responsePayload: JSON.stringify({ contentIdeaId, error: errorMessage.slice(0, 500) })\n});\n\nconst http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\n\nconst response = await new Promise((resolve) => {\n  let attempts = 0;\n  const maxAttempts = 2;\n\n  const tryRequest = () => {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === 'https:' ? 443 : 80),\n      path: url.pathname + url.search,\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Content-Length': Buffer.byteLength(body),\n        'X-Video-Ops-Callback-Secret': callbackSecret,\n        'X-Request-Timestamp': Date.now().toString()\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', (chunk) => { data += chunk; });\n      res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n    });\n\n    req.on('error', () => {\n      attempts++;\n      if (attempts < maxAttempts) {\n        setTimeout(tryRequest, 2000);\n      } else {\n        resolve({ statusCode: 0, body: 'Error callback failed' });\n      }\n    });\n\n    req.setTimeout(10000, () => {\n      req.destroy();\n      attempts++;\n      if (attempts < maxAttempts) {\n        setTimeout(tryRequest, 2000);\n      } else {\n        resolve({ statusCode: 0, body: 'Error callback timeout' });\n      }\n    });\n\n    req.write(body);\n    req.end();\n  };\n\n  tryRequest();\n});\n\nreturn [{ json: { status: 'FAILED', message: 'Error callback sent (best effort)' } }];"
+      },
+      "id": "callback-error",
+      "name": "Callback: Error (best effort)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: $json.message || 'Unknown error' } }}",
+        "options": {"responseCode": 500}
+      },
+      "id": "respond-error",
+      "name": "Respond: Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Validate Input", "type": "main", "index": 0}]]
+    },
+    "Validate Input": {
+      "main": [[{"node": "HTTP: Groq Script Generation", "type": "main", "index": 0}]],
+      "error": [[{"node": "Callback: Error (best effort)", "type": "main", "index": 0}]]
+    },
+    "HTTP: Groq Script Generation": {
+      "main": [[{"node": "Parse & Validate Script", "type": "main", "index": 0}]],
+      "error": [[{"node": "Callback: Error (best effort)", "type": "main", "index": 0}]]
+    },
+    "Parse & Validate Script": {
+      "main": [[{"node": "HTTP: Update Backend", "type": "main", "index": 0}]],
+      "error": [[{"node": "Callback: Error (best effort)", "type": "main", "index": 0}]]
+    },
+    "HTTP: Update Backend": {
+      "main": [[{"node": "Respond: Success", "type": "main", "index": 0}]],
+      "error": [[{"node": "Callback: Error (best effort)", "type": "main", "index": 0}]]
+    },
+    "Respond: Success": {
+      "main": [[{"node": "Callback: Success (with retry)", "type": "main", "index": 0}]]
+    },
+    "Callback: Success (with retry)": {
+      "main": [],
+      "error": [[{"node": "Callback: Error (best effort)", "type": "main", "index": 0}]]
+    },
+    "Callback: Error (best effort)": {
+      "main": [[{"node": "Respond: Error", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {"executionOrder": "v1", "binaryMode": "separate"},
+  "pinData": {},
+  "meta": {"templateCredsSetupCompleted": true}
 }
