@@ -101,6 +101,38 @@
   --admin-radius-md: 14px;
   --admin-radius-lg: 18px;
   --admin-radius-xl: 24px;
+  /* Status tokens (healthy / warning / off) */
+  --admin-status-success: #6df0ad;
+  --admin-status-success-soft: rgba(123, 255, 187, 0.10);
+  --admin-status-success-soft-strong: rgba(123, 255, 187, 0.14);
+  --admin-status-success-border: rgba(123, 255, 187, 0.25);
+  --admin-status-success-border-strong: rgba(123, 255, 187, 0.32);
+  --admin-status-success-ink: #0c1e15;
+  --admin-status-warn: #ffc04d;
+  --admin-status-warn-soft: rgba(255, 192, 77, 0.10);
+  --admin-status-warn-border: rgba(255, 192, 77, 0.25);
+  --admin-status-danger: #ff7d7d;
+  --admin-status-danger-strong: #ff9b9b;
+  --admin-status-danger-soft: rgba(255, 99, 99, 0.10);
+  --admin-status-danger-soft-strong: rgba(255, 99, 99, 0.14);
+  --admin-status-danger-border: rgba(255, 99, 99, 0.22);
+  --admin-status-danger-border-strong: rgba(255, 99, 99, 0.5);
+  /* Provider glyph palette */
+  --admin-provider-tiktok: #ff6f97;
+  --admin-provider-tiktok-soft: rgba(255, 80, 130, 0.12);
+  --admin-provider-tiktok-border: rgba(255, 80, 130, 0.32);
+  --admin-provider-n8n: #ff9466;
+  --admin-provider-n8n-soft: rgba(255, 110, 64, 0.12);
+  --admin-provider-n8n-border: rgba(255, 110, 64, 0.30);
+  --admin-provider-groq: #9cd1ff;
+  --admin-provider-groq-soft: rgba(124, 198, 255, 0.12);
+  --admin-provider-groq-border: rgba(124, 198, 255, 0.30);
+  --admin-provider-shotstack: #c4afff;
+  --admin-provider-shotstack-soft: rgba(168, 134, 255, 0.14);
+  --admin-provider-shotstack-border: rgba(168, 134, 255, 0.34);
+  --admin-provider-pexels: #95f5c2;
+  --admin-provider-pexels-soft: rgba(123, 255, 187, 0.12);
+  --admin-provider-pexels-border: rgba(123, 255, 187, 0.32);
 }
 
 *,

@@ -1,11 +1,10 @@
 /* ============================================================================
-   Accounts page — drop into src/styles/features/accounts.css
-   Reuses .video-action-btn, .video-pill, .tiktok-step-field, .accounts-modal*
-   from video-ops.css — only adds new tokens for the v2 layout.
+   Accounts page — token-based, aligned with journey design system.
+   Status colors: var(--admin-status-*). Provider glyphs: var(--admin-provider-*).
    ========================================================================== */
 
 .accounts-page-v2 .video-ops-shell {
-  gap: 24px;
+  gap: 20px;
 }
 
 /* ------------------------------------------------------------------ */
@@ -27,11 +26,11 @@
   right: 0;
   min-width: 240px;
   padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  background: rgba(18, 18, 19, 0.98);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-panel-surface);
   backdrop-filter: blur(12px);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--admin-shadow);
   z-index: 30;
   display: grid;
   gap: 2px;
@@ -45,14 +44,14 @@
   padding: 8px 10px;
   background: transparent;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--admin-radius-sm);
   color: inherit;
   cursor: pointer;
   text-align: left;
 }
 
 .accounts-connect-menu-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--admin-surface-overlay-soft);
 }
 
 .accounts-connect-menu-item-text {
@@ -61,13 +60,13 @@
 }
 
 .accounts-connect-menu-item-text strong {
-  color: #f4f7fb;
+  color: var(--admin-text);
   font-size: 0.92rem;
   font-weight: 600;
 }
 
 .accounts-connect-menu-item-text small {
-  color: rgba(217, 223, 230, 0.55);
+  color: var(--admin-text-dim);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -81,21 +80,45 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #f4f7fb;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface-overlay-strong);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
   font-weight: 700;
   font-size: 14px;
   letter-spacing: -0.02em;
   flex-shrink: 0;
 }
 
-.accounts-glyph-tiktok { background: rgba(255, 80, 130, 0.12); border-color: rgba(255, 80, 130, 0.32); color: #ff6f97; }
-.accounts-glyph-n8n    { background: rgba(255, 110, 64, 0.12); border-color: rgba(255, 110, 64, 0.3); color: #ff9466; }
-.accounts-glyph-groq   { background: rgba(124, 198, 255, 0.12); border-color: rgba(124, 198, 255, 0.3); color: #9cd1ff; }
-.accounts-glyph-shotstack { background: rgba(168, 134, 255, 0.14); border-color: rgba(168, 134, 255, 0.34); color: #c4afff; }
-.accounts-glyph-pexels { background: rgba(123, 255, 187, 0.12); border-color: rgba(123, 255, 187, 0.32); color: #95f5c2; }
+.accounts-glyph-tiktok {
+  background: var(--admin-provider-tiktok-soft);
+  border-color: var(--admin-provider-tiktok-border);
+  color: var(--admin-provider-tiktok);
+}
+
+.accounts-glyph-n8n {
+  background: var(--admin-provider-n8n-soft);
+  border-color: var(--admin-provider-n8n-border);
+  color: var(--admin-provider-n8n);
+}
+
+.accounts-glyph-groq {
+  background: var(--admin-provider-groq-soft);
+  border-color: var(--admin-provider-groq-border);
+  color: var(--admin-provider-groq);
+}
+
+.accounts-glyph-shotstack {
+  background: var(--admin-provider-shotstack-soft);
+  border-color: var(--admin-provider-shotstack-border);
+  color: var(--admin-provider-shotstack);
+}
+
+.accounts-glyph-pexels {
+  background: var(--admin-provider-pexels-soft);
+  border-color: var(--admin-provider-pexels-border);
+  color: var(--admin-provider-pexels);
+}
 
 /* ------------------------------------------------------------------ */
 /* Toolbar — shape accounts, colors journey-dark                      */
@@ -111,7 +134,7 @@
   width: 100%;
   height: 36px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: var(--admin-radius-sm);
   border: 1px solid var(--admin-border);
   background: var(--admin-panel-surface-2);
   color: var(--admin-text);
@@ -133,7 +156,7 @@
   padding: 2px;
   height: 36px;
   border: 1px solid var(--admin-border);
-  border-radius: 10px;
+  border-radius: var(--admin-radius-sm);
   background: var(--admin-panel-surface-2);
 }
 
@@ -188,21 +211,21 @@
 }
 
 .accounts-status-pill.is-healthy {
-  background: rgba(123, 255, 187, 0.1);
-  border-color: rgba(123, 255, 187, 0.25);
-  color: #6df0ad;
+  background: var(--admin-status-success-soft);
+  border-color: var(--admin-status-success-border);
+  color: var(--admin-status-success);
 }
 
 .accounts-status-pill.is-warning {
-  background: rgba(255, 192, 77, 0.1);
-  border-color: rgba(255, 192, 77, 0.25);
-  color: #ffc04d;
+  background: var(--admin-status-warn-soft);
+  border-color: var(--admin-status-warn-border);
+  color: var(--admin-status-warn);
 }
 
 .accounts-status-pill.is-off {
-  background: rgba(255, 99, 99, 0.1);
-  border-color: rgba(255, 99, 99, 0.28);
-  color: #ff7d7d;
+  background: var(--admin-status-danger-soft);
+  border-color: var(--admin-status-danger-border);
+  color: var(--admin-status-danger);
 }
 
 /* ------------------------------------------------------------------ */
@@ -218,23 +241,16 @@
   display: grid;
   gap: 14px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.04), transparent 50%),
-    linear-gradient(180deg, rgba(22, 22, 23, 0.94) 0%, rgba(15, 15, 16, 0.96) 100%);
-  box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-panel-surface-2);
+  transition: border-color var(--admin-motion-fast), transform var(--admin-motion-fast), box-shadow var(--admin-motion-fast);
 }
 
 .accounts-card:hover {
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: var(--admin-border-strong);
   transform: translateY(-1px);
-  box-shadow:
-    0 18px 36px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: var(--admin-shadow);
 }
 
 .accounts-card-head {
@@ -251,13 +267,13 @@
 }
 
 .accounts-card-head-text strong {
-  color: #f4f7fb;
+  color: var(--admin-text);
   font-size: 0.98rem;
   font-weight: 700;
 }
 
 .accounts-card-head-text span {
-  color: rgba(217, 223, 230, 0.62);
+  color: var(--admin-text-soft);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -270,7 +286,7 @@
   gap: 8px;
   margin: 0;
   padding: 12px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--admin-border-subtle);
 }
 
 .accounts-card-meta div {
@@ -280,7 +296,7 @@
 }
 
 .accounts-card-meta dt {
-  color: rgba(204, 213, 222, 0.5);
+  color: var(--admin-text-dim);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.09em;
@@ -289,13 +305,13 @@
 
 .accounts-card-meta dd {
   margin: 0;
-  color: #f4f7fb;
+  color: var(--admin-text);
   font-size: 12px;
   font-weight: 500;
 }
 
-.accounts-card-meta dd.accounts-tone-warn { color: #ffc04d; }
-.accounts-card-meta dd.accounts-tone-bad  { color: #ff7d7d; }
+.accounts-card-meta dd.accounts-tone-warn { color: var(--admin-status-warn); }
+.accounts-card-meta dd.accounts-tone-bad  { color: var(--admin-status-danger); }
 .accounts-card-meta dd.accounts-tone-ok   { /* default */ }
 
 .accounts-card-scopes {
@@ -309,16 +325,16 @@
   align-items: center;
   padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(217, 223, 230, 0.86);
+  border: 1px solid var(--admin-border-soft);
+  background: var(--admin-surface-overlay-faint);
+  color: var(--admin-text-soft);
   font-size: 11px;
   font-weight: 500;
 }
 
 .accounts-scope-chip-more {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(217, 223, 230, 0.7);
+  background: var(--admin-surface-overlay-strong);
+  color: var(--admin-text-soft);
 }
 
 /* Rate bar */
@@ -330,7 +346,7 @@
 .accounts-rate-label {
   display: flex;
   justify-content: space-between;
-  color: rgba(217, 223, 230, 0.62);
+  color: var(--admin-text-soft);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -340,7 +356,7 @@
 .accounts-rate-bar {
   position: relative;
   height: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--admin-surface-overlay-strong);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -348,7 +364,7 @@
 .accounts-rate-bar-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: linear-gradient(90deg, #6df0ad, #4cc9f0);
+  background: linear-gradient(90deg, var(--admin-status-success), #4cc9f0);
   border-radius: 999px;
 }
 
@@ -360,7 +376,7 @@
 }
 
 .accounts-rate-inline span {
-  color: rgba(217, 223, 230, 0.7);
+  color: var(--admin-text-soft);
   font-size: 11px;
   font-weight: 600;
 }
@@ -370,7 +386,7 @@
   gap: 6px;
   flex-wrap: wrap;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--admin-border-subtle);
 }
 
 /* ------------------------------------------------------------------ */
@@ -378,9 +394,9 @@
 /* ------------------------------------------------------------------ */
 .accounts-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-panel-surface-2);
 }
 
 .accounts-table {
@@ -394,24 +410,24 @@
   top: 0;
   padding: 12px 14px;
   text-align: left;
-  color: rgba(204, 213, 222, 0.55);
+  color: var(--admin-text-dim);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  background: rgba(18, 18, 19, 0.98);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--admin-panel-surface);
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .accounts-table tbody td {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #f4f7fb;
+  border-bottom: 1px solid var(--admin-border-faint);
+  color: var(--admin-text);
   vertical-align: middle;
 }
 
 .accounts-table tbody tr:hover td {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--admin-surface-overlay-faint);
 }
 
 .accounts-table tbody tr:last-child td {
@@ -427,14 +443,14 @@
 
 .accounts-table-service strong {
   display: block;
-  color: #f4f7fb;
+  color: var(--admin-text);
   font-size: 13px;
   font-weight: 600;
 }
 
 .accounts-table-service span {
   display: block;
-  color: rgba(217, 223, 230, 0.6);
+  color: var(--admin-text-soft);
   font-size: 11px;
 }
 
@@ -443,12 +459,12 @@
   white-space: nowrap;
 }
 
-.accounts-muted { color: rgba(217, 223, 230, 0.45); }
+.accounts-muted { color: var(--admin-text-muted); }
 
 .accounts-empty {
   padding: 36px 18px;
   text-align: center;
-  color: rgba(217, 223, 230, 0.55);
+  color: var(--admin-text-soft);
   font-size: 13px;
 }
 
@@ -472,19 +488,19 @@
   gap: 8px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface-overlay-faint);
 }
 
 .accounts-stepper-step.is-reached {
-  border-color: rgba(123, 255, 187, 0.22);
-  background: rgba(123, 255, 187, 0.05);
+  border-color: var(--admin-status-success-border);
+  background: var(--admin-status-success-soft);
 }
 
 .accounts-stepper-step.is-active {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-overlay);
 }
 
 .accounts-stepper-dot {
@@ -493,26 +509,26 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4f7fb;
+  background: var(--admin-surface-overlay-hover);
+  color: var(--admin-text);
   font-size: 11px;
   font-weight: 700;
 }
 
 .accounts-stepper-step.is-reached .accounts-stepper-dot {
-  background: #6df0ad;
-  color: #0c1e15;
+  background: var(--admin-status-success);
+  color: var(--admin-status-success-ink);
 }
 
 .accounts-stepper-label {
-  color: rgba(217, 223, 230, 0.78);
+  color: var(--admin-text-soft);
   font-size: 12px;
   font-weight: 600;
 }
 
 .accounts-stepper-blurb {
   margin: 0 0 12px;
-  color: rgba(217, 223, 230, 0.7);
+  color: var(--admin-text-soft);
   font-size: 13px;
 }
 
@@ -534,22 +550,22 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(123, 255, 187, 0.14);
-  border: 1px solid rgba(123, 255, 187, 0.32);
-  color: #6df0ad;
+  background: var(--admin-status-success-soft-strong);
+  border: 1px solid var(--admin-status-success-border-strong);
+  color: var(--admin-status-success);
   font-size: 28px;
   font-weight: 700;
 }
 
 .accounts-stepper-done h4 {
   margin: 0;
-  color: #f4f7fb;
+  color: var(--admin-text);
   font-size: 18px;
 }
 
 .accounts-stepper-done p {
   margin: 0;
-  color: rgba(217, 223, 230, 0.7);
+  color: var(--admin-text-soft);
   font-size: 13px;
 }
 
@@ -559,29 +575,29 @@
 .accounts-danger-zone {
   margin-top: 18px;
   padding: 14px 16px;
-  border: 1px solid rgba(255, 99, 99, 0.22);
-  border-radius: 12px;
-  background: rgba(255, 99, 99, 0.04);
+  border: 1px solid var(--admin-status-danger-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-status-danger-soft);
 }
 
 .accounts-danger-zone h4 {
   margin: 0 0 4px;
-  color: #ff9b9b;
+  color: var(--admin-status-danger-strong);
   font-size: 13px;
   font-weight: 700;
 }
 
 .accounts-danger-zone p {
   margin: 0 0 10px;
-  color: rgba(217, 223, 230, 0.7);
+  color: var(--admin-text-soft);
   font-size: 12px;
 }
 
 .accounts-danger-zone code {
   padding: 1px 6px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #f4f7fb;
+  background: var(--admin-surface-overlay-strong);
+  color: var(--admin-text);
   font-size: 11px;
 }
 
@@ -593,25 +609,22 @@
 
 .accounts-danger-row input {
   padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 99, 99, 0.22);
-  background: rgba(255, 255, 255, 0.03);
-  color: #f4f7fb;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-status-danger-border);
+  background: var(--admin-surface-overlay-faint);
+  color: var(--admin-text);
   font-size: 13px;
 }
 
 .accounts-danger-row input:focus {
   outline: none;
-  border-color: rgba(255, 99, 99, 0.5);
+  border-color: var(--admin-status-danger-border-strong);
 }
 
 /* ------------------------------------------------------------------ */
 /* Responsive                                                          */
 /* ------------------------------------------------------------------ */
 @media (max-width: 960px) {
-  .accounts-stats-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .accounts-toolbar {
     grid-template-columns: 1fr;
   }

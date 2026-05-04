@@ -1,12 +1,8 @@
 /**
- * TikTokStepScreen — full rebuild (Proposal C).
+ * TikTokStepScreen — single-pane wizard layout (Proposal C).
  *
- * 3-column flow shell: Rail (steps + back) | Main (active step UI) | Console
- * (accounts state, idea preview, live activity log).
- *
- * All handler props are forwarded from `TikTokJourneyPage` unchanged. The
- * console column is purely presentational — it re-renders from the same
- * `manualAction`, `scriptedIdea`, `successMessage`, `errorMessage` props.
+ * Vertical flow: horizontal Progress stepper -> Main step body (centered,
+ * max 1000px) -> collapsible Footer (TikTok account state + live activity).
  */
 
 import { useEffect, useRef, useState, type JSX } from 'react'
@@ -83,7 +79,7 @@ interface JourneyManualAction {
   uploadUrl?: string | null
 }
 
-/* ── Console: live activity log ───────────────────────────────────────── */
+/* ── Activity log hook ────────────────────────────────────────────────── */
 
 function useActivityLog(props: TikTokStepScreenProps): LogEntry[] {
   const [log, setLog] = useState<LogEntry[]>([])
@@ -143,118 +139,152 @@ function KV({ label, value, mono = false }: { label: string; value: string | nul
   )
 }
 
-/* ── Rail ─────────────────────────────────────────────────────────────── */
+/* ── Top stepper ──────────────────────────────────────────────────────── */
 
-function Rail({ steps, currentStepIndex, goBackInFlow, BackArrow }: {
+function ProgressStepper({ steps, currentStepIndex, goToStep, goBackInFlow, BackArrow }: {
   steps: StepDescriptor[]
   currentStepIndex: number
+  goToStep: (id: string) => void
   goBackInFlow: () => void
   BackArrow: IconComponent
 }) {
   return (
-    <aside className="journey-flow-rail" aria-label="Etapes du parcours">
-      <div className="journey-flow-rail-head">
-        <button type="button" className="journey-flow-rail-head-back" onClick={goBackInFlow}>
-          <BackArrow /> Bibliotheque
-        </button>
-        <span className="journey-flow-rail-head-progress">
-          {currentStepIndex + 1} / {steps.length}
-        </span>
-      </div>
-
-      {steps.map((step, index) => {
-        const isCurrent = index === currentStepIndex
-        const isDone    = index < currentStepIndex
-        const isLocked  = index > currentStepIndex
-        return (
-          <div
-            key={step.id}
-            className={`journey-flow-rail-step ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''} ${isLocked ? 'is-locked' : ''}`}
-          >
-            <div className="journey-flow-rail-step-num">{isDone ? '✓' : index + 1}</div>
-            <div className="journey-flow-rail-step-body">
-              <strong>{step.label}</strong>
-              {step.sub ? <span>{step.sub}</span> : null}
-            </div>
-          </div>
-        )
-      })}
-    </aside>
+    <header className="journey-wizard-head" aria-label="Progression du parcours">
+      <button type="button" className="journey-wizard-head-back" onClick={goBackInFlow}>
+        <BackArrow /> Bibliotheque
+      </button>
+      <ol className="journey-wizard-steps" role="list">
+        {steps.map((step, index) => {
+          const isCurrent = index === currentStepIndex
+          const isDone    = index < currentStepIndex
+          const isLocked  = index > currentStepIndex
+          const cls = `journey-wizard-step ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''} ${isLocked ? 'is-locked' : ''}`
+          return (
+            <li key={step.id} className={cls}>
+              <button
+                type="button"
+                className="journey-wizard-step-btn"
+                onClick={() => !isLocked && goToStep(step.id)}
+                disabled={isLocked}
+                aria-current={isCurrent ? 'step' : undefined}
+              >
+                <span className="journey-wizard-step-num">{isDone ? '✓' : index + 1}</span>
+                <span className="journey-wizard-step-label">{step.label}</span>
+              </button>
+              {index < steps.length - 1 ? <span className="journey-wizard-step-bar" aria-hidden="true" /> : null}
+            </li>
+          )
+        })}
+      </ol>
+      <span className="journey-wizard-head-progress">
+        {currentStepIndex + 1} / {steps.length}
+      </span>
+    </header>
   )
 }
 
-/* ── Console (right column) ───────────────────────────────────────────── */
+/* ── Footer accordion (TikTok account + activity log) ─────────────────── */
 
-function Console({
+function FooterAccordion({
   log,
   connectedTikTokAccount,
   hasConnectedTikTokAccount,
   formatShortOpenId,
   activeIdea,
+  stateLabel,
+  stateClass,
 }: {
   log: LogEntry[]
   connectedTikTokAccount: TikTokAccount | null
   hasConnectedTikTokAccount: boolean
   formatShortOpenId: (v: string | null | undefined) => string
   activeIdea: ContentIdea | null
+  stateLabel: string
+  stateClass: string
 }) {
+  const [isOpen, setIsOpen] = useState(false)
   const account = hasConnectedTikTokAccount ? connectedTikTokAccount : null
 
   return (
-    <aside className="journey-flow-console" aria-label="Etat live">
-      <div className="journey-console-card">
-        <div className="journey-console-card-head">
-          <h3>Compte TikTok</h3>
-        </div>
-        {account ? (
-          <div className="journey-account-row">
-            <div className="journey-account-row-head">
-              <strong>{account.nickname || 'Compte connecte'}</strong>
-              <span className="journey-status-pill is-published">Connecte</span>
-            </div>
-            <span className="journey-account-row-detail">
-              {formatShortOpenId(activeIdea?.tiktokAccountOpenId || account.openId)}
-            </span>
-            <span className="journey-account-row-detail">
-              Scope: {account.scope || '-'}
-            </span>
-          </div>
-        ) : (
-          <div className="journey-account-row">
-            <div className="journey-account-row-head">
-              <strong>Aucun compte connecte</strong>
-              <span className="journey-status-pill is-error">Off</span>
-            </div>
-            <span className="journey-account-row-detail">Connecte un compte dans Accounts.</span>
-          </div>
-        )}
-      </div>
+    <section className={`journey-wizard-footer ${isOpen ? 'is-open' : ''}`} aria-label="Etat live et activite">
+      <button
+        type="button"
+        className="journey-wizard-footer-summary"
+        onClick={() => setIsOpen((v) => !v)}
+        aria-expanded={isOpen}
+      >
+        <span className="journey-wizard-footer-summary-group">
+          <span className={`journey-wizard-footer-state ${stateClass}`}>{stateLabel}</span>
+          <span className="journey-wizard-footer-account">
+            {account ? (
+              <>
+                <span className="journey-status-pill is-published">Connecte</span>
+                <strong>{account.nickname || 'Compte connecte'}</strong>
+              </>
+            ) : (
+              <>
+                <span className="journey-status-pill is-error">Off</span>
+                <strong>Aucun compte connecte</strong>
+              </>
+            )}
+          </span>
+          <span className="journey-wizard-footer-log-count">
+            Activite ({log.length})
+          </span>
+        </span>
+        <span className="journey-wizard-footer-chevron" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+      </button>
 
-      <div className="journey-console-card">
-        <div className="journey-console-card-head">
-          <h3>Activite</h3>
-          {log.length ? <span className="journey-flow-rail-head-progress">{log.length} evenements</span> : null}
-        </div>
-        {log.length === 0 ? (
-          <div className="journey-account-row-detail" style={{ padding: '16px 0' }}>
-            Les actions apparaitront ici en temps reel.
-          </div>
-        ) : (
-          <ul className="journey-log-list">
-            {log.map((entry, i) => (
-              <li key={`${entry.ts}-${i}`} className="journey-log-item">
-                <span className={`journey-log-item-icon is-${entry.status}`} aria-hidden="true" />
-                <div className="journey-log-item-body">
-                  <span className="journey-log-item-msg">{entry.msg}</span>
-                  {entry.meta ? <span className="journey-log-item-meta">{entry.meta}</span> : null}
+      {isOpen ? (
+        <div className="journey-wizard-footer-body">
+          <div className="journey-wizard-footer-col">
+            <h3>Compte TikTok</h3>
+            {account ? (
+              <div className="journey-account-row">
+                <div className="journey-account-row-head">
+                  <strong>{account.nickname || 'Compte connecte'}</strong>
+                  <span className="journey-status-pill is-published">Connecte</span>
                 </div>
-                <span className="journey-log-item-time">{fmtTime(entry.ts)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </aside>
+                <span className="journey-account-row-detail">
+                  {formatShortOpenId(activeIdea?.tiktokAccountOpenId || account.openId)}
+                </span>
+                <span className="journey-account-row-detail">Scope: {account.scope || '-'}</span>
+              </div>
+            ) : (
+              <div className="journey-account-row">
+                <div className="journey-account-row-head">
+                  <strong>Aucun compte connecte</strong>
+                  <span className="journey-status-pill is-error">Off</span>
+                </div>
+                <span className="journey-account-row-detail">Connecte un compte dans Accounts.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="journey-wizard-footer-col">
+            <h3>Activite ({log.length})</h3>
+            {log.length === 0 ? (
+              <div className="journey-account-row-detail" style={{ padding: '8px 0' }}>
+                Les actions apparaitront ici en temps reel.
+              </div>
+            ) : (
+              <ul className="journey-log-list">
+                {log.map((entry, i) => (
+                  <li key={`${entry.ts}-${i}`} className="journey-log-item">
+                    <span className={`journey-log-item-icon is-${entry.status}`} aria-hidden="true" />
+                    <div className="journey-log-item-body">
+                      <span className="journey-log-item-msg">{entry.msg}</span>
+                      {entry.meta ? <span className="journey-log-item-meta">{entry.meta}</span> : null}
+                    </div>
+                    <span className="journey-log-item-time">{fmtTime(entry.ts)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -547,32 +577,35 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
     : ''
 
   return (
-    <div className="journey-flow-shell">
-      <Rail
+    <div className="journey-wizard">
+      <ProgressStepper
         steps={props.steps}
         currentStepIndex={props.currentStepIndex}
+        goToStep={props.goToStep}
         goBackInFlow={props.goBackInFlow}
         BackArrow={props.BackArrow}
       />
 
-      <main className="journey-flow-main">
-        <header className="journey-flow-main-head">
+      <main className="journey-wizard-main">
+        <header className="journey-wizard-main-head">
           <div>
             <h2>{props.currentStep.label}</h2>
             {props.currentStep.sub ? <p>{props.currentStep.sub}</p> : null}
           </div>
-          <span className={`journey-flow-main-head-state ${stateClass}`}>{stateLabel}</span>
+          <span className={`journey-wizard-main-head-state ${stateClass}`}>{stateLabel}</span>
         </header>
 
         {body}
       </main>
 
-      <Console
+      <FooterAccordion
         log={log}
         connectedTikTokAccount={props.connectedTikTokAccount}
         hasConnectedTikTokAccount={props.hasConnectedTikTokAccount}
         formatShortOpenId={props.formatShortOpenId}
         activeIdea={props.activeIdea}
+        stateLabel={stateLabel}
+        stateClass={stateClass}
       />
     </div>
   )

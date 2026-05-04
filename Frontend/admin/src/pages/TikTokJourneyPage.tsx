@@ -423,7 +423,7 @@ export default function TikTokJourneyPage() {
   /* ── Render ──────────────────────────────────────────────────────────── */
 
   return (
-    <div className="admin-page admin-page-products admin-page-tiktok video-ops-page">
+    <div className="admin-page admin-page-tiktok video-ops-page">
       <AdminShell
         activeNavId="tiktok"
         feedbackItems={[
