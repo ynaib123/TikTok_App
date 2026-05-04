@@ -98,47 +98,7 @@
 .accounts-glyph-pexels { background: rgba(123, 255, 187, 0.12); border-color: rgba(123, 255, 187, 0.32); color: #95f5c2; }
 
 /* ------------------------------------------------------------------ */
-/* Stat tiles                                                          */
-/* ------------------------------------------------------------------ */
-.accounts-stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.accounts-stat-tile {
-  display: grid;
-  gap: 4px;
-  padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.025);
-  min-height: 92px;
-}
-
-.accounts-stat-tile-label {
-  color: rgba(204, 213, 222, 0.58);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.accounts-stat-tile-value {
-  color: #f4f7fb;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.accounts-stat-tile-delta {
-  color: rgba(217, 223, 230, 0.55);
-  font-size: 12px;
-}
-
-/* ------------------------------------------------------------------ */
-/* Toolbar                                                             */
+/* Toolbar — shape accounts, colors journey-dark                      */
 /* ------------------------------------------------------------------ */
 .accounts-toolbar {
   display: grid;
@@ -149,72 +109,58 @@
 
 .accounts-toolbar-search input {
   width: 100%;
-  padding: 9px 12px;
+  height: 36px;
+  padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  color: #f4f7fb;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-panel-surface-2);
+  color: var(--admin-text);
   font-size: 13px;
 }
 
+.accounts-toolbar-search input::placeholder { color: var(--admin-text-dim); }
+
 .accounts-toolbar-search input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--admin-border-strong);
+  background: var(--admin-panel-surface-hover);
 }
 
-.accounts-toolbar-filters {
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.accounts-filter-chip {
-  padding: 6px 12px;
-  border: 0;
-  background: transparent;
-  color: rgba(217, 223, 230, 0.66);
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.accounts-filter-chip:hover { color: #f4f7fb; }
-
-.accounts-filter-chip.is-active {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4f7fb;
-}
-
+.accounts-toolbar-filters,
 .accounts-toolbar-view {
   display: flex;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  gap: 2px;
+  padding: 2px;
+  height: 36px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-panel-surface-2);
 }
 
+.accounts-filter-chip,
 .accounts-view-toggle {
-  padding: 6px 12px;
+  padding: 0 12px;
   border: 0;
   background: transparent;
-  color: rgba(217, 223, 230, 0.66);
+  color: var(--admin-text-soft);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   border-radius: 8px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.accounts-view-toggle:hover { color: #f4f7fb; }
+.accounts-filter-chip:hover,
+.accounts-view-toggle:hover {
+  color: var(--admin-text);
+}
 
+.accounts-filter-chip.is-active,
 .accounts-view-toggle.is-active {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4f7fb;
+  background: var(--admin-panel-surface-hover);
+  color: var(--admin-text);
 }
 
 /* ------------------------------------------------------------------ */

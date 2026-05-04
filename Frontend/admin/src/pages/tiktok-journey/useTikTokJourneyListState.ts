@@ -86,18 +86,6 @@ export function useTikTokJourneyListState({
           onClear: () => setListSearch(''),
         }
       : null,
-    {
-      id: 'filter',
-      label: `Filtre: ${selectedListFilter.label}`,
-      isClearable: listFilter !== 'all',
-      onClear: () => setListFilter('all'),
-    },
-    {
-      id: 'sort',
-        label: `Tri: ${selectedListSort.label}`,
-        isClearable: listSort !== 'recent',
-        onClear: () => setListSort('recent'),
-    },
   ].filter((tag): tag is CatalogTag => Boolean(tag))
 
   const hasClearableCatalogTags = catalogTags.some((tag) => tag.isClearable)

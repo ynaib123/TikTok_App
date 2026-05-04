@@ -226,63 +226,66 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
           </button>
         </div>
 
-        <span className="journey-toolbar-divider" aria-hidden="true" />
+        <div className="journey-toolbar-actions">
+          <AdminToolbarMenuButton
+            ariaLabel={`Filtrer, filtre actuel ${selectedListFilter.label}`}
+            icon={<FilterIcon />}
+            menuAriaLabel="Filtres"
+            menuClassName="journey-select-menu"
+            menuId="tiktok-filter"
+            openCatalogMenu={openListMenu}
+            setOpenCatalogMenu={setOpenListMenu}
+            title={`Filtre: ${selectedListFilter.label}`}
+            triggerClassName="journey-select-trigger journey-select-trigger-icon"
+          >
+            {({ closeMenu }: { closeMenu: () => void }) => (
+              <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
+                {listFilterOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`admin-product-toolbar-option ${listFilter === option.value ? 'is-selected' : ''}`}
+                    onClick={() => { setListFilter(option.value); closeMenu() }}
+                  >
+                    <span>{option.label}</span>
+                    {listFilter === option.value ? <strong>.</strong> : null}
+                  </button>
+                ))}
+              </div>
+            )}
+          </AdminToolbarMenuButton>
 
-        <AdminToolbarMenuButton
-          ariaLabel={`Filtrer, filtre actuel ${selectedListFilter.label}`}
-          icon={<FilterIcon />}
-          menuAriaLabel="Filtres"
-          menuId="tiktok-filter"
-          openCatalogMenu={openListMenu}
-          setOpenCatalogMenu={setOpenListMenu}
-          title={`Filtre: ${selectedListFilter.label}`}
-        >
-          {({ closeMenu }: { closeMenu: () => void }) => (
-            <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
-              {listFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`admin-product-toolbar-option ${listFilter === option.value ? 'is-selected' : ''}`}
-                  onClick={() => { setListFilter(option.value); closeMenu() }}
-                >
-                  <span>{option.label}</span>
-                  {listFilter === option.value ? <strong>.</strong> : null}
-                </button>
-              ))}
-            </div>
-          )}
-        </AdminToolbarMenuButton>
-
-        <AdminToolbarMenuButton
-          ariaLabel={`Trier, tri actuel ${selectedListSort.label}`}
-          icon={<SortIcon />}
-          menuAriaLabel="Tri"
-          menuClassName="admin-product-toolbar-menu-sort"
-          menuId="tiktok-sort"
-          openCatalogMenu={openListMenu}
-          setOpenCatalogMenu={setOpenListMenu}
-          title={`Tri: ${selectedListSort.label}`}
-        >
-          {({ closeMenu }: { closeMenu: () => void }) => (
-            <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
-              {listSortOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`admin-product-toolbar-option ${listSort === option.value ? 'is-selected' : ''}`}
-                  onClick={() => { setListSort(option.value); closeMenu() }}
-                >
-                  <span>{option.label}</span>
-                  {listSort === option.value ? <strong>.</strong> : null}
-                </button>
-              ))}
-            </div>
-          )}
-        </AdminToolbarMenuButton>
+          <AdminToolbarMenuButton
+            ariaLabel={`Trier, tri actuel ${selectedListSort.label}`}
+            icon={<SortIcon />}
+            menuAriaLabel="Tri"
+            menuClassName="journey-select-menu admin-product-toolbar-menu-sort"
+            menuId="tiktok-sort"
+            openCatalogMenu={openListMenu}
+            setOpenCatalogMenu={setOpenListMenu}
+            title={`Tri: ${selectedListSort.label}`}
+            triggerClassName="journey-select-trigger journey-select-trigger-icon"
+          >
+            {({ closeMenu }: { closeMenu: () => void }) => (
+              <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
+                {listSortOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`admin-product-toolbar-option ${listSort === option.value ? 'is-selected' : ''}`}
+                    onClick={() => { setListSort(option.value); closeMenu() }}
+                  >
+                    <span>{option.label}</span>
+                    {listSort === option.value ? <strong>.</strong> : null}
+                  </button>
+                ))}
+              </div>
+            )}
+          </AdminToolbarMenuButton>
+        </div>
       </section>
 
-      {/* Quick filter chips */}
+      {/* Quick filter chips + current selection tags */}
       <div className="journey-active-filters" role="group" aria-label="Filtres rapides">
         <div className="journey-active-filters-list">
           {[
@@ -302,11 +305,21 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
             </button>
           ))}
         </div>
-        {hasClearableCatalogTags ? (
-          <button type="button" className="journey-active-filters-reset" onClick={handleResetAllCatalogTags}>
-            Reinitialiser
-          </button>
-        ) : null}
+        <div className="journey-active-filters-meta">
+          {hasClearableCatalogTags ? (
+            <button type="button" className="journey-active-filters-reset" onClick={handleResetAllCatalogTags}>
+              Reinitialiser
+            </button>
+          ) : null}
+          <span className="journey-info-tag">
+            <span className="journey-info-tag-key">Filtre:</span>
+            <span className="journey-info-tag-value">{selectedListFilter.label}</span>
+          </span>
+          <span className="journey-info-tag">
+            <span className="journey-info-tag-key">Tri:</span>
+            <span className="journey-info-tag-value">{selectedListSort.label}</span>
+          </span>
+        </div>
       </div>
 
       {/* Active tags (search etc.) */}

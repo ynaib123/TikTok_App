@@ -22,6 +22,7 @@ import {
   parseScopes,
   type DerivedStatus,
 } from '../utils/accountsHelpers'
+import '../styles/features/journey.css'
 import '../styles/features/accounts.css'
 
 type AccountsLocationState = {
@@ -52,16 +53,19 @@ function StatTile({
   label,
   value,
   delta,
+  trend = null,
 }: {
   label: string
   value: string | number
   delta?: string | null
+  trend?: 'up' | 'warn' | null
 }) {
+  const trendClass = trend === 'up' ? 'is-up' : trend === 'warn' ? 'is-warn' : ''
   return (
-    <div className="accounts-stat-tile">
-      <span className="accounts-stat-tile-label">{label}</span>
-      <strong className="accounts-stat-tile-value">{value}</strong>
-      {delta ? <span className="accounts-stat-tile-delta">{delta}</span> : null}
+    <div className="journey-stat">
+      <span className="journey-stat-label">{label}</span>
+      <span className="journey-stat-value">{value}</span>
+      {delta ? <span className={`journey-stat-trend ${trendClass}`.trim()}>{delta}</span> : null}
     </div>
   )
 }
@@ -482,16 +486,16 @@ export default function TikTokAccountsPage() {
           {/* ------------------------------------------------------- */}
           {/* Heading                                                  */}
           {/* ------------------------------------------------------- */}
-          <section className="video-page-heading">
-            <div>
-              <p className="video-ops-kicker">Accounts</p>
+          <header className="journey-page-head">
+            <div className="journey-page-head-copy">
               <h1>Tous tes comptes et services en un seul endroit</h1>
+              <p>Connecte, surveille et fais tourner TikTok et tes services automatises depuis une seule console.</p>
             </div>
-            <div className="accounts-heading-actions">
+            <div className="journey-page-head-actions">
               <div className="accounts-connect-menu">
                 <button
                   type="button"
-                  className="video-action-btn primary"
+                  className="journey-btn is-primary"
                   onClick={() => setConnectMenuOpen((v) => !v)}
                   disabled={isConnectingTikTok}
                 >
@@ -524,16 +528,31 @@ export default function TikTokAccountsPage() {
                 ) : null}
               </div>
             </div>
-          </section>
+          </header>
 
           {/* ------------------------------------------------------- */}
           {/* Stat tiles                                               */}
           {/* ------------------------------------------------------- */}
-          <section className="accounts-stats-row">
-            <StatTile label="Total" value={stats.total} />
-            <StatTile label="Healthy" value={stats.healthy} delta={stats.healthy === stats.total ? 'All good' : null} />
-            <StatTile label="Warning" value={stats.warning} delta={stats.warning > 0 ? 'À vérifier' : null} />
-            <StatTile label="Off" value={stats.off} delta={stats.off > 0 ? 'Action requise' : null} />
+          <section className="journey-stats" aria-label="Statistiques comptes">
+            <StatTile label="Total" value={stats.total} delta="Tous services confondus" />
+            <StatTile
+              label="Healthy"
+              value={stats.healthy}
+              delta={stats.healthy === stats.total ? 'All good' : 'Operationnels'}
+              trend="up"
+            />
+            <StatTile
+              label="Warning"
+              value={stats.warning}
+              delta={stats.warning > 0 ? 'A verifier' : 'Aucun'}
+              trend={stats.warning > 0 ? 'warn' : null}
+            />
+            <StatTile
+              label="Off"
+              value={stats.off}
+              delta={stats.off > 0 ? 'Action requise' : 'Aucun'}
+              trend={stats.off > 0 ? 'warn' : null}
+            />
           </section>
 
           {/* ------------------------------------------------------- */}

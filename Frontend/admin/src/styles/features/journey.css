@@ -22,7 +22,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  padding: 4px 0 8px;
+  padding: 0 0 4px;
 }
 
 .journey-page-head-copy h1 {
@@ -1007,10 +1007,13 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 12px;
-  background: var(--admin-panel-surface);
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-md);
+}
+
+.journey-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .journey-toolbar-search {
@@ -1024,6 +1027,11 @@
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   height: 36px;
+}
+
+.journey-toolbar-search:focus-within {
+  border-color: var(--admin-border-strong);
+  background: var(--admin-panel-surface-hover);
 }
 
 .journey-toolbar-search input {
@@ -1114,7 +1122,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ----- Active filters bar ----------------------------------------------- */
+/* ----- Active filters bar (chips left, info tags right) ---------------- */
 
 .journey-active-filters {
   display: flex;
@@ -1122,12 +1130,131 @@
   gap: 10px;
   flex-wrap: wrap;
   font-size: 12px;
+  justify-content: space-between;
 }
 
 .journey-active-filters-list {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.journey-active-filters-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.journey-info-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--admin-surface-overlay);
+  border: 1px solid var(--admin-border-soft);
+  color: var(--admin-text-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.journey-info-tag-key {
+  color: var(--admin-text-dim);
+  font-weight: 500;
+}
+
+.journey-info-tag-value {
+  color: var(--admin-text);
+  font-weight: 500;
+}
+
+/* ----- Select-style triggers (filter / sort) ---------------------------- */
+
+.journey-toolbar-actions .admin-product-toolbar-field,
+.journey-toolbar-actions .admin-product-toolbar-select {
+  position: relative;
+}
+
+.journey-select-trigger.admin-product-toolbar-trigger,
+.journey-select-trigger.admin-product-toolbar-trigger.admin-product-toolbar-trigger-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--admin-panel-surface-2);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text-soft);
+  cursor: pointer;
+  transition: background var(--admin-motion-fast), border-color var(--admin-motion-fast), color var(--admin-motion-fast);
+}
+
+.journey-select-trigger.admin-product-toolbar-trigger:hover,
+.journey-select-trigger.admin-product-toolbar-trigger.is-open {
+  background: var(--admin-panel-surface-hover);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-text);
+}
+
+.journey-select-trigger .admin-toolbar-icon {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+}
+
+.journey-select-trigger .admin-toolbar-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.journey-select-trigger.admin-product-toolbar-trigger::after {
+  display: none;
+}
+
+.journey-select-menu.admin-product-toolbar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--admin-panel-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+}
+
+.journey-select-menu .admin-product-toolbar-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--admin-text-soft);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.journey-select-menu .admin-product-toolbar-option:hover {
+  background: var(--admin-panel-surface-hover);
+  color: var(--admin-text);
+}
+
+.journey-select-menu .admin-product-toolbar-option.is-selected {
+  background: var(--admin-panel-surface-hover);
+  color: var(--admin-text);
 }
 
 .journey-active-tag {

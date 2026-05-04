@@ -10,10 +10,7 @@
   padding-left: var(--admin-shell-static-content-offset-collapsed);
 }
 
-.admin-page-tiktok .admin-console-page.with-side-nav,
-.admin-page-tiktok .admin-console-page.with-side-nav.sidebar-collapsed {
-  padding-top: calc(var(--admin-nav-height) + 12px);
-}
+/* Tiktok shares the default with-side-nav padding-top so it aligns with accounts */
 
 .video-ops-shell {
   display: grid;
@@ -21,8 +18,9 @@
   padding: 18px 20px 28px;
 }
 
-.admin-page-tiktok .video-ops-shell {
-  padding-top: 8px;
+.admin-page-tiktok .video-ops-shell,
+.accounts-page-v2 .video-ops-shell {
+  padding-top: 0;
 }
 
 .video-ops-hero,
