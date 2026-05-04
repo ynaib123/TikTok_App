@@ -34,7 +34,8 @@ public final class VideoOpsStateMachine {
 
     public static VideoPipelineStage successStage(VideoWorkflowType workflowType, VideoPipelineStage currentStage) {
         return switch (workflowType) {
-            case MAIN_PIPELINE -> VideoPipelineStage.IDEA_CREATED;
+            // Fused workflow produces idea + script in one run, so success means SCRIPT_READY.
+            case MAIN_PIPELINE -> VideoPipelineStage.SCRIPT_READY;
             case SCRIPT_GENERATION -> VideoPipelineStage.SCRIPT_READY;
             case CHECK_SHOTSTACK -> VideoPipelineStage.RENDER_READY;
             case RENDER_TEMPLATE_VIDEO -> currentStage == VideoPipelineStage.RENDER_READY
