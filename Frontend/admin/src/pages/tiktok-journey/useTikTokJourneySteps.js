@@ -10,7 +10,8 @@ export function useCreationStep({
   generationCategory,
   generationCount,
   connectedTikTokAccount,
-  fetchContentIdeas,
+  fetchContentIdeaById,
+  fetchRecentContentIdeas,
   triggerMainContentPipeline,
   triggerScriptGenerationWorkflow,
   refreshPipelineData,
@@ -41,7 +42,7 @@ export function useCreationStep({
       throw new Error('Renseigne une categorie avant de lancer la generation.')
     }
 
-    const ideas = await fetchContentIdeas()
+    const ideas = await fetchRecentContentIdeas()
     const baselineMaxId = ideas.reduce((maxId, idea) => Math.max(maxId, Number(idea?.id) || 0), 0)
     resetGeneratedIdeasState()
     setLastGenerationBaselineId(baselineMaxId)
@@ -99,8 +100,7 @@ export function useCreationStep({
       if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
         const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'SCRIPT_READY', 12_000)
         if (status?.pipelineStage === 'SCRIPT_READY') {
-          const ideas = await fetchContentIdeas()
-          nextScriptedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
+          nextScriptedIdea = await fetchContentIdeaById(idea.id)
         }
       }
 
@@ -140,7 +140,7 @@ export function useScriptStep({
   scriptedIdea,
   goToStep,
   triggerScriptGenerationWorkflow,
-  fetchContentIdeas,
+  fetchContentIdeaById,
   waitForWorkflowRunCompletion,
   waitForContentIdeaStatus,
   waitForScriptGeneration,
@@ -178,8 +178,7 @@ export function useScriptStep({
     if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
       const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'SCRIPT_READY', 12_000)
       if (status?.pipelineStage === 'SCRIPT_READY') {
-        const ideas = await fetchContentIdeas()
-        nextScriptedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
+        nextScriptedIdea = await fetchContentIdeaById(idea.id)
       }
     }
 
@@ -223,7 +222,7 @@ export function useRenderStep({
   goToStep,
   triggerCheckShotstackWorkflow,
   triggerRenderTemplateWorkflow,
-  fetchContentIdeas,
+  fetchContentIdeaById,
   waitForWorkflowRunCompletion,
   waitForContentIdeaStatus,
   waitForRenderedVideo,
@@ -266,8 +265,7 @@ export function useRenderStep({
     if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
       const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'RENDER_READY', 20_000)
       if (status?.pipelineStage === 'RENDER_READY') {
-        const ideas = await fetchContentIdeas()
-        renderedIdea = ideas.find((item) => Number(item.id) === Number(idea.id)) || null
+        renderedIdea = await fetchContentIdeaById(idea.id)
       }
     }
 
@@ -320,7 +318,7 @@ export function useUploadStep({
   manualAction,
   triggerPublishTikTokWorkflow,
   uploadTikTokMedia,
-  fetchContentIdeas,
+  fetchContentIdeaById,
   fetchManualActions,
   raceWorkflowRunAndUploadPreparation,
   refreshPipelineData,
@@ -401,10 +399,10 @@ export function useUploadStep({
       showSuccess('Upload termine. Tu peux passer a la publication finale.')
     } catch (error) {
       const [ideas, manualActions] = await Promise.all([
-        fetchContentIdeas(),
+        fetchContentIdeaById(idea.id),
         fetchManualActions(),
       ])
-      const refreshedIdea = ideas.find((item) => Number(item?.id) === Number(idea.id)) || null
+      const refreshedIdea = ideas || null
       const refreshedAction = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
 
       if (refreshedIdea && isUploadCompleted(refreshedIdea)) {

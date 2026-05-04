@@ -28,6 +28,8 @@ public class VideoOpsSchemaMigration {
         ensureContentIdeasSchema();
         ensureTikTokAccountsSchema();
         ensureServiceConnectionsProfilesSchema();
+        ensureAlertCooldownSchema();
+        ensureBatchPublishSchema();
         synchronizeCheckConstraint(
                 "video_pipeline_states",
                 "video_pipeline_states_pipeline_stage_check",
@@ -86,10 +88,10 @@ public class VideoOpsSchemaMigration {
                     tiktok_upload_url       text,
                     tiktok_upload_status    text,
                     tiktok_check_status     text,
-                    uploaded_at             timestamptz,
-                    published_at            timestamptz,
-                    created_at              timestamptz NOT NULL DEFAULT now(),
-                    updated_at              timestamptz NOT NULL DEFAULT now()
+                    uploaded_at             timestamp with time zone,
+                    published_at            timestamp with time zone,
+                    created_at              timestamp with time zone NOT NULL DEFAULT now(),
+                    updated_at              timestamp with time zone NOT NULL DEFAULT now()
                 )
                 """);
         logger.info("video_ops schema content_ideas ensured");
@@ -98,16 +100,27 @@ public class VideoOpsSchemaMigration {
     private void ensureTikTokAccountsSchema() {
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS tiktok_accounts (
-                    id            bigserial PRIMARY KEY,
-                    open_id       text,
-                    access_token  text,
-                    refresh_token text,
-                    scope         text,
-                    token_type    text,
-                    created_at    timestamptz NOT NULL DEFAULT now(),
-                    updated_at    timestamptz NOT NULL DEFAULT now()
+                    id                       bigserial PRIMARY KEY,
+                    open_id                  text,
+                    access_token             text,
+                    refresh_token            text,
+                    scope                    text,
+                    token_type               text,
+                    token_status             varchar(32) NOT NULL DEFAULT 'ACTIVE',
+                    access_token_expires_at  timestamp with time zone,
+                    refresh_token_expires_at timestamp with time zone,
+                    last_token_refresh_at    timestamp with time zone,
+                    last_token_refresh_error text,
+                    created_at               timestamp with time zone NOT NULL DEFAULT now(),
+                    updated_at               timestamp with time zone NOT NULL DEFAULT now()
                 )
                 """);
+        jdbcTemplate.execute("ALTER TABLE tiktok_accounts ADD COLUMN IF NOT EXISTS token_status varchar(32) NOT NULL DEFAULT 'ACTIVE'");
+        jdbcTemplate.execute("ALTER TABLE tiktok_accounts ADD COLUMN IF NOT EXISTS access_token_expires_at timestamp with time zone");
+        jdbcTemplate.execute("ALTER TABLE tiktok_accounts ADD COLUMN IF NOT EXISTS refresh_token_expires_at timestamp with time zone");
+        jdbcTemplate.execute("ALTER TABLE tiktok_accounts ADD COLUMN IF NOT EXISTS last_token_refresh_at timestamp with time zone");
+        jdbcTemplate.execute("ALTER TABLE tiktok_accounts ADD COLUMN IF NOT EXISTS last_token_refresh_error text");
+        jdbcTemplate.execute("UPDATE tiktok_accounts SET token_status = 'ACTIVE' WHERE token_status IS NULL");
         logger.info("video_ops schema tiktok_accounts ensured");
     }
 
@@ -148,6 +161,56 @@ public class VideoOpsSchemaMigration {
         uniqueConstraints.forEach(constraintName ->
                 jdbcTemplate.execute("ALTER TABLE service_connections DROP CONSTRAINT IF EXISTS " + constraintName)
         );
+    }
+
+    private void ensureAlertCooldownSchema() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS alert_cooldown (
+                    id              bigserial PRIMARY KEY,
+                    alert_key       varchar(255) NOT NULL UNIQUE,
+                    last_sent_at    timestamp with time zone NOT NULL,
+                    alert_count     integer NOT NULL DEFAULT 1,
+                    last_error_hash varchar(64),
+                    created_at      timestamp with time zone NOT NULL DEFAULT now()
+                )
+                """);
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_alert_cooldown_last_sent_at ON alert_cooldown(last_sent_at)");
+        logger.info("video_ops schema alert_cooldown ensured");
+    }
+
+    private void ensureBatchPublishSchema() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS video_publish_batches (
+                    id                       varchar(36) PRIMARY KEY,
+                    requested_by_email       varchar(190),
+                    tiktok_account_open_id   varchar(190),
+                    total_count              integer NOT NULL,
+                    completed_count          integer NOT NULL DEFAULT 0,
+                    failed_count             integer NOT NULL DEFAULT 0,
+                    status                   varchar(24) NOT NULL DEFAULT 'RUNNING',
+                    created_at               timestamp with time zone NOT NULL DEFAULT now(),
+                    updated_at               timestamp with time zone NOT NULL DEFAULT now(),
+                    completed_at             timestamp with time zone
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS video_publish_batch_items (
+                    id                bigserial PRIMARY KEY,
+                    batch_id          varchar(36) NOT NULL REFERENCES video_publish_batches(id) ON DELETE CASCADE,
+                    content_idea_id   bigint NOT NULL,
+                    status            varchar(24) NOT NULL DEFAULT 'PENDING',
+                    attempt_number    integer NOT NULL DEFAULT 1,
+                    error_message     varchar(1000),
+                    workflow_run_id   bigint,
+                    created_at        timestamp with time zone NOT NULL DEFAULT now(),
+                    updated_at        timestamp with time zone NOT NULL DEFAULT now(),
+                    completed_at      timestamp with time zone,
+                    UNIQUE (batch_id, content_idea_id)
+                )
+                """);
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_batch_items_batch_id ON video_publish_batch_items(batch_id)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_batch_items_status ON video_publish_batch_items(status)");
+        logger.info("video_ops schema video_publish_batches ensured");
     }
 
     private void convertServiceConnectionLargeObjectColumnToText(String columnName) {

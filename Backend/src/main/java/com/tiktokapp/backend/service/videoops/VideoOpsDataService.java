@@ -79,6 +79,7 @@ public class VideoOpsDataService {
                 case "refresh_token" -> account.setRefreshToken(v);
                 case "scope" -> account.setScope(v);
                 case "token_type" -> account.setTokenType(v);
+                case "token_status" -> account.setTokenStatus(v == null ? null : TikTokAccount.TokenStatus.valueOf(v));
             }
         });
         tiktokAccountRepo.save(account);

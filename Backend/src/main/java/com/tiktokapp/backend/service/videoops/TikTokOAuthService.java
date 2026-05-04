@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackResponse;
+import com.tiktokapp.backend.model.TikTokAccount;
+import com.tiktokapp.backend.repository.TikTokAccountRepository;
 import com.tiktokapp.backend.service.JwtService;
 import io.jsonwebtoken.Claims;
 import org.springframework.http.HttpStatus;
@@ -19,8 +21,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,23 +35,23 @@ public class TikTokOAuthService {
     private static final String TIKTOK_USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url";
 
     private final VideoOpsProperties properties;
-    private final SupabaseVideoOpsGateway supabaseGateway;
     private final VideoOpsCryptoService cryptoService;
     private final JwtService jwtService;
+    private final TikTokAccountRepository tiktokAccountRepository;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public TikTokOAuthService(
             VideoOpsProperties properties,
-            SupabaseVideoOpsGateway supabaseGateway,
             VideoOpsCryptoService cryptoService,
             JwtService jwtService,
+            TikTokAccountRepository tiktokAccountRepository,
             ObjectMapper objectMapper
     ) {
         this.properties = properties;
-        this.supabaseGateway = supabaseGateway;
         this.cryptoService = cryptoService;
         this.jwtService = jwtService;
+        this.tiktokAccountRepository = tiktokAccountRepository;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
@@ -88,24 +90,8 @@ public class TikTokOAuthService {
         String openId = requiredText(tokenPayload, "open_id");
         String scope = requiredText(tokenPayload, "scope");
         String accessToken = requiredText(tokenPayload, "access_token");
-        String refreshToken = requiredText(tokenPayload, "refresh_token");
-        String tokenType = requiredText(tokenPayload, "token_type");
         String displayName = fetchDisplayName(accessToken);
-
-        Map<String, Object> accountPayload = new LinkedHashMap<>();
-        accountPayload.put("open_id", openId);
-        accountPayload.put("access_token", cryptoService.encryptIfConfigured(accessToken));
-        accountPayload.put("refresh_token", cryptoService.encryptIfConfigured(refreshToken));
-        accountPayload.put("token_type", tokenType);
-        accountPayload.put("scope", scope);
-
-        JsonNode existingAccounts = supabaseGateway.findTikTokAccountsByOpenId(openId);
-        if (existingAccounts.isArray() && !existingAccounts.isEmpty()) {
-            long accountId = existingAccounts.get(0).path("id").asLong();
-            supabaseGateway.updateTikTokAccount(accountId, accountPayload);
-        } else {
-            supabaseGateway.createTikTokAccount(accountPayload);
-        }
+        upsertTikTokAccount(tokenPayload, openId);
 
         return new TikTokOAuthCallbackResponse(
                 "Compte TikTok connecte avec succes.",
@@ -129,25 +115,7 @@ public class TikTokOAuthService {
         String redirectPath = normalizeRedirectPath(claims.get("redirectPath", String.class));
         JsonNode tokenPayload = exchangeAuthorizationCode(code);
         String openId = requiredText(tokenPayload, "open_id");
-        String scope = requiredText(tokenPayload, "scope");
-        String accessToken = requiredText(tokenPayload, "access_token");
-        String refreshToken = requiredText(tokenPayload, "refresh_token");
-        String tokenType = requiredText(tokenPayload, "token_type");
-
-        Map<String, Object> accountPayload = new LinkedHashMap<>();
-        accountPayload.put("open_id", openId);
-        accountPayload.put("access_token", cryptoService.encryptIfConfigured(accessToken));
-        accountPayload.put("refresh_token", cryptoService.encryptIfConfigured(refreshToken));
-        accountPayload.put("token_type", tokenType);
-        accountPayload.put("scope", scope);
-
-        JsonNode existingAccounts = supabaseGateway.findTikTokAccountsByOpenId(openId);
-        if (existingAccounts.isArray() && !existingAccounts.isEmpty()) {
-            long accountId = existingAccounts.get(0).path("id").asLong();
-            supabaseGateway.updateTikTokAccount(accountId, accountPayload);
-        } else {
-            supabaseGateway.createTikTokAccount(accountPayload);
-        }
+        upsertTikTokAccount(tokenPayload, openId);
 
         return redirectPath;
     }
@@ -221,6 +189,34 @@ public class TikTokOAuthService {
         } catch (ResponseStatusException exception) {
             return "";
         }
+    }
+
+    private void upsertTikTokAccount(JsonNode tokenPayload, String openId) {
+        TikTokAccount account = tiktokAccountRepository.findFirstByOpenId(openId)
+                .orElseGet(TikTokAccount::new);
+        Instant now = Instant.now();
+        account.setOpenId(requiredText(tokenPayload, "open_id"));
+        account.setAccessToken(cryptoService.encryptIfConfigured(requiredText(tokenPayload, "access_token")));
+        account.setRefreshToken(cryptoService.encryptIfConfigured(requiredText(tokenPayload, "refresh_token")));
+        account.setTokenType(requiredText(tokenPayload, "token_type"));
+        account.setScope(requiredText(tokenPayload, "scope"));
+        account.setAccessTokenExpiresAt(resolveExpiry(tokenPayload, "expires_in", now, Duration.ofHours(24)));
+        account.setRefreshTokenExpiresAt(resolveExpiry(tokenPayload, "refresh_expires_in", now, null));
+        account.setLastTokenRefreshAt(now);
+        account.setLastTokenRefreshError(null);
+        account.setTokenStatus(TikTokAccount.TokenStatus.ACTIVE);
+        tiktokAccountRepository.save(account);
+    }
+
+    private Instant resolveExpiry(JsonNode payload, String fieldName, Instant now, Duration fallback) {
+        JsonNode field = payload.path(fieldName);
+        if (field.isNumber()) {
+            long seconds = field.asLong();
+            if (seconds > 0) {
+                return now.plusSeconds(seconds);
+            }
+        }
+        return fallback == null ? null : now.plus(fallback);
     }
 
     private JsonNode sendTikTokRequest(HttpRequest request, String fallbackMessage) {

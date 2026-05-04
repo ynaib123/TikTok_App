@@ -12,8 +12,9 @@ import {
   triggerScriptGenerationWorkflow,
 } from '../services/n8nClient'
 import {
-  fetchContentIdeas,
+  fetchContentIdeaByIdFromPages,
   fetchContentIdeaStatus,
+  fetchRecentContentIdeas,
   fetchManualActions,
   fetchWorkflowRun,
   markPublishComplete,
@@ -236,7 +237,10 @@ export default function TikTokJourneyPage() {
   )
 
   const hasConnectedTikTokAccount = Boolean(connectedTikTokAccount)
-  const isLoading = contentIdeasQuery.isLoading
+  const isLoading = contentIdeasQuery.isPending
+  const isFetchingNextPage = contentIdeasQuery.isFetchingNextPage
+  const hasNextPage = Boolean(contentIdeasQuery.hasNextPage)
+  const contentIdeasErrorMessage = contentIdeasQuery.error?.message || null
 
   const flowState = useTikTokJourneyFlowState({
     accountsReadiness,
@@ -317,9 +321,10 @@ export default function TikTokJourneyPage() {
   const isPublishingVideo = Boolean(busyActions.publishVideo)
 
   const workflowMonitor = useWorkflowMonitor({
-    fetchContentIdeas,
+    fetchContentIdeaById: fetchContentIdeaByIdFromPages,
     fetchManualActions,
     fetchContentIdeaStatus,
+    fetchRecentContentIdeas,
     fetchWorkflowRun,
   })
 
@@ -328,7 +333,8 @@ export default function TikTokJourneyPage() {
     generationCategory,
     generationCount,
     connectedTikTokAccount,
-    fetchContentIdeas,
+    fetchContentIdeaById: fetchContentIdeaByIdFromPages,
+    fetchRecentContentIdeas,
     triggerMainContentPipeline,
     triggerScriptGenerationWorkflow,
     refreshPipelineData,
@@ -366,7 +372,7 @@ export default function TikTokJourneyPage() {
     goToStep,
     triggerCheckShotstackWorkflow,
     triggerRenderTemplateWorkflow,
-    fetchContentIdeas,
+    fetchContentIdeaById: fetchContentIdeaByIdFromPages,
     waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,
     waitForContentIdeaStatus: workflowMonitor.waitForContentIdeaStatus,
     waitForRenderedVideo: workflowMonitor.waitForRenderedVideo,
@@ -387,7 +393,7 @@ export default function TikTokJourneyPage() {
     manualAction,
     triggerPublishTikTokWorkflow,
     uploadTikTokMedia,
-    fetchContentIdeas,
+    fetchContentIdeaById: fetchContentIdeaByIdFromPages,
     fetchManualActions,
     raceWorkflowRunAndUploadPreparation: workflowMonitor.raceWorkflowRunAndUploadPreparation,
     refreshPipelineData,
@@ -506,8 +512,11 @@ export default function TikTokJourneyPage() {
               getIdeaStatusLabel={getIdeaStatusLabel}
               handleResetAllCatalogTags={resetAllCatalogTags}
               hasClearableCatalogTags={hasClearableCatalogTags}
+              hasNextPage={hasNextPage}
+              contentIdeasErrorMessage={contentIdeasErrorMessage}
               isJourneyReady={isJourneyReady}
               isLoading={isLoading}
+              isFetchingNextPage={isFetchingNextPage}
               isPublished={isPublished}
               isRenderReady={isRenderReady}
               listFilter={listFilter}
@@ -525,6 +534,7 @@ export default function TikTokJourneyPage() {
               setListSort={setListSort}
               setListViewMode={setListViewMode}
               setOpenListMenu={setOpenListMenu}
+              handleLoadMore={() => contentIdeasQuery.fetchNextPage()}
               startAddFlow={startAddFlow}
             />
           ) : (

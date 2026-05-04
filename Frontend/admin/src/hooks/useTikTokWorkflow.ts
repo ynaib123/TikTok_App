@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 
 import {
   fetchAccountsReadiness,
-  fetchContentIdeas,
+  fetchContentIdeasPage,
   fetchManualActions,
   fetchTikTokAccounts,
   fetchVideoOpsObservability,
@@ -11,7 +12,9 @@ import {
 import type {
   AccountsReadiness,
   ContentIdea,
+  FetchContentIdeasPageParams,
   ManualAction,
+  SpringPageResponse,
   TikTokAccount,
   VideoObservability,
   WorkflowState,
@@ -29,6 +32,8 @@ const EMPTY_OBSERVABILITY: VideoObservability = {
   recentErrors: [],
   recentEvents: [],
 };
+const CONTENT_IDEAS_PAGE_SIZE = 20;
+const CONTENT_IDEAS_SORT = 'id,DESC';
 
 const INITIAL_WORKFLOW_STATE: WorkflowState = {
   generatedIdeas: [],
@@ -44,9 +49,27 @@ export function useTikTokWorkflow() {
   const queryClient = useQueryClient();
   const [state, setState] = useState<WorkflowState>(INITIAL_WORKFLOW_STATE);
 
-  const contentIdeasQuery = useQuery<ContentIdea[]>({
+  const contentIdeasQuery = useInfiniteQuery<
+    SpringPageResponse<ContentIdea>,
+    Error,
+    InfiniteData<SpringPageResponse<ContentIdea>>,
+    [string],
+    number
+  >({
     queryKey: ['content-ideas'],
-    queryFn: fetchContentIdeas,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => {
+      const params: FetchContentIdeasPageParams = {
+        page: pageParam,
+        size: CONTENT_IDEAS_PAGE_SIZE,
+        sort: CONTENT_IDEAS_SORT,
+      };
+      return fetchContentIdeasPage(params);
+    },
+    getNextPageParam: (lastPage) => {
+      const nextPageNumber = lastPage.page.number + 1;
+      return nextPageNumber < lastPage.page.totalPages ? nextPageNumber : undefined;
+    },
   });
 
   const tiktokAccountsQuery = useQuery<TikTokAccount[]>({
@@ -70,6 +93,11 @@ export function useTikTokWorkflow() {
     queryKey: ['manual-actions'],
     queryFn: fetchManualActions,
   });
+
+  const contentIdeas = useMemo(
+    () => contentIdeasQuery.data?.pages.flatMap((page: SpringPageResponse<ContentIdea>) => page.content) ?? [],
+    [contentIdeasQuery.data],
+  );
 
   const refreshPipelineData = useCallback(async () => {
     await Promise.all([
@@ -102,7 +130,7 @@ export function useTikTokWorkflow() {
 
   return {
     accountsReadiness: readinessQuery.data ?? EMPTY_READINESS,
-    contentIdeas: contentIdeasQuery.data ?? [],
+    contentIdeas,
     manualActions: manualActionsQuery.data ?? [],
     observability: observabilityQuery.data ?? EMPTY_OBSERVABILITY,
     selectedGeneratedIdea,

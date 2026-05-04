@@ -74,7 +74,9 @@ public class SupabaseVideoOpsGateway {
                 "id", a.getId(),
                 "open_id", orEmpty(a.getOpenId()),
                 "scope", orEmpty(a.getScope()),
-                "token_type", orEmpty(a.getTokenType())
+                "token_type", orEmpty(a.getTokenType()),
+                "token_status", a.getTokenStatus() == null ? "" : a.getTokenStatus().name(),
+                "access_token_expires_at", instantOrEmpty(a.getAccessTokenExpiresAt())
         )).toList());
     }
 
@@ -92,14 +94,7 @@ public class SupabaseVideoOpsGateway {
     @Transactional(readOnly = true)
     public JsonNode findTikTokAccountsByOpenId(String openId) {
         return tiktokAccountRepo.findFirstByOpenId(openId)
-                .map(a -> objectMapper.<JsonNode>valueToTree(List.of(Map.of(
-                        "id", a.getId(),
-                        "open_id", orEmpty(a.getOpenId()),
-                        "scope", orEmpty(a.getScope()),
-                        "access_token", orEmpty(a.getAccessToken()),
-                        "refresh_token", orEmpty(a.getRefreshToken()),
-                        "token_type", orEmpty(a.getTokenType())
-                ))))
+                .map(a -> objectMapper.<JsonNode>valueToTree(List.of(toAccountMap(a))))
                 .orElse(objectMapper.createArrayNode());
     }
 
@@ -175,6 +170,11 @@ public class SupabaseVideoOpsGateway {
                 case "refresh_token" -> account.setRefreshToken(v);
                 case "scope" -> account.setScope(v);
                 case "token_type" -> account.setTokenType(v);
+                case "token_status" -> account.setTokenStatus(v == null ? null : TikTokAccount.TokenStatus.valueOf(v));
+                case "access_token_expires_at" -> account.setAccessTokenExpiresAt(v == null ? null : Instant.parse(v));
+                case "refresh_token_expires_at" -> account.setRefreshTokenExpiresAt(v == null ? null : Instant.parse(v));
+                case "last_token_refresh_at" -> account.setLastTokenRefreshAt(v == null ? null : Instant.parse(v));
+                case "last_token_refresh_error" -> account.setLastTokenRefreshError(v);
             }
         });
     }
@@ -208,17 +208,26 @@ public class SupabaseVideoOpsGateway {
     }
 
     private Map<String, Object> toAccountMap(TikTokAccount a) {
-        return Map.of(
-                "id", a.getId(),
-                "open_id", orEmpty(a.getOpenId()),
-                "scope", orEmpty(a.getScope()),
-                "token_type", orEmpty(a.getTokenType()),
-                "access_token", orEmpty(a.getAccessToken()),
-                "refresh_token", orEmpty(a.getRefreshToken())
-        );
+        java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("id", a.getId());
+        map.put("open_id", orEmpty(a.getOpenId()));
+        map.put("scope", orEmpty(a.getScope()));
+        map.put("token_type", orEmpty(a.getTokenType()));
+        map.put("access_token", orEmpty(a.getAccessToken()));
+        map.put("refresh_token", orEmpty(a.getRefreshToken()));
+        map.put("token_status", a.getTokenStatus() == null ? "" : a.getTokenStatus().name());
+        map.put("access_token_expires_at", instantOrEmpty(a.getAccessTokenExpiresAt()));
+        map.put("refresh_token_expires_at", instantOrEmpty(a.getRefreshTokenExpiresAt()));
+        map.put("last_token_refresh_at", instantOrEmpty(a.getLastTokenRefreshAt()));
+        map.put("last_token_refresh_error", orEmpty(a.getLastTokenRefreshError()));
+        return map;
     }
 
     private String orEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    private String instantOrEmpty(Instant value) {
+        return value == null ? "" : value.toString();
     }
 }

@@ -25,6 +25,10 @@ import com.tiktokapp.backend.model.VideoPipelineState;
 import com.tiktokapp.backend.model.VideoWorkflowRun;
 import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.model.VideoWorkflowType;
+import com.tiktokapp.backend.model.ContentIdea;
+import com.tiktokapp.backend.repository.ContentIdeaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.tiktokapp.backend.repository.VideoPipelineEventRepository;
 import com.tiktokapp.backend.repository.VideoPipelineStateRepository;
 import com.tiktokapp.backend.repository.VideoWorkflowRunRepository;
@@ -54,6 +58,7 @@ public class VideoOpsService {
     private static final Logger logger = LoggerFactory.getLogger(VideoOpsService.class);
 
     private final SupabaseVideoOpsGateway supabaseGateway;
+    private final ContentIdeaRepository contentIdeaRepository;
     private final N8nWorkflowGateway n8nWorkflowGateway;
     private final VideoOpsInternalProxyService videoOpsInternalProxyService;
     private final TikTokUploadService tikTokUploadService;
@@ -67,6 +72,7 @@ public class VideoOpsService {
 
     public VideoOpsService(
             SupabaseVideoOpsGateway supabaseGateway,
+            ContentIdeaRepository contentIdeaRepository,
             N8nWorkflowGateway n8nWorkflowGateway,
             VideoOpsInternalProxyService videoOpsInternalProxyService,
             TikTokUploadService tikTokUploadService,
@@ -79,6 +85,7 @@ public class VideoOpsService {
             VideoOpsRunPersistenceHelper runPersistenceHelper
     ) {
         this.supabaseGateway = supabaseGateway;
+        this.contentIdeaRepository = contentIdeaRepository;
         this.n8nWorkflowGateway = n8nWorkflowGateway;
         this.videoOpsInternalProxyService = videoOpsInternalProxyService;
         this.tikTokUploadService = tikTokUploadService;
@@ -137,6 +144,18 @@ public class VideoOpsService {
     }
 
     @Transactional(readOnly = true)
+    public Page<VideoContentIdeaResponse> fetchContentIdeas(Pageable pageable) {
+        Page<ContentIdea> contentIdeaPage = contentIdeaRepository.findAllBy(pageable);
+        List<Long> contentIdeaIds = contentIdeaPage.getContent().stream()
+                .map(ContentIdea::getId)
+                .toList();
+        Map<Long, VideoPipelineState> stateByIdeaId = pipelineStateRepository.findByContentIdeaIdIn(contentIdeaIds).stream()
+                .collect(Collectors.toMap(VideoPipelineState::getContentIdeaId, state -> state));
+
+        return contentIdeaPage.map(idea -> toVideoContentIdeaResponse(idea, stateByIdeaId.get(idea.getId())));
+    }
+
+    @Transactional(readOnly = true)
     public List<TikTokAccountResponse> fetchTikTokAccounts() {
         JsonNode rows = supabaseGateway.fetchTikTokAccounts();
         List<TikTokAccountResponse> accounts = new ArrayList<>();
@@ -144,6 +163,7 @@ public class VideoOpsService {
             String openId = text(row, "open_id", "");
             String tokenType = text(row, "token_type", "");
             String scope = text(row, "scope", "");
+            String tokenStatus = text(row, "token_status", "ACTIVE");
             boolean hasOauthData = !isBlank(openId)
                     || !isBlank(tokenType)
                     || !isBlank(scope);
@@ -158,7 +178,7 @@ public class VideoOpsService {
                     openId,
                     scope,
                     "sandbox",
-                    "connected"
+                    tokenStatus
             ));
         });
         return accounts;
@@ -948,10 +968,47 @@ public class VideoOpsService {
         );
     }
 
+    private VideoContentIdeaResponse toVideoContentIdeaResponse(ContentIdea idea, VideoPipelineState state) {
+        String shotstackStatus = valueOrDefault(idea.getShotstackStatus(), "unknown");
+        String tiktokStatus = valueOrDefault(idea.getPublishStatus(), "draft");
+        String finalVideoStatus = valueOrDefault(idea.getFinalVideoStatus(), "unknown");
+        String shotstackUrl = valueOrDefault(idea.getShotstackUrl(), "");
+        String uploadUrl = valueOrDefault(idea.getTiktokUploadUrl(), "");
+        VideoPipelineStage stage = VideoOpsStateMachine.resolveFromContentSignals(
+                shotstackStatus,
+                tiktokStatus,
+                finalVideoStatus,
+                shotstackUrl,
+                uploadUrl,
+                state != null ? state.getPipelineStage() : VideoPipelineStage.UNKNOWN
+        );
+
+        return new VideoContentIdeaResponse(
+                idea.getId(),
+                valueOrDefault(idea.getCategory(), ""),
+                valueOrDefault(idea.getTopic(), ""),
+                valueOrDefault(idea.getScripts(), ""),
+                valueOrDefault(idea.getCaption(), ""),
+                valueOrDefault(idea.getBackgroundKeyword(), ""),
+                shotstackStatus,
+                tiktokStatus,
+                finalVideoStatus,
+                shotstackUrl,
+                uploadUrl,
+                valueOrDefault(idea.getTiktokAccountOpenId(), ""),
+                stage.name().toLowerCase(Locale.ROOT),
+                state != null ? state.getLastErrorMessage() : null
+        );
+    }
+
     private Map<String, Object> payloadOf(String key, Object value) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put(key, value == null ? "" : value);
         return payload;
+    }
+
+    private String valueOrDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private void logWorkflowInfo(String eventType, VideoWorkflowRun run, String message) {

@@ -5,10 +5,14 @@ import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.model.VideoWorkflowType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 public interface VideoWorkflowRunRepository extends JpaRepository<VideoWorkflowRun, Long> {
+
+    List<VideoWorkflowRun> findByStatusInAndCreatedAtBefore(java.util.Collection<VideoWorkflowRunStatus> statuses, Instant before);
+
 
     Optional<VideoWorkflowRun> findTopByContentIdeaIdAndWorkflowTypeOrderByCreatedAtDesc(Long contentIdeaId, VideoWorkflowType workflowType);
 

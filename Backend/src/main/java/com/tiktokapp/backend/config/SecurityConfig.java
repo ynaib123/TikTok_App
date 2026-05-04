@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/video-ops/workflows/**",
                                 "/api/video-ops/content-ideas/*/upload",
                                 "/api/video-ops/content-ideas/*/publish",
+                                "/api/video-ops/content-ideas/batch-publish",
                                 "/api/video-ops/internal/**",
                                 "/api/video-ops/internal/tiktok/init-publish-context",
                                 "/api/video-ops/internal/tiktok/account-context",

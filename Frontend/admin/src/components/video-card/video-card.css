@@ -1,0 +1,485 @@
+/* ================================================================
+   VIDEO CARD ENHANCEMENTS
+   Prefix: vc-  (no collision with existing tiktok-* classes)
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   THUMBNAIL — shared center helper
+   ---------------------------------------------------------------- */
+
+.vc-thumb-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
+}
+
+/* ----------------------------------------------------------------
+   PLACEHOLDER STATE  (draft / script — no video)
+   ---------------------------------------------------------------- */
+
+.vc-thumb-state--placeholder {
+  position: relative;
+}
+
+.vc-thumb-initial {
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.13);
+}
+
+.vc-thumb-category {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Category background tints — subtle dark gradients */
+.vc-thumb-bg--food    { background: linear-gradient(150deg, #1c0f07 0%, #2e1509 100%) !important; }
+.vc-thumb-bg--love    { background: linear-gradient(150deg, #1c0712 0%, #2e0d20 100%) !important; }
+.vc-thumb-bg--sport   { background: linear-gradient(150deg, #070e1c 0%, #0d1830 100%) !important; }
+.vc-thumb-bg--fitness { background: linear-gradient(150deg, #071c0e 0%, #0d2e18 100%) !important; }
+.vc-thumb-bg--beauty  { background: linear-gradient(150deg, #1c0719 0%, #2e0d2c 100%) !important; }
+.vc-thumb-bg--default { background: rgba(255, 255, 255, 0.03) !important; }
+
+/* ----------------------------------------------------------------
+   RENDERING STATE  (shimmer)
+   ---------------------------------------------------------------- */
+
+.vc-thumb-state--rendering {
+  position: relative;
+  overflow: hidden;
+}
+
+.vc-thumb-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: vc-shimmer 1.9s ease-in-out infinite;
+}
+
+@keyframes vc-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.vc-thumb-spinner {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(245, 158, 11, 0.18);
+  border-top-color: #f59e0b;
+  border-radius: 50%;
+  animation: vc-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes vc-spin {
+  to { transform: rotate(360deg); }
+}
+
+.vc-thumb-rendering-text {
+  color: rgba(217, 223, 230, 0.52);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ----------------------------------------------------------------
+   FAILED STATE
+   ---------------------------------------------------------------- */
+
+.vc-thumb-state--failed {
+  position: relative;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.vc-thumb-state--failed .vc-thumb-center svg {
+  width: 20px;
+  height: 20px;
+  color: #ff9d9d;
+  flex-shrink: 0;
+}
+
+.vc-thumb-failed-msg {
+  color: rgba(255, 157, 157, 0.75);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  word-break: break-word;
+}
+
+/* ----------------------------------------------------------------
+   VIDEO STATE  (thumbnail + play button)
+   ---------------------------------------------------------------- */
+
+.vc-thumb-state--video {
+  position: relative;
+  cursor: pointer;
+}
+
+.vc-thumb-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* Dark overlay — appears on hover */
+.vc-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  border-radius: 12px;
+  transition: background 180ms ease;
+  pointer-events: none;
+}
+
+.vc-thumb-state--video:hover .vc-thumb-overlay {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Play button */
+.vc-play-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.vc-thumb-state--video:hover .vc-play-btn {
+  opacity: 1;
+}
+
+.vc-play-btn-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  transform: scale(0.86);
+  transition: transform 200ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.vc-thumb-state--video:hover .vc-play-btn-inner {
+  transform: scale(1);
+}
+
+.vc-play-btn-inner svg {
+  width: 18px;
+  height: 18px;
+  color: #0d0d0e;
+  margin-left: 2px; /* optical centering for play triangle */
+}
+
+/* Published overlay tag */
+.vc-published-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.88);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------------
+   PIPELINE BADGE ROW
+   ---------------------------------------------------------------- */
+
+.vc-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  /* Reset inherited span styles from .tiktok-video-card-body span */
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* ----------------------------------------------------------------
+   STEPPER DOTS
+   ---------------------------------------------------------------- */
+
+.vc-stepper {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.vc-stepper-dot {
+  display: block;
+  height: 3px;
+  width: 10px;
+  border-radius: 999px;
+  background: rgba(217, 223, 230, 0.15);
+  transition: width 280ms ease, background 280ms ease;
+}
+
+.vc-stepper-dot.is-past {
+  background: rgba(217, 223, 230, 0.35);
+}
+
+.vc-stepper-dot.is-active {
+  width: 16px;
+}
+
+.vc-stepper-dot.is-failed {
+  width: 16px;
+  background: rgba(255, 157, 157, 0.55);
+}
+
+/* ----------------------------------------------------------------
+   BADGE — override .tiktok-video-card-body span for higher specificity
+   ---------------------------------------------------------------- */
+
+.tiktok-video-card-body .vc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+
+.vc-badge-dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Draft */
+.tiktok-video-card-body .vc-badge--draft {
+  background: rgba(113, 113, 122, 0.14);
+  color: rgba(161, 161, 170, 0.88);
+}
+.vc-badge--draft .vc-badge-dot { background: #71717a; }
+
+/* Script */
+.tiktok-video-card-body .vc-badge--script {
+  background: rgba(74, 158, 255, 0.11);
+  color: #8bbcff;
+}
+.vc-badge--script .vc-badge-dot { background: #4a9eff; }
+
+/* Rendering */
+.tiktok-video-card-body .vc-badge--rendering {
+  background: rgba(245, 158, 11, 0.11);
+  color: #fbbf24;
+}
+.vc-badge--rendering .vc-badge-dot {
+  background: #f59e0b;
+  animation: vc-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes vc-badge-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.6); }
+}
+
+/* Ready */
+.tiktok-video-card-body .vc-badge--ready {
+  background: rgba(98, 231, 164, 0.11);
+  color: #6be4ad;
+}
+.vc-badge--ready .vc-badge-dot { background: #62e7a4; }
+
+/* Published */
+.tiktok-video-card-body .vc-badge--published {
+  background: rgba(167, 139, 250, 0.13);
+  color: #c4b5fd;
+}
+.vc-badge--published .vc-badge-dot { background: #a78bfa; }
+
+/* Failed */
+.tiktok-video-card-body .vc-badge--failed {
+  background: rgba(255, 157, 157, 0.11);
+  color: #ffb2b2;
+}
+.vc-badge--failed .vc-badge-dot { background: #ff9d9d; }
+
+/* ----------------------------------------------------------------
+   VIDEO PREVIEW MODAL
+   ---------------------------------------------------------------- */
+
+.vc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.84);
+  backdrop-filter: blur(8px);
+  animation: vc-overlay-in 160ms ease;
+}
+
+@keyframes vc-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.vc-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  background: #121213;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow:
+    0 48px 96px rgba(0, 0, 0, 0.64),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  animation: vc-modal-in 240ms cubic-bezier(0.34, 1.28, 0.64, 1);
+}
+
+@keyframes vc-modal-in {
+  from { opacity: 0; transform: scale(0.93) translateY(14px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* Close button */
+.vc-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.52);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.vc-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.vc-modal-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Player area */
+.vc-modal-player {
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+}
+
+.vc-modal-video {
+  width: 100%;
+  max-height: 72vh;
+  display: block;
+}
+
+/* Footer */
+.vc-modal-footer {
+  padding: 11px 16px 13px;
+  background: #0d0d0e;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.vc-modal-title {
+  margin: 0;
+  color: #f4f7fb;
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vc-modal-sub {
+  margin: 3px 0 0;
+  color: rgba(217, 223, 230, 0.52);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------
+   MOBILE
+   ---------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .vc-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .vc-modal {
+    max-width: 100%;
+    border-radius: 18px 18px 0 0;
+    animation: vc-modal-in-mobile 260ms cubic-bezier(0.34, 1.1, 0.64, 1);
+  }
+
+  @keyframes vc-modal-in-mobile {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .vc-modal-video {
+    max-height: 56vh;
+  }
+}

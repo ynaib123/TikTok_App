@@ -65,6 +65,24 @@ export interface UploadTikTokMediaResponse {
   [key: string]: unknown;
 }
 
+export interface SpringPageMetadata {
+  size: number;
+  number: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface SpringPageResponse<T> {
+  content: T[];
+  page: SpringPageMetadata;
+}
+
+export interface FetchContentIdeasPageParams {
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
 export interface VideoOpsApi {
   fetchAccountsOverview: () => Promise<AccountsOverview>;
   fetchAccountsReadiness: () => Promise<AccountsReadiness>;
@@ -77,6 +95,7 @@ export interface VideoOpsApi {
   validateServiceConnection: (providerKey: ServiceProvider | string, connectionId: number | string) => Promise<ServiceConnection>;
   deleteServiceConnection: (providerKey: ServiceProvider | string, connectionId: number | string) => Promise<void>;
   fetchContentIdeas: () => Promise<ContentIdea[]>;
+  fetchContentIdeasPage: (params?: FetchContentIdeasPageParams) => Promise<SpringPageResponse<ContentIdea>>;
   fetchContentIdeaStatus: (contentIdeaId: number | string) => Promise<ContentIdeaStatus>;
   fetchManualActions: () => Promise<ManualAction[]>;
   fetchWorkflowRun: (runId: number | string) => Promise<WorkflowRun>;

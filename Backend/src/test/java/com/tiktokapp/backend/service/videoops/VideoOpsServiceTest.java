@@ -7,6 +7,7 @@ import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.tiktokapp.backend.model.VideoWorkflowRun;
 import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.model.VideoWorkflowType;
+import com.tiktokapp.backend.repository.ContentIdeaRepository;
 import com.tiktokapp.backend.repository.VideoPipelineEventRepository;
 import com.tiktokapp.backend.repository.VideoPipelineStateRepository;
 import com.tiktokapp.backend.repository.VideoWorkflowRunRepository;
@@ -36,6 +37,9 @@ class VideoOpsServiceTest {
 
     @Mock
     private SupabaseVideoOpsGateway supabaseGateway;
+
+    @Mock
+    private ContentIdeaRepository contentIdeaRepository;
 
     @Mock
     private N8nWorkflowGateway n8nWorkflowGateway;
@@ -97,6 +101,7 @@ class VideoOpsServiceTest {
 
         VideoOpsService service = new VideoOpsService(
                 supabaseGateway,
+                contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
                 tikTokUploadService,
@@ -159,6 +164,7 @@ class VideoOpsServiceTest {
 
         VideoOpsService service = new VideoOpsService(
                 supabaseGateway,
+                contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
                 tikTokUploadService,
@@ -213,11 +219,21 @@ class VideoOpsServiceTest {
 
         when(workflowRunRepository.countByContentIdeaIdAndWorkflowType(19L, VideoWorkflowType.RENDER_TEMPLATE_VIDEO))
                 .thenReturn(0L);
+        when(supabaseGateway.fetchContentIdeaById(19L))
+                .thenReturn(new ObjectMapper().valueToTree(java.util.List.of(Map.of(
+                        "id", 19,
+                        "topic", "Idea",
+                        "scripts", "Script body",
+                        "caption", "Caption",
+                        "background_keyword", "Keyword",
+                        "tiktok_account_open_id", "open-id-19"
+                ))));
         when(n8nWorkflowGateway.trigger(eq(VideoWorkflowType.RENDER_TEMPLATE_VIDEO), any()))
                 .thenReturn(new ObjectMapper().createObjectNode());
 
         VideoOpsService service = new VideoOpsService(
                 supabaseGateway,
+                contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
                 tikTokUploadService,

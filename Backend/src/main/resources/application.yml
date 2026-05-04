@@ -44,3 +44,11 @@ app:
     idempotency-window-seconds: ${APP_VIDEO_OPS_IDEMPOTENCY_WINDOW_SECONDS:90}
     allowed-shotstack-hosts: ${APP_VIDEO_OPS_ALLOWED_SHOTSTACK_HOSTS:shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com}
     allowed-upload-hosts: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:open-upload.tiktokapis.com,open.tiktokapis.com,business-api.tiktok.com}
+  alerting:
+    enabled: ${APP_ALERTING_ENABLED:true}
+    slack-webhook-url: ${APP_ALERTING_SLACK_WEBHOOK_URL:}
+    cooldown-seconds: ${APP_ALERTING_COOLDOWN_SECONDS:300}
+    rate-limit-max-alerts: ${APP_ALERTING_RATE_LIMIT_MAX_ALERTS:10}
+    rate-limit-window-seconds: ${APP_ALERTING_RATE_LIMIT_WINDOW_SECONDS:600}
+    stuck-run-threshold-seconds: ${APP_ALERTING_STUCK_RUN_THRESHOLD_SECONDS:600}
+    stuck-run-check-interval-ms: ${APP_ALERTING_STUCK_RUN_CHECK_INTERVAL_MS:120000}

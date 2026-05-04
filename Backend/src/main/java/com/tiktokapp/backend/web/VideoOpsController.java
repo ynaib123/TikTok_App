@@ -3,6 +3,11 @@ package com.tiktokapp.backend.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tiktokapp.backend.dto.TikTokUploadResponse;
 import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
+import com.tiktokapp.backend.dto.videoops.AlertNotifyRequest;
+import com.tiktokapp.backend.dto.videoops.BatchPublishRequest;
+import com.tiktokapp.backend.dto.videoops.BatchPublishResponse;
+import com.tiktokapp.backend.service.alerting.SlackAlertService;
+import com.tiktokapp.backend.service.videoops.BatchPublishService;
 import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
 import com.tiktokapp.backend.dto.videoops.PexelsVideoSearchRequest;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionRequest;
@@ -36,6 +41,10 @@ import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextServic
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import jakarta.validation.Valid;
@@ -72,6 +81,8 @@ public class VideoOpsController {
     private final TikTokInitPublishContextService tikTokInitPublishContextService;
     private final VideoOpsInternalProxyService videoOpsInternalProxyService;
     private final VideoOpsInternalAuthService internalAuthService;
+    private final SlackAlertService slackAlertService;
+    private final BatchPublishService batchPublishService;
     private final ObjectMapper objectMapper;
 
     public VideoOpsController(
@@ -83,6 +94,8 @@ public class VideoOpsController {
             TikTokInitPublishContextService tikTokInitPublishContextService,
             VideoOpsInternalProxyService videoOpsInternalProxyService,
             VideoOpsInternalAuthService internalAuthService,
+            SlackAlertService slackAlertService,
+            BatchPublishService batchPublishService,
             ObjectMapper objectMapper
     ) {
         this.videoOpsService = videoOpsService;
@@ -93,6 +106,8 @@ public class VideoOpsController {
         this.tikTokInitPublishContextService = tikTokInitPublishContextService;
         this.videoOpsInternalProxyService = videoOpsInternalProxyService;
         this.internalAuthService = internalAuthService;
+        this.slackAlertService = slackAlertService;
+        this.batchPublishService = batchPublishService;
         this.objectMapper = objectMapper;
     }
 
@@ -102,8 +117,10 @@ public class VideoOpsController {
     }
 
     @GetMapping("/content-ideas")
-    public ResponseEntity<List<VideoContentIdeaResponse>> getContentIdeas() {
-        return ResponseEntity.ok(videoOpsService.fetchContentIdeas());
+    public ResponseEntity<Page<VideoContentIdeaResponse>> getContentIdeas(
+            @PageableDefault(page = 0, size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(videoOpsService.fetchContentIdeas(pageable));
     }
 
     @GetMapping("/content-ideas/{contentIdeaId}/status")
@@ -208,6 +225,34 @@ public class VideoOpsController {
                 authentication.getName(),
                 request.getCode(),
                 request.getState()
+        ));
+    }
+
+    @PostMapping("/internal/alerts/notify")
+    public ResponseEntity<Map<String, String>> notifyAlert(
+            @Valid @RequestBody AlertNotifyRequest request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        SlackAlertService.Severity severity = "WARNING".equalsIgnoreCase(request.getSeverity())
+                ? SlackAlertService.Severity.WARNING
+                : SlackAlertService.Severity.CRITICAL;
+        SlackAlertService.AlertNotification alert = new SlackAlertService.AlertNotification(
+                request.getWorkflowType(),
+                request.getRunId(),
+                request.getContentIdeaId(),
+                request.getErrorMessage(),
+                request.getNode(),
+                request.getAttempt() == null ? 0 : request.getAttempt(),
+                request.getMaxAttempts() == null ? 0 : request.getMaxAttempts(),
+                severity,
+                Boolean.TRUE.equals(request.getFatal()),
+                request.getN8nUrl()
+        );
+        SlackAlertService.AlertResult result = slackAlertService.notify(alert);
+        return ResponseEntity.ok(Map.of(
+                "status", result.status(),
+                "detail", result.detail() == null ? "" : result.detail()
         ));
     }
 
@@ -322,6 +367,24 @@ public class VideoOpsController {
                 Boolean.TRUE.equals(request.getForce()),
                 authentication.getName()
         ));
+    }
+
+    @PostMapping("/content-ideas/batch-publish")
+    public ResponseEntity<BatchPublishResponse> startBatchPublish(
+            @Valid @RequestBody BatchPublishRequest request,
+            Authentication authentication
+    ) {
+        BatchPublishResponse response = batchPublishService.startBatch(
+                request.getContentIdeaIds(),
+                request.getTiktokAccountOpenId(),
+                authentication.getName()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/batches/{batchId}")
+    public ResponseEntity<BatchPublishResponse> getBatch(@PathVariable String batchId) {
+        return ResponseEntity.ok(batchPublishService.getBatch(batchId));
     }
 
     @PostMapping("/content-ideas/{contentIdeaId}/publish")

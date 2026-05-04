@@ -1,6 +1,16 @@
-import type { JSX } from 'react'
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import AdminToolbarMenuButton from '../admin-dashboard/AdminToolbarMenuButton'
+import VideoCard from '../../components/video-card/VideoCard'
 import type { ContentIdea } from '../../types'
+import { SelectionProvider, useSelection } from '../../contexts/SelectionContext'
+import { useBatchPublish } from '../../hooks/useBatchPublish'
+import BatchSelectionBar from '../../components/batch-publish/BatchSelectionBar'
+import BatchProgressDrawer from '../../components/batch-publish/BatchProgressDrawer'
+import BatchPublishConfirmModal from '../../components/batch-publish/BatchPublishConfirmModal'
+import { evaluateBatchPublishEligibility } from '../../components/batch-publish/eligibility'
+import { useToasts } from '../../contexts/ToastContext'
+import '../../components/batch-publish/batch-publish.css'
 
 type Option = { value: string; label: string }
 
@@ -15,11 +25,15 @@ interface TikTokLibraryViewProps {
   TableIcon: IconComponent
   catalogTags: Array<{ id: string; label: string; isClearable: boolean; onClear?: () => void }>
   contentIdeas: ContentIdea[]
+  contentIdeasErrorMessage: string | null
   filteredIdeas: ContentIdea[]
   getIdeaStatusLabel: (idea: ContentIdea) => string
+  handleLoadMore: () => void
   handleResetAllCatalogTags: () => void
+  hasNextPage: boolean
   hasClearableCatalogTags: boolean
   isJourneyReady: boolean
+  isFetchingNextPage: boolean
   isLoading: boolean
   isPublished: (idea: ContentIdea) => boolean
   isRenderReady: (idea: ContentIdea) => boolean
@@ -41,6 +55,14 @@ interface TikTokLibraryViewProps {
 }
 
 export default function TikTokLibraryView(props: TikTokLibraryViewProps) {
+  return (
+    <SelectionProvider>
+      <TikTokLibraryViewInner {...props} />
+    </SelectionProvider>
+  )
+}
+
+function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
   const {
     AddIcon,
     FilterIcon,
@@ -50,10 +72,14 @@ export default function TikTokLibraryView(props: TikTokLibraryViewProps) {
     TableIcon,
     catalogTags,
     contentIdeas,
+    contentIdeasErrorMessage,
     filteredIdeas,
     getIdeaStatusLabel,
+    handleLoadMore,
     handleResetAllCatalogTags,
+    hasNextPage,
     hasClearableCatalogTags,
+    isFetchingNextPage,
     isJourneyReady,
     isLoading,
     isPublished,
@@ -74,6 +100,122 @@ export default function TikTokLibraryView(props: TikTokLibraryViewProps) {
     setOpenListMenu,
     startAddFlow,
   } = props
+
+  const selection = useSelection()
+  const batch = useBatchPublish(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const eligibilityByIdeaId = useMemo(() => {
+    const map = new Map<number, { selectable: boolean; reason: string | null }>()
+    for (const idea of filteredIdeas) {
+      map.set(idea.id, evaluateBatchPublishEligibility(idea))
+    }
+    return map
+  }, [filteredIdeas])
+
+  const eligibleIdsOnPage = useMemo(
+    () => filteredIdeas.filter((idea) => eligibilityByIdeaId.get(idea.id)?.selectable).map((idea) => idea.id),
+    [filteredIdeas, eligibilityByIdeaId],
+  )
+
+  const selectedIdeas = useMemo(() => {
+    const all = new Map<number, ContentIdea>()
+    for (const idea of contentIdeas) all.set(idea.id, idea)
+    const result: ContentIdea[] = []
+    for (const id of selection.selectedIds) {
+      const idea = all.get(id)
+      if (idea) result.push(idea)
+    }
+    return result
+  }, [contentIdeas, selection.selectedIds])
+
+  const tiktokAccountOpenId = selectedIdeas.find((idea) => idea.tiktokAccountOpenId)?.tiktokAccountOpenId ?? null
+
+  const tokenAccountReady = selectedIdeas.length === 0
+    || selectedIdeas.every((idea) => Boolean(idea.tiktokAccountOpenId))
+
+  const handlePublishClick = () => {
+    if (selection.size === 0) return
+    setConfirmOpen(true)
+  }
+
+  const handleConfirmPublish = async () => {
+    setConfirmOpen(false)
+    setDrawerOpen(true)
+    const ids = Array.from(selection.selectedIds)
+    const result = await batch.start({ contentIdeaIds: ids, tiktokAccountOpenId })
+    if (result) selection.clear()
+  }
+
+  const handleRetryFailed = async () => {
+    await batch.retryFailed()
+  }
+
+  const handleDismissBatch = () => {
+    setDrawerOpen(false)
+    batch.reset()
+  }
+
+  const showProgress = () => setDrawerOpen(true)
+  const inFlightCount = batch.batch ? batch.batch.completedCount + batch.batch.failedCount : 0
+  const totalInFlight = batch.batch?.totalCount ?? 0
+
+  const toasts = useToasts()
+  const queryClient = useQueryClient()
+  const lastToastedPhaseRef = useRef<string | null>(null)
+  useEffect(() => {
+    const phase = batch.phase
+    const total = batch.batch?.totalCount ?? 0
+    const completed = batch.batch?.completedCount ?? 0
+    const failed = batch.batch?.failedCount ?? 0
+    const signature = `${phase}:${batch.batch?.batchId ?? ''}`
+    if (signature === lastToastedPhaseRef.current) return
+    const isTerminal = phase === 'completed' || phase === 'partial_failure' || phase === 'failed'
+    if (isTerminal) {
+      // Targeted refetch: mark active list/dashboard queries stale so cards
+      // pick up the new pipeline_status from the publish workflow.
+      queryClient.invalidateQueries({ queryKey: ['content-ideas'] })
+      queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['video-ops-observability'] })
+      queryClient.invalidateQueries({ queryKey: ['manual-actions'] })
+    }
+    if (phase === 'completed' && total > 0) {
+      lastToastedPhaseRef.current = signature
+      toasts.push(`${completed} video(s) publiee(s) avec succes`, {
+        variant: 'success',
+        title: 'Lot termine',
+        actionLabel: 'Voir le detail',
+        onAction: () => setDrawerOpen(true),
+      })
+    } else if (phase === 'partial_failure') {
+      lastToastedPhaseRef.current = signature
+      toasts.push(`${completed}/${total} publiees — ${failed} echec(s)`, {
+        variant: 'warning',
+        title: 'Echecs partiels',
+        durationMs: null,
+        actionLabel: 'Voir les echecs',
+        onAction: () => setDrawerOpen(true),
+      })
+    } else if (phase === 'failed') {
+      lastToastedPhaseRef.current = signature
+      toasts.push(`Aucune video n'a ete publiee — ${failed || total} echec(s)`, {
+        variant: 'error',
+        title: 'Echec du lot',
+        durationMs: null,
+        actionLabel: 'Voir les echecs',
+        onAction: () => setDrawerOpen(true),
+      })
+    } else if (phase === 'error') {
+      lastToastedPhaseRef.current = signature
+      toasts.push(batch.errorMessage ?? 'Erreur inattendue lors du lot', {
+        variant: 'error',
+        title: 'Erreur batch publish',
+        durationMs: null,
+      })
+    }
+  }, [batch.phase, batch.batch, batch.errorMessage, toasts, queryClient])
+
 
   return (
     <>
@@ -230,34 +372,33 @@ export default function TikTokLibraryView(props: TikTokLibraryViewProps) {
       ) : null}
 
       {isLoading ? <p className="video-inline-state">Chargement...</p> : null}
-      {!isLoading && !filteredIdeas.length ? <p className="video-inline-state">Aucune video ne correspond a cette recherche.</p> : null}
+      {!isLoading && contentIdeasErrorMessage ? <p className="video-inline-state">Erreur: {contentIdeasErrorMessage}</p> : null}
+      {!isLoading && !contentIdeasErrorMessage && !contentIdeas.length ? (
+        <p className="video-inline-state">Aucune video disponible pour le moment.</p>
+      ) : null}
+      {!isLoading && !contentIdeasErrorMessage && Boolean(contentIdeas.length) && !filteredIdeas.length ? (
+        <p className="video-inline-state">Aucune video ne correspond a cette recherche.</p>
+      ) : null}
 
-      {!isLoading && filteredIdeas.length ? (
+      {!isLoading && !contentIdeasErrorMessage && filteredIdeas.length ? (
         listViewMode === 'grid' ? (
           <section className="tiktok-card-grid">
-            {filteredIdeas.map((idea) => (
-              <article key={idea.id} className={`tiktok-video-card ${isPublished(idea) ? 'is-published' : 'is-unpublished'}`}>
-                <div className="tiktok-video-card-media">
-                  {idea.shotstackUrl ? (
-                    <video src={idea.shotstackUrl} muted playsInline preload="metadata" />
-                  ) : (
-                    <div className="tiktok-video-card-placeholder">
-                      <span>Video #{idea.id}</span>
-                    </div>
-                  )}
-                  <span
-                    className={`tiktok-status-light ${isPublished(idea) ? 'is-online' : 'is-offline'}`}
-                    title={isPublished(idea) ? 'Publiee' : 'Non publiee'}
-                    aria-label={isPublished(idea) ? 'Video publiee' : 'Video non publiee'}
-                  />
-                </div>
-                <div className="tiktok-video-card-body">
-                  <strong>{idea.topic || `Video #${idea.id}`}</strong>
-                  <p>{idea.caption || idea.script || 'Aucune description disponible.'}</p>
-                  <span>{getIdeaStatusLabel(idea)}</span>
-                </div>
-              </article>
-            ))}
+            {filteredIdeas.map((idea) => {
+              const eligibility = eligibilityByIdeaId.get(idea.id)
+              const isSelected = selection.isSelected(idea.id)
+              const blockedByMax = !isSelected && selection.isAtMaxSize
+              const reason = blockedByMax ? `Maximum ${selection.maxSize} videos par lot` : (eligibility?.reason ?? null)
+              return (
+                <VideoCard
+                  key={idea.id}
+                  idea={idea}
+                  selectable={Boolean(eligibility?.selectable) && !blockedByMax}
+                  selected={isSelected}
+                  disabledReason={reason}
+                  onToggleSelection={selection.toggle}
+                />
+              )
+            })}
           </section>
         ) : (
           <div className="video-table-wrap">
@@ -291,6 +432,46 @@ export default function TikTokLibraryView(props: TikTokLibraryViewProps) {
           </div>
         )
       ) : null}
+
+      {!isLoading && !contentIdeasErrorMessage && hasNextPage ? (
+        <div className="video-inline-load-more">
+          <button
+            type="button"
+            className="admin-console-btn admin-console-btn-muted"
+            onClick={handleLoadMore}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Chargement...' : 'Charger plus'}
+          </button>
+        </div>
+      ) : null}
+      <BatchSelectionBar
+        phase={batch.phase}
+        eligibleIdsOnPage={eligibleIdsOnPage}
+        tokenAccountReady={tokenAccountReady}
+        onPublishClick={handlePublishClick}
+        onShowProgress={showProgress}
+        inFlightCount={inFlightCount}
+        totalInFlight={totalInFlight}
+      />
+
+      <BatchProgressDrawer
+        open={drawerOpen}
+        phase={batch.phase}
+        batch={batch.batch}
+        errorMessage={batch.errorMessage}
+        onClose={() => setDrawerOpen(false)}
+        onRetryFailed={handleRetryFailed}
+        onDismiss={handleDismissBatch}
+      />
+
+      <BatchPublishConfirmModal
+        open={confirmOpen}
+        ideas={selectedIdeas}
+        tiktokAccountOpenId={tiktokAccountOpenId}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmPublish}
+      />
     </>
   )
 }

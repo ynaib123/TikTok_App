@@ -7,6 +7,8 @@ import './styles/layout/loading.css'
 import './styles/layout/shell.css'
 import './styles/themes/shell-openai.css'
 import './styles/features/video-ops.css'
+import './contexts/toast.css'
+import { ToastProvider } from './contexts/ToastContext'
 
 const AdminLogin = lazy(() => import('./pages/AdminLogin'))
 const VideoDashboardPage = lazy(() => import('./pages/VideoDashboardPage'))
@@ -80,6 +82,7 @@ export default function AdminApp() {
   }
 
   return (
+    <ToastProvider>
     <Suspense fallback={null}>
       <Routes>
         <Route path="/login" element={<AdminLogin />} />
@@ -136,5 +139,6 @@ export default function AdminApp() {
         <Route path="*" element={<AdminIndexRedirect />} />
       </Routes>
     </Suspense>
+    </ToastProvider>
   )
 }

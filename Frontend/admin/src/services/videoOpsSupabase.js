@@ -1,12 +1,135 @@
 import { apiDelete, apiGet, apiPost, apiPut } from './adminApiClient.js'
 
 const USE_MOCK = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH === 'true'
+const DEFAULT_CONTENT_IDEAS_SORT = 'id,DESC'
+const DEFAULT_CONTENT_IDEAS_PAGE_SIZE = 20
+const BULK_CONTENT_IDEAS_PAGE_SIZE = 100
+
+function normalizeContentIdea(rawIdea = {}) {
+  return {
+    id: Number(rawIdea?.id || 0),
+    category: rawIdea?.category ?? null,
+    topic: rawIdea?.topic ?? null,
+    script: rawIdea?.script ?? rawIdea?.scripts ?? null,
+    caption: rawIdea?.caption ?? null,
+    keyword: rawIdea?.keyword ?? rawIdea?.backgroundKeyword ?? null,
+    shotstackStatus: rawIdea?.shotstackStatus ?? null,
+    tiktokStatus: rawIdea?.tiktokStatus ?? null,
+    finalVideoStatus: rawIdea?.finalVideoStatus ?? null,
+    shotstackUrl: rawIdea?.shotstackUrl ?? null,
+    uploadUrl: rawIdea?.uploadUrl ?? null,
+    tiktokAccountOpenId: rawIdea?.tiktokAccountOpenId ?? null,
+    pipelineStatus: rawIdea?.pipelineStatus ?? null,
+    lastError: rawIdea?.lastError ?? null,
+  }
+}
+
+function createEmptySpringPage() {
+  return {
+    content: [],
+    page: {
+      size: DEFAULT_CONTENT_IDEAS_PAGE_SIZE,
+      number: 0,
+      totalElements: 0,
+      totalPages: 0,
+    },
+  }
+}
+
+function normalizeContentIdeasPage(rawPage) {
+  const rawContent = Array.isArray(rawPage?.content) ? rawPage.content : []
+  const rawPageMeta = rawPage?.page ?? {}
+
+  return {
+    content: rawContent.map((idea) => normalizeContentIdea(idea)),
+    page: {
+      size: Number(rawPageMeta?.size ?? DEFAULT_CONTENT_IDEAS_PAGE_SIZE),
+      number: Number(rawPageMeta?.number ?? 0),
+      totalElements: Number(rawPageMeta?.totalElements ?? rawContent.length),
+      totalPages: Number(rawPageMeta?.totalPages ?? (rawContent.length > 0 ? 1 : 0)),
+    },
+  }
+}
+
+function buildContentIdeasQueryString({ page = 0, size = DEFAULT_CONTENT_IDEAS_PAGE_SIZE, sort = DEFAULT_CONTENT_IDEAS_SORT } = {}) {
+  const searchParams = new URLSearchParams()
+  searchParams.set('page', String(page))
+  searchParams.set('size', String(size))
+  searchParams.set('sort', sort)
+  return searchParams.toString()
+}
+
+export async function fetchContentIdeasPage(params = {}) {
+  if (USE_MOCK) {
+    return createEmptySpringPage()
+  }
+
+  const queryString = buildContentIdeasQueryString(params)
+  const response = await apiGet(`/video-ops/content-ideas?${queryString}`)
+  return normalizeContentIdeasPage(response)
+}
+
+export async function fetchRecentContentIdeas({ size = BULK_CONTENT_IDEAS_PAGE_SIZE } = {}) {
+  const firstPage = await fetchContentIdeasPage({
+    page: 0,
+    size,
+    sort: DEFAULT_CONTENT_IDEAS_SORT,
+  })
+
+  return firstPage.content
+}
+
+export async function fetchContentIdeaByIdFromPages(contentIdeaId, { size = BULK_CONTENT_IDEAS_PAGE_SIZE } = {}) {
+  if (!contentIdeaId) {
+    throw new Error('Le contentIdeaId est obligatoire.')
+  }
+
+  const firstPage = await fetchContentIdeasPage({
+    page: 0,
+    size,
+    sort: DEFAULT_CONTENT_IDEAS_SORT,
+  })
+  const firstMatch = firstPage.content.find((idea) => Number(idea?.id) === Number(contentIdeaId))
+  if (firstMatch) {
+    return firstMatch
+  }
+
+  const totalPages = Number(firstPage?.page?.totalPages ?? 0)
+  for (let nextPage = 1; nextPage < totalPages; nextPage += 1) {
+    const responsePage = await fetchContentIdeasPage({
+      page: nextPage,
+      size,
+      sort: DEFAULT_CONTENT_IDEAS_SORT,
+    })
+    const pageMatch = responsePage.content.find((idea) => Number(idea?.id) === Number(contentIdeaId))
+    if (pageMatch) {
+      return pageMatch
+    }
+  }
+
+  return null
+}
 
 export async function fetchContentIdeas() {
-  if (USE_MOCK) {
-    return []
+  const firstPage = await fetchContentIdeasPage({
+    page: 0,
+    size: BULK_CONTENT_IDEAS_PAGE_SIZE,
+    sort: DEFAULT_CONTENT_IDEAS_SORT,
+  })
+
+  const mergedIdeas = [...firstPage.content]
+  const totalPages = Number(firstPage?.page?.totalPages ?? 0)
+
+  for (let nextPage = 1; nextPage < totalPages; nextPage += 1) {
+    const responsePage = await fetchContentIdeasPage({
+      page: nextPage,
+      size: BULK_CONTENT_IDEAS_PAGE_SIZE,
+      sort: DEFAULT_CONTENT_IDEAS_SORT,
+    })
+    mergedIdeas.push(...responsePage.content)
   }
-  return apiGet('/video-ops/content-ideas')
+
+  return mergedIdeas
 }
 
 export async function fetchContentIdeaStatus(contentIdeaId) {

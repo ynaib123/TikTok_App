@@ -11,9 +11,10 @@ import {
 } from './journeyHelpers.js'
 
 export function useWorkflowMonitor({
-  fetchContentIdeas,
+  fetchContentIdeaById,
   fetchManualActions,
   fetchContentIdeaStatus,
+  fetchRecentContentIdeas,
   fetchWorkflowRun,
 }) {
   const [workflowStatus, setWorkflowStatus] = useState(null)
@@ -125,7 +126,7 @@ export function useWorkflowMonitor({
     let bestMatch = []
 
     while (Date.now() < timeoutAt) {
-      const ideas = await fetchContentIdeas()
+      const ideas = await fetchRecentContentIdeas()
       const nextIdeas = ideas
         .filter((idea) => Number(idea.id) > baselineMaxId)
         .filter((idea) => {
@@ -155,8 +156,7 @@ export function useWorkflowMonitor({
     const baselineKeyword = String(baselineIdea?.keyword || '').trim()
 
     while (Date.now() < timeoutAt) {
-      const ideas = await fetchContentIdeas()
-      const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
+      const nextIdea = await fetchContentIdeaById(ideaId)
       if (!nextIdea) {
         await sleep(1500)
         continue
@@ -190,8 +190,7 @@ export function useWorkflowMonitor({
         throw new Error(status?.lastErrorMessage || "La generation de la video a echoue.")
       }
 
-      const ideas = await fetchContentIdeas()
-      const nextIdea = ideas.find((idea) => Number(idea.id) === Number(ideaId))
+      const nextIdea = await fetchContentIdeaById(ideaId)
       if (!nextIdea) {
         await sleep(4000)
         continue

@@ -20,6 +20,9 @@ public class VideoOpsProperties {
     private String tiktokOauthScopes = "user.info.basic,video.publish";
     private int queryLimit = 50;
     private long idempotencyWindowSeconds = 90;
+    private int batchPublishMaxSize = 20;
+    private int batchPublishConcurrency = 3;
+    private long batchPublishItemTimeoutSeconds = 60;
     private List<String> allowedShotstackHosts = new ArrayList<>(List.of(
             "shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com"
     ));
@@ -124,6 +127,15 @@ public class VideoOpsProperties {
     public void setIdempotencyWindowSeconds(long idempotencyWindowSeconds) {
         this.idempotencyWindowSeconds = idempotencyWindowSeconds;
     }
+
+    public int getBatchPublishMaxSize() { return batchPublishMaxSize; }
+    public void setBatchPublishMaxSize(int batchPublishMaxSize) { this.batchPublishMaxSize = batchPublishMaxSize; }
+
+    public int getBatchPublishConcurrency() { return batchPublishConcurrency; }
+    public void setBatchPublishConcurrency(int batchPublishConcurrency) { this.batchPublishConcurrency = batchPublishConcurrency; }
+
+    public long getBatchPublishItemTimeoutSeconds() { return batchPublishItemTimeoutSeconds; }
+    public void setBatchPublishItemTimeoutSeconds(long s) { this.batchPublishItemTimeoutSeconds = s; }
 
     public List<String> getAllowedShotstackHosts() {
         return allowedShotstackHosts;

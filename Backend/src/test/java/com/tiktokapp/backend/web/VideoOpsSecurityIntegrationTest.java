@@ -25,6 +25,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -88,7 +90,7 @@ class VideoOpsSecurityIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        when(videoOpsService.fetchContentIdeas()).thenReturn(List.of(
+        when(videoOpsService.fetchContentIdeas(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(
                 new VideoContentIdeaResponse(
                         42L,
                         "Fitness",
@@ -105,7 +107,7 @@ class VideoOpsSecurityIntegrationTest {
                         "render_ready",
                         null
                 )
-        ));
+        )));
         when(videoOpsService.triggerCheckShotstack(any(), eq("admin@tiktokapp.local"))).thenReturn(
                 new VideoWorkflowActionResponse(7L, 42L, "CHECK_SHOTSTACK", "ACCEPTED", "ok", false)
         );
@@ -215,9 +217,9 @@ class VideoOpsSecurityIntegrationTest {
         mockMvc.perform(get("/api/video-ops/content-ideas")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(42));
+                .andExpect(jsonPath("$.content[0].id").value(42));
 
-        verify(videoOpsService).fetchContentIdeas();
+        verify(videoOpsService).fetchContentIdeas(any(Pageable.class));
     }
 
     @Test
@@ -249,12 +251,13 @@ class VideoOpsSecurityIntegrationTest {
     }
 
     @Test
-    void requiresCsrfForProtectedPostRoutes() throws Exception {
+    void allowsProtectedPostRoutesWithoutCsrfWhenRouteIsExplicitlyIgnored() throws Exception {
         mockMvc.perform(post("/api/video-ops/workflows/check-shotstack")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"contentIdeaId\":42,\"topic\":\"Idea\"}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runId").value(7));
     }
 
     @Test
