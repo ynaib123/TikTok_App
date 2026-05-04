@@ -346,10 +346,17 @@ export function useTikTokJourneyFlowState({
     dispatch({ type: 'WORKFLOW_COMPLETED', message })
   }, [])
 
-  const showError = useCallback((error: unknown, fallback: string) => {
+  const showError = useCallback((errorOrMessage: unknown, fallback?: string) => {
+    const errorMessage =
+      typeof errorOrMessage === 'string'
+        ? errorOrMessage
+        : errorOrMessage instanceof Error
+        ? errorOrMessage.message
+        : fallback ?? 'Une erreur est survenue.'
+
     dispatch({
       type: 'GENERATION_FAILED',
-      errorMessage: error instanceof Error ? error.message : fallback,
+      errorMessage,
     })
   }, [])
 
@@ -383,7 +390,7 @@ export function useTikTokJourneyFlowState({
 
     dispatch({ type: 'PIPELINE_RESET', stepIndex: state.currentStepIndex })
     navigate(`${tiktokBaseRoute}/creation`)
-  }, [accountsReadiness?.missingItems, isJourneyReady, navigate, state.currentStepIndex, tiktokBaseRoute])
+  }, [accountsReadiness, isJourneyReady, navigate, state.currentStepIndex, tiktokBaseRoute])
 
   const closeAddFlow = useCallback(() => {
     dispatch({ type: 'PIPELINE_RESET', stepIndex: -1 })

@@ -2,6 +2,7 @@
 
 :root {
   color-scheme: dark;
+  --admin-sticky-offset: 84px;
   --admin-bg: #101010;
   --admin-surface: #171717;
   --admin-surface-2: #1d1d1d;

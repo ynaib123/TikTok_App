@@ -41,8 +41,9 @@ export default function VideoPreviewModal({ idea, onClose }: VideoPreviewModalPr
 
   // Stop video on unmount
   useEffect(() => {
+    const videoElement = videoRef.current
     return () => {
-      videoRef.current?.pause()
+      videoElement?.pause()
     }
   }, [])
 

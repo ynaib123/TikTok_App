@@ -14,6 +14,12 @@ export interface ServiceConnection {
   validationMessage: string | null;
   connectedAt: string | null;
   lastValidatedAt: string | null;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  rateUsage?: {
+    used: number;
+    limit: number;
+  } | null;
 }
 
 export interface ServiceConnectionForm {

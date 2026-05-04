@@ -1,0 +1,676 @@
+/* ============================================================================
+   Accounts page — drop into src/styles/features/accounts.css
+   Reuses .video-action-btn, .video-pill, .tiktok-step-field, .accounts-modal*
+   from video-ops.css — only adds new tokens for the v2 layout.
+   ========================================================================== */
+
+.accounts-page-v2 .video-ops-shell {
+  gap: 24px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Heading actions                                                     */
+/* ------------------------------------------------------------------ */
+.accounts-heading-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.accounts-connect-menu {
+  position: relative;
+}
+
+.accounts-connect-menu-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 240px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(18, 18, 19, 0.98);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+}
+
+.accounts-connect-menu-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.accounts-connect-menu-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.accounts-connect-menu-item-text {
+  display: grid;
+  gap: 2px;
+}
+
+.accounts-connect-menu-item-text strong {
+  color: #f4f7fb;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.accounts-connect-menu-item-text small {
+  color: rgba(217, 223, 230, 0.55);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ */
+/* Provider glyph                                                      */
+/* ------------------------------------------------------------------ */
+.accounts-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.accounts-glyph-tiktok { background: rgba(255, 80, 130, 0.12); border-color: rgba(255, 80, 130, 0.32); color: #ff6f97; }
+.accounts-glyph-n8n    { background: rgba(255, 110, 64, 0.12); border-color: rgba(255, 110, 64, 0.3); color: #ff9466; }
+.accounts-glyph-groq   { background: rgba(124, 198, 255, 0.12); border-color: rgba(124, 198, 255, 0.3); color: #9cd1ff; }
+.accounts-glyph-shotstack { background: rgba(168, 134, 255, 0.14); border-color: rgba(168, 134, 255, 0.34); color: #c4afff; }
+.accounts-glyph-pexels { background: rgba(123, 255, 187, 0.12); border-color: rgba(123, 255, 187, 0.32); color: #95f5c2; }
+
+/* ------------------------------------------------------------------ */
+/* Stat tiles                                                          */
+/* ------------------------------------------------------------------ */
+.accounts-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.accounts-stat-tile {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  min-height: 92px;
+}
+
+.accounts-stat-tile-label {
+  color: rgba(204, 213, 222, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.accounts-stat-tile-value {
+  color: #f4f7fb;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.accounts-stat-tile-delta {
+  color: rgba(217, 223, 230, 0.55);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Toolbar                                                             */
+/* ------------------------------------------------------------------ */
+.accounts-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.accounts-toolbar-search input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f4f7fb;
+  font-size: 13px;
+}
+
+.accounts-toolbar-search input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.accounts-toolbar-filters {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.accounts-filter-chip {
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(217, 223, 230, 0.66);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.accounts-filter-chip:hover { color: #f4f7fb; }
+
+.accounts-filter-chip.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
+}
+
+.accounts-toolbar-view {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.accounts-view-toggle {
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(217, 223, 230, 0.66);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.accounts-view-toggle:hover { color: #f4f7fb; }
+
+.accounts-view-toggle.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
+}
+
+/* ------------------------------------------------------------------ */
+/* Status pill                                                         */
+/* ------------------------------------------------------------------ */
+.accounts-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.accounts-status-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.accounts-status-pill.is-healthy {
+  background: rgba(123, 255, 187, 0.1);
+  border-color: rgba(123, 255, 187, 0.25);
+  color: #6df0ad;
+}
+
+.accounts-status-pill.is-warning {
+  background: rgba(255, 192, 77, 0.1);
+  border-color: rgba(255, 192, 77, 0.25);
+  color: #ffc04d;
+}
+
+.accounts-status-pill.is-off {
+  background: rgba(255, 99, 99, 0.1);
+  border-color: rgba(255, 99, 99, 0.28);
+  color: #ff7d7d;
+}
+
+/* ------------------------------------------------------------------ */
+/* Cards grid                                                          */
+/* ------------------------------------------------------------------ */
+.accounts-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.accounts-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.04), transparent 50%),
+    linear-gradient(180deg, rgba(22, 22, 23, 0.94) 0%, rgba(15, 15, 16, 0.96) 100%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.accounts-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.accounts-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.accounts-card-head-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accounts-card-head-text strong {
+  color: #f4f7fb;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.accounts-card-head-text span {
+  color: rgba(217, 223, 230, 0.62);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accounts-card-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.accounts-card-meta div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accounts-card-meta dt {
+  color: rgba(204, 213, 222, 0.5);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.accounts-card-meta dd {
+  margin: 0;
+  color: #f4f7fb;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.accounts-card-meta dd.accounts-tone-warn { color: #ffc04d; }
+.accounts-card-meta dd.accounts-tone-bad  { color: #ff7d7d; }
+.accounts-card-meta dd.accounts-tone-ok   { /* default */ }
+
+.accounts-card-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.accounts-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(217, 223, 230, 0.86);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.accounts-scope-chip-more {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(217, 223, 230, 0.7);
+}
+
+/* Rate bar */
+.accounts-rate {
+  display: grid;
+  gap: 5px;
+}
+
+.accounts-rate-label {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(217, 223, 230, 0.62);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.accounts-rate-bar {
+  position: relative;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.accounts-rate-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #6df0ad, #4cc9f0);
+  border-radius: 999px;
+}
+
+.accounts-rate-inline {
+  display: grid;
+  grid-template-columns: minmax(60px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.accounts-rate-inline span {
+  color: rgba(217, 223, 230, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.accounts-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ------------------------------------------------------------------ */
+/* Table view                                                          */
+/* ------------------------------------------------------------------ */
+.accounts-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.accounts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.accounts-table thead th {
+  position: sticky;
+  top: 0;
+  padding: 12px 14px;
+  text-align: left;
+  color: rgba(204, 213, 222, 0.55);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  background: rgba(18, 18, 19, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.accounts-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #f4f7fb;
+  vertical-align: middle;
+}
+
+.accounts-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.accounts-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.accounts-table-service {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.accounts-table-service strong {
+  display: block;
+  color: #f4f7fb;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.accounts-table-service span {
+  display: block;
+  color: rgba(217, 223, 230, 0.6);
+  font-size: 11px;
+}
+
+.accounts-table-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.accounts-muted { color: rgba(217, 223, 230, 0.45); }
+
+.accounts-empty {
+  padding: 36px 18px;
+  text-align: center;
+  color: rgba(217, 223, 230, 0.55);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Stepper modal                                                       */
+/* ------------------------------------------------------------------ */
+.accounts-stepper-modal {
+  width: min(640px, 92vw);
+}
+
+.accounts-stepper-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 16px 22px 0;
+}
+
+.accounts-stepper-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.accounts-stepper-step.is-reached {
+  border-color: rgba(123, 255, 187, 0.22);
+  background: rgba(123, 255, 187, 0.05);
+}
+
+.accounts-stepper-step.is-active {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.accounts-stepper-dot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.accounts-stepper-step.is-reached .accounts-stepper-dot {
+  background: #6df0ad;
+  color: #0c1e15;
+}
+
+.accounts-stepper-label {
+  color: rgba(217, 223, 230, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.accounts-stepper-blurb {
+  margin: 0 0 12px;
+  color: rgba(217, 223, 230, 0.7);
+  font-size: 13px;
+}
+
+.accounts-stepper-scopes {
+  padding: 4px 4px 0;
+}
+
+.accounts-stepper-done {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 24px 12px 12px;
+  text-align: center;
+}
+
+.accounts-stepper-done-check {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(123, 255, 187, 0.14);
+  border: 1px solid rgba(123, 255, 187, 0.32);
+  color: #6df0ad;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.accounts-stepper-done h4 {
+  margin: 0;
+  color: #f4f7fb;
+  font-size: 18px;
+}
+
+.accounts-stepper-done p {
+  margin: 0;
+  color: rgba(217, 223, 230, 0.7);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Danger zone                                                         */
+/* ------------------------------------------------------------------ */
+.accounts-danger-zone {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 99, 99, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 99, 99, 0.04);
+}
+
+.accounts-danger-zone h4 {
+  margin: 0 0 4px;
+  color: #ff9b9b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.accounts-danger-zone p {
+  margin: 0 0 10px;
+  color: rgba(217, 223, 230, 0.7);
+  font-size: 12px;
+}
+
+.accounts-danger-zone code {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4f7fb;
+  font-size: 11px;
+}
+
+.accounts-danger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.accounts-danger-row input {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 99, 99, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f4f7fb;
+  font-size: 13px;
+}
+
+.accounts-danger-row input:focus {
+  outline: none;
+  border-color: rgba(255, 99, 99, 0.5);
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive                                                          */
+/* ------------------------------------------------------------------ */
+@media (max-width: 960px) {
+  .accounts-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .accounts-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .accounts-toolbar-filters,
+  .accounts-toolbar-view {
+    overflow-x: auto;
+  }
+}

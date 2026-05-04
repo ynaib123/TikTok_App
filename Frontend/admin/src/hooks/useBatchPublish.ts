@@ -51,26 +51,28 @@ export function useBatchPublish(initialAccountOpenId?: string | null): UseBatchP
   }, []);
 
   const schedulePoll = useCallback((batchId: string) => {
-    stopPolling();
-    pollTimerRef.current = window.setTimeout(async () => {
-      pollTimerRef.current = null;
-      try {
-        const next = await fetchBatchPublish(batchId);
-        setBatch(next);
-        const nextPhase = deriveTerminalPhase(next);
-        setPhase(nextPhase);
-        if (nextPhase === 'running' && Date.now() < pollDeadlineRef.current) {
-          schedulePoll(batchId);
-        } else {
-          if (nextPhase !== 'running') {
+    const queueNextPoll = () => {
+      stopPolling();
+      pollTimerRef.current = window.setTimeout(async () => {
+        pollTimerRef.current = null;
+        try {
+          const next = await fetchBatchPublish(batchId);
+          setBatch(next);
+          const nextPhase = deriveTerminalPhase(next);
+          setPhase(nextPhase);
+          if (nextPhase === 'running' && Date.now() < pollDeadlineRef.current) {
+            queueNextPoll();
+          } else if (nextPhase !== 'running') {
             try { sessionStorage.removeItem(SESSION_KEY); } catch { /* noop */ }
           }
+        } catch (err) {
+          setErrorMessage(err instanceof Error ? err.message : 'Erreur de polling');
+          setPhase('error');
         }
-      } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Erreur de polling');
-        setPhase('error');
-      }
-    }, POLL_INTERVAL_MS);
+      }, POLL_INTERVAL_MS);
+    };
+
+    queueNextPoll();
   }, [stopPolling]);
 
   const beginPolling = useCallback((batchId: string) => {

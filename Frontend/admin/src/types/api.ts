@@ -29,7 +29,7 @@ export interface AccountsOverview {
   readiness: AccountsReadiness;
 }
 
-export interface SaveServiceConnectionPayload extends ServiceConnectionForm {}
+export type SaveServiceConnectionPayload = ServiceConnectionForm;
 
 export interface WorkflowTriggerPayload {
   source?: string;

@@ -35,3 +35,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code local settings (may contain webhook URLs / API keys in command allowlist)
+.claude/settings.local.json

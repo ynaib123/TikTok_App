@@ -7,6 +7,13 @@ export interface TikTokAccount {
   scope: string | null;
   environment: string | null;
   status: TikTokAccountStatus | null;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  scopes?: string[] | null;
+  rateUsage?: {
+    used: number;
+    limit: number;
+  } | null;
 }
 
 export interface TikTokOAuthAuthorizeResponse {

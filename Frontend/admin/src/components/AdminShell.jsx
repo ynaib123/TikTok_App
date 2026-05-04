@@ -18,6 +18,24 @@ const PREFETCH_ROUTE_HANDLERS = {
 const ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS = 5000
 const ADMIN_LOGOUT_FALLBACK_STORAGE_KEY = 'admin-logout-fallback-until'
 
+/**
+ * @typedef {Object} AdminShellFeedbackItem
+ * @property {'error' | 'success' | 'info'} type
+ * @property {string | null | undefined} message
+ */
+
+/**
+ * @typedef {Object} AdminShellProps
+ * @property {string | undefined} [activeNavId]
+ * @property {import('react').ReactNode} children
+ * @property {string} [blockingMessage]
+ * @property {number | null} [blockingProgress]
+ * @property {AdminShellFeedbackItem[]} [feedbackItems]
+ * @property {boolean} [isBlocking]
+ * @property {(() => void | Promise<void>) | undefined} [onBeforeNavigate]
+ * @property {(() => void | Promise<void>) | undefined} [onBeforeLogout]
+ */
+
 function resolveMinimumDurationProgress({
   actualProgress,
   startedAt,
@@ -115,6 +133,7 @@ function formatAdminRoleLabel(role) {
   return normalizedRole.replaceAll('_', ' ') || 'Admin'
 }
 
+/** @param {AdminShellProps} props */
 export default function AdminShell({
   activeNavId,
   children,

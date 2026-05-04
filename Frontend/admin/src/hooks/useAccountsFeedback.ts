@@ -3,22 +3,27 @@ import { useCallback, useMemo, useState } from 'react';
 import type { FeedbackMessage } from '../types';
 
 export function useAccountsFeedback(initialMessage: string | null = null) {
-  const [successMessage, setSuccessMessage] = useState<string | null>(initialMessage);
+  const [localSuccessMessage, setLocalSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const successMessage = localSuccessMessage ?? initialMessage;
 
   const clearFeedback = useCallback(() => {
-    setSuccessMessage(null);
+    setLocalSuccessMessage(null);
     setErrorMessage(null);
   }, []);
 
   const showSuccess = useCallback((message: string) => {
     setErrorMessage(null);
-    setSuccessMessage(message);
+    setLocalSuccessMessage(message);
   }, []);
 
   const showError = useCallback((message: string) => {
-    setSuccessMessage(null);
+    setLocalSuccessMessage(null);
     setErrorMessage(message);
+  }, []);
+
+  const setSuccessMessage = useCallback((message: string | null) => {
+    setLocalSuccessMessage(message);
   }, []);
 
   const feedbackItems = useMemo<FeedbackMessage[]>(

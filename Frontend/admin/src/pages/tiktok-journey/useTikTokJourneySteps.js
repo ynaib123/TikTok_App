@@ -8,7 +8,6 @@ import {
 export function useCreationStep({
   displayedGeneratedIdeas,
   generationCategory,
-  generationCount,
   connectedTikTokAccount,
   fetchContentIdeaById,
   fetchRecentContentIdeas,
@@ -109,7 +108,7 @@ export function useCreationStep({
       }
 
       setScriptedIdea(nextScriptedIdea)
-      setGeneratedIdeas((currentIdeas) => [nextScriptedIdea])
+      setGeneratedIdeas(() => [nextScriptedIdea])
       await refreshPipelineData()
       markWorkflowFinished({
         runId: scriptWorkflowRun?.runId,
@@ -137,7 +136,6 @@ export function useCreationStep({
 
 export function useScriptStep({
   selectedGeneratedIdea,
-  scriptedIdea,
   goToStep,
   triggerScriptGenerationWorkflow,
   fetchContentIdeaById,
@@ -210,7 +208,13 @@ export function useScriptStep({
   }
 
   const handleRegenerateScript = async () => {
-    handleGenerateIdea()
+    const idea = selectedGeneratedIdea
+    await runScriptWorkflow({
+      idea,
+      source: 'backoffice-tiktok-step-regenerate-script',
+      force: true,
+      successMessage: 'Script regenere avec succes.',
+    })
   }
 
   return { handleValidateCreation, handleRegenerateScript }
