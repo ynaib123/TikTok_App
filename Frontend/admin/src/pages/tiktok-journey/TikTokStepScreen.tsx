@@ -1,8 +1,13 @@
 /**
- * TikTokStepScreen — single-pane wizard layout (Proposal C).
+ * TikTokStepScreen — wizard with 2-column body (Proposal C, refined).
  *
- * Vertical flow: horizontal Progress stepper -> Main step body (centered,
- * max 1000px) -> collapsible Footer (TikTok account state + live activity).
+ * Vertical flow:
+ *   - Top horizontal stepper (sticky)
+ *   - Step body: Left 65% = output preview / result, Right 35% = controls + TikTok account info
+ *   - Bottom collapsible footer = live activity log
+ *
+ * Each generation produces a single result (no idea-list selection UI).
+ * If multiple ideas come back from the backend, the first is auto-selected.
  */
 
 import { useEffect, useRef, useState, type JSX } from 'react'
@@ -183,30 +188,64 @@ function ProgressStepper({ steps, currentStepIndex, goToStep, goBackInFlow, Back
   )
 }
 
-/* ── Footer accordion (TikTok account + activity log) ─────────────────── */
+/* ── Side-card: TikTok account info ───────────────────────────────────── */
 
-function FooterAccordion({
-  log,
+function AccountSideCard({
   connectedTikTokAccount,
   hasConnectedTikTokAccount,
   formatShortOpenId,
   activeIdea,
-  stateLabel,
-  stateClass,
+  navigate,
 }: {
-  log: LogEntry[]
   connectedTikTokAccount: TikTokAccount | null
   hasConnectedTikTokAccount: boolean
   formatShortOpenId: (v: string | null | undefined) => string
   activeIdea: ContentIdea | null
+  navigate: NavigateFunction
+}) {
+  const account = hasConnectedTikTokAccount ? connectedTikTokAccount : null
+  return (
+    <div className="journey-wizard-side-card">
+      <div className="journey-wizard-side-card-head">
+        <h3>Compte TikTok</h3>
+        <button type="button" className="journey-wizard-side-card-link" onClick={() => navigate('/accounts')}>
+          Gerer
+        </button>
+      </div>
+      {account ? (
+        <div className="journey-account-row">
+          <div className="journey-account-row-head">
+            <strong>{account.nickname || 'Compte connecte'}</strong>
+            <span className="journey-status-pill is-published">Connecte</span>
+          </div>
+          <span className="journey-account-row-detail">
+            {formatShortOpenId(activeIdea?.tiktokAccountOpenId || account.openId)}
+          </span>
+          <span className="journey-account-row-detail">Scope: {account.scope || '-'}</span>
+        </div>
+      ) : (
+        <div className="journey-account-row">
+          <div className="journey-account-row-head">
+            <strong>Aucun compte connecte</strong>
+            <span className="journey-status-pill is-error">Off</span>
+          </div>
+          <span className="journey-account-row-detail">Connecte un compte dans Accounts.</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Footer accordion (activity log) ─────────────────────────────────── */
+
+function FooterAccordion({ log, stateLabel, stateClass }: {
+  log: LogEntry[]
   stateLabel: string
   stateClass: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
-  const account = hasConnectedTikTokAccount ? connectedTikTokAccount : null
-
   return (
-    <section className={`journey-wizard-footer ${isOpen ? 'is-open' : ''}`} aria-label="Etat live et activite">
+    <section className={`journey-wizard-footer ${isOpen ? 'is-open' : ''}`} aria-label="Activite du parcours">
       <button
         type="button"
         className="journey-wizard-footer-summary"
@@ -215,73 +254,30 @@ function FooterAccordion({
       >
         <span className="journey-wizard-footer-summary-group">
           <span className={`journey-wizard-footer-state ${stateClass}`}>{stateLabel}</span>
-          <span className="journey-wizard-footer-account">
-            {account ? (
-              <>
-                <span className="journey-status-pill is-published">Connecte</span>
-                <strong>{account.nickname || 'Compte connecte'}</strong>
-              </>
-            ) : (
-              <>
-                <span className="journey-status-pill is-error">Off</span>
-                <strong>Aucun compte connecte</strong>
-              </>
-            )}
-          </span>
-          <span className="journey-wizard-footer-log-count">
-            Activite ({log.length})
-          </span>
+          <span className="journey-wizard-footer-log-count">Activite ({log.length})</span>
         </span>
         <span className="journey-wizard-footer-chevron" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
       </button>
-
       {isOpen ? (
-        <div className="journey-wizard-footer-body">
-          <div className="journey-wizard-footer-col">
-            <h3>Compte TikTok</h3>
-            {account ? (
-              <div className="journey-account-row">
-                <div className="journey-account-row-head">
-                  <strong>{account.nickname || 'Compte connecte'}</strong>
-                  <span className="journey-status-pill is-published">Connecte</span>
-                </div>
-                <span className="journey-account-row-detail">
-                  {formatShortOpenId(activeIdea?.tiktokAccountOpenId || account.openId)}
-                </span>
-                <span className="journey-account-row-detail">Scope: {account.scope || '-'}</span>
-              </div>
-            ) : (
-              <div className="journey-account-row">
-                <div className="journey-account-row-head">
-                  <strong>Aucun compte connecte</strong>
-                  <span className="journey-status-pill is-error">Off</span>
-                </div>
-                <span className="journey-account-row-detail">Connecte un compte dans Accounts.</span>
-              </div>
-            )}
-          </div>
-
-          <div className="journey-wizard-footer-col">
-            <h3>Activite ({log.length})</h3>
-            {log.length === 0 ? (
-              <div className="journey-account-row-detail" style={{ padding: '8px 0' }}>
-                Les actions apparaitront ici en temps reel.
-              </div>
-            ) : (
-              <ul className="journey-log-list">
-                {log.map((entry, i) => (
-                  <li key={`${entry.ts}-${i}`} className="journey-log-item">
-                    <span className={`journey-log-item-icon is-${entry.status}`} aria-hidden="true" />
-                    <div className="journey-log-item-body">
-                      <span className="journey-log-item-msg">{entry.msg}</span>
-                      {entry.meta ? <span className="journey-log-item-meta">{entry.meta}</span> : null}
-                    </div>
-                    <span className="journey-log-item-time">{fmtTime(entry.ts)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <div className="journey-wizard-footer-body journey-wizard-footer-body-single">
+          {log.length === 0 ? (
+            <div className="journey-account-row-detail" style={{ padding: '8px 0' }}>
+              Les actions apparaitront ici en temps reel.
+            </div>
+          ) : (
+            <ul className="journey-log-list">
+              {log.map((entry, i) => (
+                <li key={`${entry.ts}-${i}`} className="journey-log-item">
+                  <span className={`journey-log-item-icon is-${entry.status}`} aria-hidden="true" />
+                  <div className="journey-log-item-body">
+                    <span className="journey-log-item-msg">{entry.msg}</span>
+                    {entry.meta ? <span className="journey-log-item-meta">{entry.meta}</span> : null}
+                  </div>
+                  <span className="journey-log-item-time">{fmtTime(entry.ts)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : null}
     </section>
@@ -291,21 +287,54 @@ function FooterAccordion({
 /* ── Step bodies ──────────────────────────────────────────────────────── */
 
 function CreationStep(p: TikTokStepScreenProps) {
-  return (
-    <>
-      {!p.isJourneyReady ? (
-        <div className="journey-empty">
-          <strong>Comptes incomplets</strong>
-          <p>Connecte TikTok, n8n, Groq, Shotstack et Pexels dans Accounts avant de lancer un nouveau parcours.</p>
-          <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
-            Ouvrir Accounts
-          </button>
-        </div>
-      ) : null}
+  // Single-result mode: auto-select the first generated idea so validation can fire.
+  const { displayedGeneratedIdeas, selectedGeneratedIdea, setSelectedGeneratedIdeaId } = p
+  useEffect(() => {
+    if (displayedGeneratedIdeas.length > 0 && !selectedGeneratedIdea) {
+      setSelectedGeneratedIdeaId(displayedGeneratedIdeas[0].id)
+    }
+  }, [displayedGeneratedIdeas, selectedGeneratedIdea, setSelectedGeneratedIdeaId])
 
-      <section className="journey-flow-main-section">
-        <span className="journey-flow-main-section-label">Parametres</span>
-        <div className="journey-step-form">
+  const idea = p.scriptedIdea || p.selectedGeneratedIdea
+
+  return (
+    <div className="journey-wizard-grid">
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Resultat</span>
+        {!p.isJourneyReady ? (
+          <div className="journey-empty">
+            <strong>Comptes incomplets</strong>
+            <p>Connecte TikTok, n8n, Groq, Shotstack et Pexels dans Accounts avant de generer.</p>
+            <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
+              Ouvrir Accounts
+            </button>
+          </div>
+        ) : p.isGeneratingIdeas || p.isGeneratingScript ? (
+          <div className="journey-loading">
+            <div className="journey-loading-spinner" />
+            <div className="journey-loading-copy">
+              <strong>Generation en cours</strong>
+              <span>Idee + script en preparation…</span>
+            </div>
+          </div>
+        ) : idea ? (
+          <div className="journey-kv-grid">
+            <KV label="Topic"   value={idea.topic} />
+            <KV label="Script"  value={idea.script} />
+            <KV label="Caption" value={idea.caption} />
+            <KV label="Keyword" value={idea.keyword} />
+          </div>
+        ) : (
+          <div className="journey-empty">
+            <strong>Aucune idee generee</strong>
+            <p>Choisis une categorie a droite puis clique sur Generer.</p>
+          </div>
+        )}
+      </section>
+
+      <aside className="journey-wizard-grid-side">
+        <div className="journey-wizard-side-card">
+          <span className="journey-wizard-card-label">Parametres</span>
           <div className="journey-step-row">
             <label htmlFor="journey-cat-trigger">Categorie</label>
             <div className="tiktok-step-toolbar-select" style={{ position: 'relative' }}>
@@ -321,7 +350,6 @@ function CreationStep(p: TikTokStepScreenProps) {
                 <strong>{p.generationCategory}</strong>
                 <span className="admin-toolbar-icon" aria-hidden="true"><p.ChevronDownIcon /></span>
               </button>
-
               {p.openListMenu === 'tiktok-category' ? (
                 <div className="admin-product-toolbar-menu tiktok-step-toolbar-menu" role="listbox">
                   <div className="admin-product-toolbar-menu-options-scroll admin-product-toolbar-menu-options-scroll-five">
@@ -341,78 +369,36 @@ function CreationStep(p: TikTokStepScreenProps) {
               ) : null}
             </div>
           </div>
+
+          <div className="journey-step-cta journey-step-cta-stack">
+            <button
+              type="button"
+              className="journey-btn"
+              onClick={() => void p.handleGenerateIdea()}
+              disabled={p.isBusy || !p.isJourneyReady}
+            >
+              {idea ? 'Regenerer' : 'Generer'}
+            </button>
+            <button
+              type="button"
+              className="journey-btn is-primary"
+              onClick={() => void p.handleValidateCreation()}
+              disabled={p.isBusy || !idea || !p.isJourneyReady}
+            >
+              Generer la video →
+            </button>
+          </div>
         </div>
-      </section>
 
-      <section className="journey-flow-main-section">
-        <span className="journey-flow-main-section-label">Idees generees</span>
-        {p.isGeneratingIdeas ? (
-          <div className="journey-loading">
-            <div className="journey-loading-spinner" />
-            <div className="journey-loading-copy">
-              <strong>Generation en cours</strong>
-              <span>Preparation de l idee et du script…</span>
-            </div>
-          </div>
-        ) : p.displayedGeneratedIdeas.length === 0 ? (
-          <div className="journey-empty">
-            <strong>Aucune idee pour le moment</strong>
-            <p>Choisis une categorie puis clique sur Generer.</p>
-          </div>
-        ) : (
-          <div className="journey-idea-list">
-            {p.displayedGeneratedIdeas.map((idea) => {
-              const sel = p.selectedGeneratedIdea?.id === idea.id
-              return (
-                <button
-                  key={idea.id}
-                  type="button"
-                  className={`journey-idea-item ${sel ? 'is-selected' : ''}`}
-                  onClick={() => p.setSelectedGeneratedIdeaId(idea.id)}
-                >
-                  <span className="journey-idea-item-radio" aria-hidden="true" />
-                  <div className="journey-idea-item-body">
-                    <span className="journey-idea-item-topic">{idea.topic || `Idee #${idea.id}`}</span>
-                    {idea.script ? <span className="journey-idea-item-script">{idea.script}</span> : null}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      {p.scriptedIdea ? (
-        <section className="journey-flow-main-section">
-          <span className="journey-flow-main-section-label">Script genere</span>
-          <div className="journey-kv-grid">
-            <KV label="Topic"   value={p.scriptedIdea.topic} />
-            <KV label="Script"  value={p.scriptedIdea.script} />
-            <KV label="Caption" value={p.scriptedIdea.caption} />
-            <KV label="Keyword" value={p.scriptedIdea.keyword} />
-          </div>
-        </section>
-      ) : null}
-
-      <div className="journey-step-cta">
-        <button
-          type="button"
-          className="journey-btn"
-          onClick={() => void p.handleGenerateIdea()}
-          disabled={p.isBusy || !p.isJourneyReady}
-        >
-          {p.displayedGeneratedIdeas.length ? 'Regenerer' : 'Generer'}
-        </button>
-        <button
-          type="button"
-          className="journey-btn is-primary"
-          onClick={() => void p.handleValidateCreation()}
-          disabled={p.isBusy || !p.selectedGeneratedIdea || !p.isJourneyReady}
-        >
-          Generer la video →
-        </button>
-      </div>
-    </>
+        <AccountSideCard
+          connectedTikTokAccount={p.connectedTikTokAccount}
+          hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
+          formatShortOpenId={p.formatShortOpenId}
+          activeIdea={p.activeIdea}
+          navigate={p.navigate}
+        />
+      </aside>
+    </div>
   )
 }
 
@@ -422,9 +408,9 @@ function RenderStep(p: TikTokStepScreenProps) {
     || p.selectedGeneratedIdea?.shotstackUrl
 
   return (
-    <>
-      <section className="journey-flow-main-section">
-        <span className="journey-flow-main-section-label">Apercu</span>
+    <div className="journey-wizard-grid">
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Apercu video</span>
         {p.isPreparingVideo && !previewUrl ? (
           <div className="journey-loading">
             <div className="journey-loading-spinner" />
@@ -438,118 +424,151 @@ function RenderStep(p: TikTokStepScreenProps) {
         )}
       </section>
 
-      {p.scriptedIdea ? (
-        <section className="journey-flow-main-section">
-          <span className="journey-flow-main-section-label">Contenu</span>
-          <div className="journey-kv-grid">
-            <KV label="Topic"   value={p.scriptedIdea.topic} />
-            <KV label="Script"  value={p.scriptedIdea.script} />
-            <KV label="Caption" value={p.scriptedIdea.caption} />
-            <KV label="Keyword" value={p.scriptedIdea.keyword} />
+      <aside className="journey-wizard-grid-side">
+        {p.scriptedIdea ? (
+          <div className="journey-wizard-side-card">
+            <span className="journey-wizard-card-label">Contenu</span>
+            <div className="journey-kv-grid">
+              <KV label="Topic"   value={p.scriptedIdea.topic} />
+              <KV label="Caption" value={p.scriptedIdea.caption} />
+              <KV label="Keyword" value={p.scriptedIdea.keyword} />
+            </div>
           </div>
-        </section>
-      ) : null}
+        ) : null}
 
-      <div className="journey-step-cta">
-        <button type="button" className="journey-btn" onClick={() => void p.handleRetryInitPublish()} disabled={p.isBusy}>
-          Relancer le rendu
-        </button>
-        <button
-          type="button"
-          className="journey-btn is-primary"
-          onClick={p.handleValidateInitPublish}
-          disabled={p.isBusy || !previewUrl}
-        >
-          Valider la video →
-        </button>
-      </div>
-    </>
+        <div className="journey-wizard-side-card">
+          <span className="journey-wizard-card-label">Actions</span>
+          <div className="journey-step-cta journey-step-cta-stack">
+            <button type="button" className="journey-btn" onClick={() => void p.handleRetryInitPublish()} disabled={p.isBusy}>
+              Relancer le rendu
+            </button>
+            <button
+              type="button"
+              className="journey-btn is-primary"
+              onClick={p.handleValidateInitPublish}
+              disabled={p.isBusy || !previewUrl}
+            >
+              Valider la video →
+            </button>
+          </div>
+        </div>
+
+        <AccountSideCard
+          connectedTikTokAccount={p.connectedTikTokAccount}
+          hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
+          formatShortOpenId={p.formatShortOpenId}
+          activeIdea={p.activeIdea}
+          navigate={p.navigate}
+        />
+      </aside>
+    </div>
   )
 }
 
 function UploadStep(p: TikTokStepScreenProps) {
+  const previewUrl = p.manualAction?.shotstackUrl
+    || p.scriptedIdea?.shotstackUrl
+    || p.selectedGeneratedIdea?.shotstackUrl
+
   return (
-    <>
-      <section className="journey-flow-main-section">
-        <span className="journey-flow-main-section-label">Compte cible</span>
-        {p.hasConnectedTikTokAccount ? (
-          <div className="journey-kv-grid">
-            <KV label="Compte" value={p.connectedTikTokAccount?.nickname} />
-            <KV label="Open ID" value={p.formatShortOpenId(p.activeIdea?.tiktokAccountOpenId || p.connectedTikTokAccount?.openId)} mono />
-            <KV label="Scope"  value={p.connectedTikTokAccount?.scope} />
-            <KV label="Status" value={p.connectedTikTokAccount?.status} />
-          </div>
-        ) : (
+    <div className="journey-wizard-grid">
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Apercu</span>
+        {previewUrl ? <p.VideoPreview url={previewUrl} /> : (
           <div className="journey-empty">
-            <strong>Aucun compte connecte</strong>
-            <p>Connecte un compte TikTok dans Accounts avant de lancer l upload.</p>
-            <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
-              Ouvrir Accounts
-            </button>
+            <strong>Aucune video disponible</strong>
+            <p>Reviens a l etape Video pour generer un rendu.</p>
           </div>
         )}
-      </section>
-
-      <section className="journey-flow-main-section">
-        <span className="journey-flow-main-section-label">Upload</span>
         <div className="journey-kv-grid">
           <KV label="Upload URL"      value={p.manualAction?.uploadUrl} mono />
           <KV label="Resultat upload" value={p.uploadResult ? 'Upload termine.' : null} />
         </div>
       </section>
 
-      <div className="journey-step-cta">
-        <button
-          type="button"
-          className="journey-btn"
-          onClick={() => void p.handlePrepareUpload()}
-          disabled={p.isBusy || Boolean(p.manualAction?.uploadUrl)}
-        >
-          {p.isPreparingUpload ? 'Preparation…' : 'Preparer upload'}
-        </button>
-        <button
-          type="button"
-          className="journey-btn"
-          onClick={() => void p.handleUploadVideo()}
-          disabled={p.isBusy || !p.manualAction?.uploadUrl || !p.isJourneyReady}
-        >
-          {p.isUploadingVideo ? 'Upload…' : 'Uploader'}
-        </button>
-        <button
-          type="button"
-          className="journey-btn is-primary"
-          onClick={p.handleValidateUpload}
-          disabled={p.isBusy || !p.uploadResult}
-        >
-          Valider l upload →
-        </button>
-      </div>
-    </>
+      <aside className="journey-wizard-grid-side">
+        <div className="journey-wizard-side-card">
+          <span className="journey-wizard-card-label">Actions</span>
+          <div className="journey-step-cta journey-step-cta-stack">
+            <button
+              type="button"
+              className="journey-btn"
+              onClick={() => void p.handlePrepareUpload()}
+              disabled={p.isBusy || Boolean(p.manualAction?.uploadUrl)}
+            >
+              {p.isPreparingUpload ? 'Preparation…' : 'Preparer upload'}
+            </button>
+            <button
+              type="button"
+              className="journey-btn"
+              onClick={() => void p.handleUploadVideo()}
+              disabled={p.isBusy || !p.manualAction?.uploadUrl || !p.isJourneyReady}
+            >
+              {p.isUploadingVideo ? 'Upload…' : 'Uploader'}
+            </button>
+            <button
+              type="button"
+              className="journey-btn is-primary"
+              onClick={p.handleValidateUpload}
+              disabled={p.isBusy || !p.uploadResult}
+            >
+              Valider l upload →
+            </button>
+          </div>
+        </div>
+
+        <AccountSideCard
+          connectedTikTokAccount={p.connectedTikTokAccount}
+          hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
+          formatShortOpenId={p.formatShortOpenId}
+          activeIdea={p.activeIdea}
+          navigate={p.navigate}
+        />
+      </aside>
+    </div>
   )
 }
 
 function PublishStep(p: TikTokStepScreenProps) {
+  const previewUrl = p.manualAction?.shotstackUrl
+    || p.scriptedIdea?.shotstackUrl
+    || p.selectedGeneratedIdea?.shotstackUrl
+
   return (
-    <>
-      <section className="journey-flow-main-section">
-        <span className="journey-flow-main-section-label">Publication finale</span>
+    <div className="journey-wizard-grid">
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Publication finale</span>
+        {previewUrl ? <p.VideoPreview url={previewUrl} /> : null}
         <div className="journey-kv-grid">
           <KV label="Video"  value={p.activeIdea?.topic} />
           <KV label="Status" value={p.successMessage || 'Pret pour publication finale.'} />
         </div>
       </section>
 
-      <div className="journey-step-cta">
-        <button
-          type="button"
-          className="journey-btn is-primary"
-          onClick={() => void p.handlePublishVideo()}
-          disabled={p.isBusy}
-        >
-          {p.isPublishingVideo ? 'Publication…' : 'Publier sur TikTok'}
-        </button>
-      </div>
-    </>
+      <aside className="journey-wizard-grid-side">
+        <div className="journey-wizard-side-card">
+          <span className="journey-wizard-card-label">Actions</span>
+          <div className="journey-step-cta journey-step-cta-stack">
+            <button
+              type="button"
+              className="journey-btn is-primary"
+              onClick={() => void p.handlePublishVideo()}
+              disabled={p.isBusy}
+            >
+              {p.isPublishingVideo ? 'Publication…' : 'Publier sur TikTok'}
+            </button>
+          </div>
+        </div>
+
+        <AccountSideCard
+          connectedTikTokAccount={p.connectedTikTokAccount}
+          hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
+          formatShortOpenId={p.formatShortOpenId}
+          activeIdea={p.activeIdea}
+          navigate={p.navigate}
+        />
+      </aside>
+    </div>
   )
 }
 
@@ -598,15 +617,7 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
         {body}
       </main>
 
-      <FooterAccordion
-        log={log}
-        connectedTikTokAccount={props.connectedTikTokAccount}
-        hasConnectedTikTokAccount={props.hasConnectedTikTokAccount}
-        formatShortOpenId={props.formatShortOpenId}
-        activeIdea={props.activeIdea}
-        stateLabel={stateLabel}
-        stateClass={stateClass}
-      />
+      <FooterAccordion log={log} stateLabel={stateLabel} stateClass={stateClass} />
     </div>
   )
 }

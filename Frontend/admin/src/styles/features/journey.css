@@ -510,23 +510,125 @@
   .journey-wizard-step-label { display: none; }
 }
 
-/* ----- Main (centered, single column) ----------------------------------- */
+/* ----- Main (centered, holds head + 2-col grid) ------------------------ */
 
 .journey-wizard-main {
-  background: var(--admin-panel-surface);
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-md);
-  padding: 32px 40px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   width: 100%;
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
+.journey-wizard-main-head,
+.journey-wizard-grid-main,
+.journey-wizard-side-card {
+  background: var(--admin-panel-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+}
+
+.journey-wizard-main-head {
+  padding: 18px 22px;
+}
+
+.journey-wizard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .journey-wizard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.journey-wizard-grid-main {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.journey-wizard-grid-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: calc(var(--admin-sticky-offset) + 80px);
+  align-self: start;
+}
+
+@media (max-width: 960px) {
+  .journey-wizard-grid-side {
+    position: static;
+  }
+}
+
+.journey-wizard-side-card {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journey-wizard-side-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.journey-wizard-side-card-head h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--admin-text-dim);
+  font-weight: 500;
+  margin: 0;
+}
+
+.journey-wizard-side-card-link {
+  background: transparent;
+  border: 0;
+  color: var(--admin-text-soft);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background var(--admin-motion-fast), color var(--admin-motion-fast);
+}
+
+.journey-wizard-side-card-link:hover {
+  background: var(--admin-surface-overlay);
+  color: var(--admin-text);
+}
+
+.journey-wizard-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--admin-text-dim);
+  font-weight: 500;
+}
+
+.journey-step-cta-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journey-step-cta-stack .journey-btn {
+  width: 100%;
+  justify-content: center;
+}
+
 @media (max-width: 720px) {
-  .journey-wizard-main { padding: 22px 18px; }
+  .journey-wizard-grid-main { padding: 18px 16px; }
 }
 
 .journey-wizard-main-head {
@@ -581,7 +683,7 @@
 
 .journey-wizard-footer {
   width: 100%;
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
   background: var(--admin-panel-surface);
   border: 1px solid var(--admin-border);
@@ -661,6 +763,10 @@
   gap: 18px;
   padding: 16px 18px 18px;
   border-top: 1px solid var(--admin-border-faint);
+}
+
+.journey-wizard-footer-body.journey-wizard-footer-body-single {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 720px) {
