@@ -32,7 +32,7 @@ export function validateServiceForm(
     }
   }
 
-  if (providerKey !== 'N8N' && !normalizedSecret && !connection?.hasSecret) {
+  if (!normalizedSecret && !connection?.hasSecret) {
     throw new Error(`Renseigne ${providerConfig.secretLabel.toLowerCase()} pour ${providerConfig.title}.`);
   }
 }

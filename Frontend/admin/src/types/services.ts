@@ -1,4 +1,4 @@
-export type ServiceProvider = 'N8N' | 'GROQ' | 'SHOTSTACK' | 'PEXELS';
+export type ServiceProvider = 'GROQ' | 'SHOTSTACK' | 'PEXELS';
 
 export interface ServiceConnection {
   id: number;
@@ -42,15 +42,6 @@ export interface ServiceProviderFieldConfig {
 }
 
 export const SERVICE_CONNECTION_FIELDS: Record<ServiceProvider, ServiceProviderFieldConfig> = {
-  N8N: {
-    title: 'n8n',
-    baseUrlLabel: 'Instance URL',
-    identifierLabel: 'Workspace / owner',
-    secretLabel: 'Secret optionnel',
-    defaultBaseUrl: 'http://n8n:5678',
-    metadataPlaceholder: '{"workflowPaths":{"mainPipeline":"/webhook/fused-idea-script","checkShotstack":"/webhook/check-shotstack","renderTemplateVideo":"/webhook/render-template-video","initPublishTikTok":"/webhook/init-publish-tiktok"}}',
-    sourceLabel: 'Profil actif en base',
-  },
   GROQ: {
     title: 'Groq',
     baseUrlLabel: 'API base URL',

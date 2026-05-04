@@ -2,9 +2,7 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tiktokapp.backend.model.ServiceConnection;
-import com.tiktokapp.backend.model.ServiceConnectionProvider;
-import com.tiktokapp.backend.repository.ServiceConnectionRepository;
+import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.model.VideoWorkflowType;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,11 +20,11 @@ import java.util.Map;
 @Service
 public class N8nWorkflowGateway {
 
-    private final ServiceConnectionRepository serviceConnectionRepository;
+    private final VideoOpsProperties properties;
     private final ObjectMapper objectMapper;
 
-    public N8nWorkflowGateway(ServiceConnectionRepository serviceConnectionRepository, ObjectMapper objectMapper) {
-        this.serviceConnectionRepository = serviceConnectionRepository;
+    public N8nWorkflowGateway(VideoOpsProperties properties, ObjectMapper objectMapper) {
+        this.properties = properties;
         this.objectMapper = objectMapper;
     }
 
@@ -78,25 +76,10 @@ public class N8nWorkflowGateway {
     }
 
     private String resolveWebhookUrl(VideoWorkflowType workflowType) {
-        ServiceConnection connection = serviceConnectionRepository
-                .findFirstByProviderKeyAndActiveTrue(ServiceConnectionProvider.N8N)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.SERVICE_UNAVAILABLE,
-                        "Aucune connexion n8n active n'est configuree dans Accounts."
-                ));
-
-        String baseUrl = normalizeBaseUrl(connection.getBaseUrl());
-        String path = resolveWebhookPath(connection.getMetadataJson(), workflowType);
-        String url = baseUrl + path;
-
-        if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Le webhook n8n pour " + workflowType + " n'est pas configure cote backend."
-            );
-        }
-
-        return url;
+        VideoOpsProperties.N8n cfg = properties.getN8n();
+        String baseUrl = normalizeBaseUrl(cfg.getBaseUrl());
+        String path = resolveWebhookPath(cfg, workflowType);
+        return baseUrl + (path.startsWith("/") ? path : "/" + path);
     }
 
     private String normalizeBaseUrl(String baseUrl) {
@@ -104,54 +87,22 @@ public class N8nWorkflowGateway {
         if (normalized.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
-                    "La connexion n8n active n'a pas de baseUrl valide."
+                    "L URL de base n8n n'est pas configuree (app.video-ops.n8n.base-url)."
             );
         }
         return normalized;
     }
 
-    private String resolveWebhookPath(String metadataJson, VideoWorkflowType workflowType) {
-        String defaultPath = switch (workflowType) {
-            case MAIN_PIPELINE -> "/webhook/fused-idea-script";
-            case SCRIPT_GENERATION -> "/webhook/script-generation";
-            case CHECK_SHOTSTACK -> "/webhook/check-shotstack";
-            case RENDER_TEMPLATE_VIDEO -> "/webhook/render-template-video";
-            case INIT_PUBLISH_TIKTOK -> "/webhook/init-publish-tiktok";
-            default -> "";
-        };
-
-        if (metadataJson == null || metadataJson.isBlank()) {
-            return defaultPath;
-        }
-
-        try {
-            JsonNode metadata = objectMapper.readTree(metadataJson);
-            String overridePath = switch (workflowType) {
-                case MAIN_PIPELINE -> readWebhookPath(metadata, "mainPipeline");
-                case SCRIPT_GENERATION -> readWebhookPath(metadata, "scriptGeneration");
-                case CHECK_SHOTSTACK -> readWebhookPath(metadata, "checkShotstack");
-                case RENDER_TEMPLATE_VIDEO -> readWebhookPath(metadata, "renderTemplateVideo");
-                case INIT_PUBLISH_TIKTOK -> readWebhookPath(metadata, "initPublishTikTok");
-                default -> null;
-            };
-            return overridePath == null || overridePath.isBlank() ? defaultPath : overridePath;
-        } catch (IOException exception) {
-            throw new ResponseStatusException(
+    private String resolveWebhookPath(VideoOpsProperties.N8n cfg, VideoWorkflowType workflowType) {
+        return switch (workflowType) {
+            case MAIN_PIPELINE -> cfg.getMainPipelinePath();
+            case CHECK_SHOTSTACK -> cfg.getCheckShotstackPath();
+            case RENDER_TEMPLATE_VIDEO -> cfg.getRenderTemplateVideoPath();
+            case INIT_PUBLISH_TIKTOK -> cfg.getInitPublishTikTokPath();
+            default -> throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Le Metadata JSON de la connexion n8n active est invalide."
+                    "Aucun webhook n8n configure pour " + workflowType + "."
             );
-        }
-    }
-
-    private String readWebhookPath(JsonNode metadata, String workflowKey) {
-        JsonNode workflowPaths = metadata.path("workflowPaths");
-        if (!workflowPaths.isObject()) {
-            return null;
-        }
-        String value = workflowPaths.path(workflowKey).asText("");
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.startsWith("/") ? value : "/" + value;
+        };
     }
 }

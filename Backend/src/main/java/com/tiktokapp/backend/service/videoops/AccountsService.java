@@ -54,6 +54,7 @@ public class AccountsService {
     public AccountsOverviewResponse fetchOverview() {
         List<TikTokAccountResponse> tiktokAccounts = safelyFetchTikTokAccounts();
         List<ServiceConnectionResponse> serviceConnections = serviceConnectionRepository.findAllByOrderByProviderKeyAscActiveDescIdDesc().stream()
+                .filter(c -> c.getProviderKey() != ServiceConnectionProvider.N8N)
                 .map(this::toResponse)
                 .toList();
         return new AccountsOverviewResponse(
@@ -66,6 +67,7 @@ public class AccountsService {
     public AccountsReadinessResponse fetchReadiness() {
         List<TikTokAccountResponse> tiktokAccounts = safelyFetchTikTokAccounts();
         List<ServiceConnectionResponse> serviceConnections = serviceConnectionRepository.findAllByOrderByProviderKeyAscActiveDescIdDesc().stream()
+                .filter(c -> c.getProviderKey() != ServiceConnectionProvider.N8N)
                 .map(this::toResponse)
                 .toList();
         return buildReadiness(tiktokAccounts, serviceConnections);

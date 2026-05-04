@@ -404,7 +404,7 @@ export default function TikTokAccountsPage() {
           title: providerConfig.title,
           detail: target.displayName || target.accountIdentifier || providerConfig.title,
           status: deriveStatus(target),
-          kind: providerKey === 'N8N' ? 'OAuth' : 'API key',
+          kind: 'API key',
           expiresAt: target.expiresAt ?? null,
           lastUsedAt: target.lastUsedAt ?? target.lastValidatedAt ?? null,
           rateUsage: target.rateUsage ?? null,
@@ -454,7 +454,7 @@ export default function TikTokAccountsPage() {
       list.push({
         key: providerKey,
         title: providerConfig.title,
-        kind: providerKey === 'N8N' ? 'OAuth' : 'API key',
+        kind: 'API key',
       })
     })
     return list
@@ -467,8 +467,7 @@ export default function TikTokAccountsPage() {
     ? serviceForms[openModalProviderKey] || createEmptyServiceForm(null, openModalProviderKey)
     : null
   const isEditingExistingProfile = Boolean(activeForm?.connectionId)
-  const _activeProviderKind: 'OAuth' | 'API key' =
-    openModalProviderKey === 'N8N' ? 'OAuth' : 'API key'
+  const _activeProviderKind: 'OAuth' | 'API key' = 'API key'
 
   /* ====================================================================
      Render
@@ -896,12 +895,6 @@ export default function TikTokAccountsPage() {
                         }
                         placeholder={activeProviderConfig.defaultBaseUrl}
                       />
-                      {openModalProviderKey === 'N8N' ? (
-                        <small className="accounts-field-help">
-                          Cette URL devient la source de vérité pour les workflows backend. En Docker
-                          : <code>http://n8n:5678</code>.
-                        </small>
-                      ) : null}
                     </label>
                     <label className="tiktok-step-field">
                       <span>{activeProviderConfig.identifierLabel}</span>
@@ -922,11 +915,7 @@ export default function TikTokAccountsPage() {
                         onChange={(e) =>
                           updateServiceForm(openModalProviderKey, 'secretValue', e.target.value)
                         }
-                        placeholder={
-                          openModalProviderKey === 'N8N'
-                            ? 'Laisser vide sauf pour conserver une note secrète'
-                            : 'Coller le secret ici'
-                        }
+                        placeholder="Coller le secret ici"
                       />
                     </label>
                     <label className="tiktok-step-field accounts-service-form-wide">
@@ -939,12 +928,6 @@ export default function TikTokAccountsPage() {
                         }
                         placeholder={activeProviderConfig.metadataPlaceholder}
                       />
-                      {openModalProviderKey === 'N8N' ? (
-                        <small className="accounts-field-help">
-                          Optionnel. Utilise <code>workflowPaths</code> uniquement si tes webhooks
-                          n8n n'utilisent pas les chemins par défaut.
-                        </small>
-                      ) : null}
                     </label>
                   </div>
                 )}

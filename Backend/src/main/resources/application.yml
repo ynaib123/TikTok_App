@@ -44,6 +44,12 @@ app:
     idempotency-window-seconds: ${APP_VIDEO_OPS_IDEMPOTENCY_WINDOW_SECONDS:90}
     allowed-shotstack-hosts: ${APP_VIDEO_OPS_ALLOWED_SHOTSTACK_HOSTS:shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com}
     allowed-upload-hosts: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:open-upload.tiktokapis.com,open.tiktokapis.com,business-api.tiktok.com}
+    n8n:
+      base-url: ${APP_VIDEO_OPS_N8N_BASE_URL:http://localhost:5678}
+      main-pipeline-path: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_PATH:/webhook/fused-idea-script}
+      render-template-video-path: ${APP_VIDEO_OPS_N8N_RENDER_PATH:/webhook/render-template-video}
+      check-shotstack-path: ${APP_VIDEO_OPS_N8N_CHECK_PATH:/webhook/check-shotstack}
+      init-publish-tik-tok-path: ${APP_VIDEO_OPS_N8N_INIT_PUBLISH_PATH:/webhook/init-publish-tiktok}
   alerting:
     enabled: ${APP_ALERTING_ENABLED:true}
     slack-webhook-url: ${APP_ALERTING_SLACK_WEBHOOK_URL:}

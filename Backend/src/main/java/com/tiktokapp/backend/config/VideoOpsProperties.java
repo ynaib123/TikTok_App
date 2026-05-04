@@ -32,6 +32,29 @@ public class VideoOpsProperties {
             "business-api.tiktok.com"
     ));
 
+    private final N8n n8n = new N8n();
+
+    public N8n getN8n() { return n8n; }
+
+    public static class N8n {
+        private String baseUrl = "http://localhost:5678";
+        private String mainPipelinePath = "/webhook/fused-idea-script";
+        private String renderTemplateVideoPath = "/webhook/render-template-video";
+        private String checkShotstackPath = "/webhook/check-shotstack";
+        private String initPublishTikTokPath = "/webhook/init-publish-tiktok";
+
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String v) { this.baseUrl = v; }
+        public String getMainPipelinePath() { return mainPipelinePath; }
+        public void setMainPipelinePath(String v) { this.mainPipelinePath = v; }
+        public String getRenderTemplateVideoPath() { return renderTemplateVideoPath; }
+        public void setRenderTemplateVideoPath(String v) { this.renderTemplateVideoPath = v; }
+        public String getCheckShotstackPath() { return checkShotstackPath; }
+        public void setCheckShotstackPath(String v) { this.checkShotstackPath = v; }
+        public String getInitPublishTikTokPath() { return initPublishTikTokPath; }
+        public void setInitPublishTikTokPath(String v) { this.initPublishTikTokPath = v; }
+    }
+
     public String getTiktokClientKey() {
         return tiktokClientKey;
     }
