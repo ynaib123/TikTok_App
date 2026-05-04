@@ -66,8 +66,10 @@ export function useCreationStep({
 
       // Fused workflow PATCHes script content directly on the idea row.
       // Poll the idea content (not pipelineStage) so we don't depend on
-      // the backend state-machine being up to date.
-      const scriptedIdea = await waitForScriptGeneration(idea.id, idea)
+      // the backend state-machine being up to date. Pass baseline=null so
+      // we return as soon as the row has script content, even if waitForNewIdeas
+      // already saw it (race when the workflow finishes faster than the poll loop).
+      const scriptedIdea = await waitForScriptGeneration(idea.id, null)
 
       setScriptedIdea(scriptedIdea)
       setGeneratedIdeas(() => [scriptedIdea])
