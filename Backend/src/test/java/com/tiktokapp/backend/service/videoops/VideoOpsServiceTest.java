@@ -58,10 +58,24 @@ class VideoOpsServiceTest {
     @Mock
     private VideoPipelineEventRepository eventRepository;
 
+    @Mock
+    private VideoOpsRunPersistenceHelper runPersistenceHelper;
+
     @Test
     void triggerMainPipelineSendsCategoryAndIdeaCountToN8n() {
         VideoOpsProperties properties = new VideoOpsProperties();
         properties.setIdempotencyWindowSeconds(120);
+
+        doAnswer(invocation -> {
+            VideoWorkflowRun run = invocation.getArgument(0);
+            if (run.getId() == null) {
+                ReflectionTestUtils.setField(run, "id", 21L);
+            }
+            if (run.getCreatedAt() == null) {
+                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
+            }
+            return run;
+        }).when(runPersistenceHelper).saveAndCommit(any(VideoWorkflowRun.class));
 
         doAnswer(invocation -> {
             VideoWorkflowRun run = invocation.getArgument(0);
@@ -91,7 +105,8 @@ class VideoOpsServiceTest {
                 workflowRunRepository,
                 eventRepository,
                 properties,
-                new ObjectMapper()
+                new ObjectMapper(),
+                runPersistenceHelper
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -111,6 +126,17 @@ class VideoOpsServiceTest {
     void checkShotstackMarksRunSucceededWhenRenderIsAlreadyReady() {
         VideoOpsProperties properties = new VideoOpsProperties();
         properties.setIdempotencyWindowSeconds(120);
+
+        doAnswer(invocation -> {
+            VideoWorkflowRun run = invocation.getArgument(0);
+            if (run.getId() == null) {
+                ReflectionTestUtils.setField(run, "id", 12L);
+            }
+            if (run.getCreatedAt() == null) {
+                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
+            }
+            return run;
+        }).when(runPersistenceHelper).saveAndCommit(any(VideoWorkflowRun.class));
 
         doAnswer(invocation -> {
             VideoWorkflowRun run = invocation.getArgument(0);
@@ -141,7 +167,8 @@ class VideoOpsServiceTest {
                 workflowRunRepository,
                 eventRepository,
                 properties,
-                new ObjectMapper()
+                new ObjectMapper(),
+                runPersistenceHelper
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -171,6 +198,17 @@ class VideoOpsServiceTest {
                 ReflectionTestUtils.setField(run, "createdAt", Instant.now());
             }
             return run;
+        }).when(runPersistenceHelper).saveAndCommit(any(VideoWorkflowRun.class));
+
+        doAnswer(invocation -> {
+            VideoWorkflowRun run = invocation.getArgument(0);
+            if (run.getId() == null) {
+                ReflectionTestUtils.setField(run, "id", 34L);
+            }
+            if (run.getCreatedAt() == null) {
+                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
+            }
+            return run;
         }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
 
         when(workflowRunRepository.countByContentIdeaIdAndWorkflowType(19L, VideoWorkflowType.RENDER_TEMPLATE_VIDEO))
@@ -188,7 +226,8 @@ class VideoOpsServiceTest {
                 workflowRunRepository,
                 eventRepository,
                 properties,
-                new ObjectMapper()
+                new ObjectMapper(),
+                runPersistenceHelper
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();

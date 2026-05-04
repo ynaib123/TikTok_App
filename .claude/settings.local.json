@@ -90,7 +90,8 @@
       "Bash(curl -s -w '\\\\n%{http_code}' -X POST http://localhost:5678/webhook/script-generation -H 'Content-Type: application/json' -d '{\"contentIdeaId\": 41, \"topic\": \"Les meilleurs astuces cuisine\", \"category\": \"Food\", \"workflowRunId\": 9999}')",
       "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:5678/webhook/__TRACKED_VAR__ -H 'Content-Type: application/json' -d '{\"test\":true}')",
       "Bash(curl -s 'http://localhost:5678/api/v1/workflows?active=true' -H 'X-N8N-API-KEY: __TRACKED_VAR__')",
-      "Bash(docker-compose -f /c/TikTok_App/docker-compose.yml restart n8n)"
+      "Bash(docker-compose -f /c/TikTok_App/docker-compose.yml restart n8n)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }

@@ -63,6 +63,7 @@ public class VideoOpsService {
     private final VideoPipelineEventRepository eventRepository;
     private final VideoOpsProperties properties;
     private final ObjectMapper objectMapper;
+    private final VideoOpsRunPersistenceHelper runPersistenceHelper;
 
     public VideoOpsService(
             SupabaseVideoOpsGateway supabaseGateway,
@@ -74,7 +75,8 @@ public class VideoOpsService {
             VideoWorkflowRunRepository workflowRunRepository,
             VideoPipelineEventRepository eventRepository,
             VideoOpsProperties properties,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            VideoOpsRunPersistenceHelper runPersistenceHelper
     ) {
         this.supabaseGateway = supabaseGateway;
         this.n8nWorkflowGateway = n8nWorkflowGateway;
@@ -86,6 +88,7 @@ public class VideoOpsService {
         this.eventRepository = eventRepository;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.runPersistenceHelper = runPersistenceHelper;
     }
 
     @Transactional(readOnly = true)
@@ -763,7 +766,7 @@ public class VideoOpsService {
         run.setAttemptNumber(attemptNumber);
         run.setIdempotencyKey(buildIdempotencyKey(contentIdeaId, workflowType));
         run.setRequestPayload(json(payload));
-        return workflowRunRepository.save(run);
+        return runPersistenceHelper.saveAndCommit(run);
     }
 
     private String buildIdempotencyKey(Long contentIdeaId, VideoWorkflowType workflowType) {
