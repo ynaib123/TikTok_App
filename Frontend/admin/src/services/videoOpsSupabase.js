@@ -230,10 +230,6 @@ export async function triggerMainContentPipeline(payload = {}) {
   return apiPost('/video-ops/workflows/main-pipeline', payload)
 }
 
-export async function triggerScriptGenerationWorkflow(payload = {}) {
-  return apiPost('/video-ops/workflows/script-generation', payload)
-}
-
 export async function triggerCheckShotstackWorkflow(payload = {}) {
   return apiPost('/video-ops/workflows/check-shotstack', payload)
 }

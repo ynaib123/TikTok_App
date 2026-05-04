@@ -3,6 +3,8 @@ package com.tiktokapp.backend.service.videoops;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
+import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.tiktokapp.backend.model.VideoWorkflowRun;
 import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
@@ -256,5 +258,47 @@ class VideoOpsServiceTest {
         assertEquals(34L, response.getRunId());
         assertEquals("ACCEPTED", response.getStatus());
         verify(n8nWorkflowGateway).trigger(eq(VideoWorkflowType.RENDER_TEMPLATE_VIDEO), any());
+    }
+
+    @Test
+    void completeWorkflowRunAcceptsLegacySuccessAliasesFromN8n() {
+        VideoOpsProperties properties = new VideoOpsProperties();
+        properties.setIdempotencyWindowSeconds(120);
+
+        VideoWorkflowRun existingRun = new VideoWorkflowRun();
+        ReflectionTestUtils.setField(existingRun, "id", 77L);
+        ReflectionTestUtils.setField(existingRun, "createdAt", Instant.now());
+        existingRun.setContentIdeaId(19L);
+        existingRun.setWorkflowType(VideoWorkflowType.RENDER_TEMPLATE_VIDEO);
+        existingRun.setStatus(VideoWorkflowRunStatus.ACCEPTED);
+        existingRun.setAttemptNumber(1);
+
+        when(workflowRunRepository.findById(77L)).thenReturn(Optional.of(existingRun));
+        when(workflowRunRepository.save(any(VideoWorkflowRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VideoOpsService service = new VideoOpsService(
+                supabaseGateway,
+                contentIdeaRepository,
+                n8nWorkflowGateway,
+                videoOpsInternalProxyService,
+                tikTokUploadService,
+                callbackAuthService,
+                pipelineStateRepository,
+                workflowRunRepository,
+                eventRepository,
+                properties,
+                new ObjectMapper(),
+                runPersistenceHelper
+        );
+
+        VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
+        request.setStatus("rendering_requested");
+        request.setMessage("Render demande a Shotstack.");
+        request.setResponsePayload("{\"contentIdeaId\":19,\"shotstackRenderId\":\"render-xyz\"}");
+
+        VideoWorkflowRunDetailResponse response = service.completeWorkflowRun(77L, request);
+
+        assertEquals("SUCCEEDED", response.getStatus());
+        verify(workflowRunRepository).save(any(VideoWorkflowRun.class));
     }
 }

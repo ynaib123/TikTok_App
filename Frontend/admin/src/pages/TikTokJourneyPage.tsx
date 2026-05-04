@@ -22,7 +22,6 @@ import {
   triggerMainContentPipeline,
   triggerPublishTikTokWorkflow,
   triggerRenderTemplateWorkflow,
-  triggerScriptGenerationWorkflow,
 } from '../services/n8nClient'
 import {
   fetchContentIdeaByIdFromPages,
@@ -281,7 +280,6 @@ export default function TikTokJourneyPage() {
     fetchContentIdeaById: fetchContentIdeaByIdFromPages,
     fetchRecentContentIdeas,
     triggerMainContentPipeline,
-    triggerScriptGenerationWorkflow,
     refreshPipelineData,
     resetGeneratedIdeasState,
     setGeneratedIdeas,
@@ -292,7 +290,6 @@ export default function TikTokJourneyPage() {
     setLastGenerationBaselineId,
     setLastGenerationExpectedCount,
     waitForNewIdeas: workflowMonitor.waitForNewIdeas,
-    waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,
     waitForContentIdeaStatus: workflowMonitor.waitForContentIdeaStatus,
     waitForScriptGeneration: workflowMonitor.waitForScriptGeneration,
     showSuccess,
@@ -531,7 +528,6 @@ export default function TikTokJourneyPage() {
               handleGenerateIdea={safeHandleGenerateIdea}
               handlePrepareUpload={handlePrepareUpload}
               handlePublishVideo={handlePublishVideo}
-              handleRegenerateScript={safeHandleGenerateIdea}
               handleRetryInitPublish={safeHandleRetryInitPublish}
               handleUploadVideo={handleUploadVideo}
               handleValidateCreation={handleValidateCreation}

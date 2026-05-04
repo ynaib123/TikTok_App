@@ -322,14 +322,6 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.triggerMainPipeline(request == null ? new WorkflowTriggerRequest() : request, authentication.getName()));
     }
 
-    @PostMapping("/workflows/script-generation")
-    public ResponseEntity<VideoWorkflowActionResponse> triggerScriptGeneration(
-            @Valid @RequestBody WorkflowTriggerRequest request,
-            Authentication authentication
-    ) {
-        return ResponseEntity.ok(videoOpsService.triggerScriptGeneration(request, authentication.getName()));
-    }
-
     @PostMapping("/workflows/check-shotstack")
     public ResponseEntity<VideoWorkflowActionResponse> triggerCheckShotstack(
             @Valid @RequestBody WorkflowTriggerRequest request,

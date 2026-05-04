@@ -1,6 +1,5 @@
 export {
   triggerCheckShotstackWorkflow,
-  triggerScriptGenerationWorkflow,
   triggerRenderTemplateWorkflow,
   triggerMainContentPipeline,
   triggerPublishTikTokWorkflow,

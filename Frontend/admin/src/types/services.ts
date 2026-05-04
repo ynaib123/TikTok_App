@@ -48,7 +48,7 @@ export const SERVICE_CONNECTION_FIELDS: Record<ServiceProvider, ServiceProviderF
     identifierLabel: 'Workspace / owner',
     secretLabel: 'Secret optionnel',
     defaultBaseUrl: 'http://n8n:5678',
-    metadataPlaceholder: '{"workflowPaths":{"mainPipeline":"/webhook/creation-ideas","scriptGeneration":"/webhook/script-generation","checkShotstack":"/webhook/check-shotstack","renderTemplateVideo":"/webhook/render-template-video","initPublishTikTok":"/webhook/init-publish-tiktok"}}',
+    metadataPlaceholder: '{"workflowPaths":{"mainPipeline":"/webhook/fused-idea-script","checkShotstack":"/webhook/check-shotstack","renderTemplateVideo":"/webhook/render-template-video","initPublishTikTok":"/webhook/init-publish-tiktok"}}',
     sourceLabel: 'Profil actif en base',
   },
   GROQ: {

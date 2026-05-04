@@ -42,7 +42,6 @@ interface TikTokStepScreenProps {
   handleGenerateIdea: () => Promise<void> | void
   handlePrepareUpload: () => Promise<void> | void
   handlePublishVideo: () => Promise<void> | void
-  handleRegenerateScript: () => Promise<void> | void
   handleRetryInitPublish: () => Promise<void> | void
   handleUploadVideo: () => Promise<void> | void
   handleValidateCreation: () => Promise<void> | void

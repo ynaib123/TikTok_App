@@ -345,12 +345,6 @@ public class VideoOpsService {
     }
 
     @Transactional
-    public VideoWorkflowActionResponse triggerScriptGeneration(WorkflowTriggerRequest request, String requestedByEmail) {
-        Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour le script.");
-        return triggerWorkflow(VideoWorkflowType.SCRIPT_GENERATION, contentIdeaId, request, requestedByEmail, VideoOpsStateMachine.requestedStage(VideoWorkflowType.SCRIPT_GENERATION));
-    }
-
-    @Transactional
     public VideoWorkflowActionResponse triggerCheckShotstack(WorkflowTriggerRequest request, String requestedByEmail) {
         Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour verifier le rendu.");
         JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
@@ -533,16 +527,7 @@ public class VideoOpsService {
         VideoWorkflowRun run = workflowRunRepository.findById(runId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
 
-        VideoWorkflowRunStatus nextStatus;
-        try {
-            nextStatus = VideoWorkflowRunStatus.valueOf(String.valueOf(request.getStatus()).trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow invalide.");
-        }
-
-        if (nextStatus != VideoWorkflowRunStatus.SUCCEEDED && nextStatus != VideoWorkflowRunStatus.FAILED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow doit etre SUCCEEDED ou FAILED.");
-        }
+        VideoWorkflowRunStatus nextStatus = normalizeWorkflowCompletionStatus(request.getStatus());
 
         run.setStatus(nextStatus);
         run.setCompletedAt(Instant.now());
@@ -583,6 +568,26 @@ public class VideoOpsService {
         workflowRunRepository.save(run);
 
         return fetchWorkflowRun(runId);
+    }
+
+    private VideoWorkflowRunStatus normalizeWorkflowCompletionStatus(String rawStatus) {
+        String normalizedStatus = trimToNull(rawStatus);
+        if (normalizedStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow invalide.");
+        }
+
+        String canonical = normalizedStatus
+                .trim()
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase(Locale.ROOT);
+
+        return switch (canonical) {
+            case "SUCCEEDED", "SUCCESS", "COMPLETED", "COMPLETE", "DONE", "OK",
+                    "SCRIPT_READY", "RENDERING_REQUESTED", "RENDER_READY", "INIT_DONE" -> VideoWorkflowRunStatus.SUCCEEDED;
+            case "FAILED", "FAIL", "ERROR" -> VideoWorkflowRunStatus.FAILED;
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow doit etre SUCCEEDED ou FAILED.");
+        };
     }
 
     public void validateWorkflowCallbackRequest(String method, String path, String body, String timestamp, String signature, String legacySecret) {

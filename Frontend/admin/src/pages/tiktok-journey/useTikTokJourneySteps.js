@@ -12,7 +12,6 @@ export function useCreationStep({
   fetchContentIdeaById,
   fetchRecentContentIdeas,
   triggerMainContentPipeline,
-  triggerScriptGenerationWorkflow,
   refreshPipelineData,
   resetGeneratedIdeasState,
   setGeneratedIdeas,
@@ -23,7 +22,6 @@ export function useCreationStep({
   setLastGenerationBaselineId,
   setLastGenerationExpectedCount,
   waitForNewIdeas,
-  waitForWorkflowRunCompletion,
   waitForContentIdeaStatus,
   waitForScriptGeneration,
   showSuccess,
@@ -47,72 +45,44 @@ export function useCreationStep({
     setLastGenerationBaselineId(baselineMaxId)
     setLastGenerationExpectedCount(requestedCount)
 
-    const generationRequests = Array.from({ length: requestedCount }, (_, index) => (
-      triggerMainContentPipeline({
-        source: `backoffice-tiktok-step-creation-${Date.now()}-${index + 1}`,
-        ideaCount: 1,
-        category: requestedCategory,
-        tiktokAccountOpenId: String(connectedTikTokAccount?.openId || '').trim() || null,
-        force: shouldForceGeneration,
-      })
-    ))
+    const workflowResponse = await triggerMainContentPipeline({
+      source: `backoffice-tiktok-step-creation-${Date.now()}`,
+      ideaCount: 1,
+      category: requestedCategory,
+      tiktokAccountOpenId: String(connectedTikTokAccount?.openId || '').trim() || null,
+      force: shouldForceGeneration,
+    })
 
-    const workflowResponses = await Promise.all(generationRequests)
     markWorkflowStarted({
-      runId: workflowResponses[0]?.runId || null,
-      workflowType: workflowResponses[0]?.workflowType || 'MAIN_PIPELINE',
-      message: 'Generation de l idee en cours.',
+      runId: workflowResponse?.runId || null,
+      workflowType: workflowResponse?.workflowType || 'MAIN_PIPELINE',
+      message: 'Generation de l idee + script en cours.',
     })
 
     try {
       const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
+      const idea = nextIdeas[0]
       setGeneratedIdeas(nextIdeas)
-      setSelectedGeneratedIdeaId(nextIdeas[0]?.id || null)
+      setSelectedGeneratedIdeaId(idea?.id || null)
       setManualAction(null)
       setUploadResult(null)
-      await refreshPipelineData()
-      markWorkflowFinished({
-        runId: workflowResponses[0]?.runId || null,
-        workflowType: workflowResponses[0]?.workflowType || 'MAIN_PIPELINE',
-        contentIdeaId: nextIdeas[0]?.id || null,
-        state: 'succeeded',
-        message: 'Idee generee. Script en cours.',
-      })
 
-      const idea = nextIdeas[0]
-      const scriptWorkflowRun = await triggerScriptGenerationWorkflow({
-        source: 'backoffice-tiktok-step-creation-script',
-        contentIdeaId: idea.id,
-        topic: idea.topic,
-        category: idea.category,
-      })
-      markWorkflowStarted({
-        runId: scriptWorkflowRun?.runId,
-        workflowType: scriptWorkflowRun?.workflowType || 'CHECK_SHOTSTACK',
-        contentIdeaId: idea.id,
-        message: 'Generation du script en cours.',
-      })
-
-      const completedRun = await waitForWorkflowRunCompletion(scriptWorkflowRun?.runId, 60 * 1000)
-      let nextScriptedIdea = null
-
-      if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-        const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'SCRIPT_READY', 12_000)
-        if (status?.pipelineStage === 'SCRIPT_READY') {
-          nextScriptedIdea = await fetchContentIdeaById(idea.id)
-        }
+      // Fused workflow produces both idea and script. Wait until SCRIPT_READY then refresh.
+      let scriptedIdea = null
+      const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'SCRIPT_READY', 30_000)
+      if (status?.pipelineStage === 'SCRIPT_READY') {
+        scriptedIdea = await fetchContentIdeaById(idea.id)
+      }
+      if (!scriptedIdea || !hasScriptGenerationResult(scriptedIdea)) {
+        scriptedIdea = await waitForScriptGeneration(idea.id, idea)
       }
 
-      if (!nextScriptedIdea || !hasScriptGenerationResult(nextScriptedIdea)) {
-        nextScriptedIdea = await waitForScriptGeneration(idea.id, idea)
-      }
-
-      setScriptedIdea(nextScriptedIdea)
-      setGeneratedIdeas(() => [nextScriptedIdea])
+      setScriptedIdea(scriptedIdea)
+      setGeneratedIdeas(() => [scriptedIdea])
       await refreshPipelineData()
       markWorkflowFinished({
-        runId: scriptWorkflowRun?.runId,
-        workflowType: scriptWorkflowRun?.workflowType || 'CHECK_SHOTSTACK',
+        runId: workflowResponse?.runId || null,
+        workflowType: workflowResponse?.workflowType || 'MAIN_PIPELINE',
         contentIdeaId: idea.id,
         state: 'succeeded',
         message: 'Idee et script generes.',
@@ -120,8 +90,8 @@ export function useCreationStep({
       showSuccess('Idee et script generes. Tu peux la regenerer ou valider pour passer a la video.')
     } catch (error) {
       markWorkflowFinished({
-        runId: workflowResponses[0]?.runId || null,
-        workflowType: workflowResponses[0]?.workflowType || 'MAIN_PIPELINE',
+        runId: workflowResponse?.runId || null,
+        workflowType: workflowResponse?.workflowType || 'MAIN_PIPELINE',
         state: 'failed',
         message: error?.message || "La generation n'a pas abouti.",
       })
@@ -132,92 +102,6 @@ export function useCreationStep({
   })
 
   return { handleGenerateIdea }
-}
-
-export function useScriptStep({
-  selectedGeneratedIdea,
-  goToStep,
-  triggerScriptGenerationWorkflow,
-  fetchContentIdeaById,
-  waitForWorkflowRunCompletion,
-  waitForContentIdeaStatus,
-  waitForScriptGeneration,
-  refreshPipelineData,
-  setScriptedIdea,
-  setGeneratedIdeas,
-  showSuccess,
-  showError,
-  runAction,
-  markWorkflowStarted,
-  markWorkflowFinished,
-}) {
-  const runScriptWorkflow = async ({ idea, source, force = false, successMessage }) => runAction('generateScript', async () => {
-    if (!idea?.id) {
-      throw new Error('Aucune idee disponible pour cette action.')
-    }
-
-    const workflowRun = await triggerScriptGenerationWorkflow({
-      source,
-      contentIdeaId: idea.id,
-      topic: idea.topic,
-      category: idea.category,
-      force,
-    })
-    markWorkflowStarted({
-      runId: workflowRun?.runId,
-      workflowType: workflowRun?.workflowType || 'CHECK_SHOTSTACK',
-      contentIdeaId: idea.id,
-      message: 'Generation du script en cours.',
-    })
-
-    const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 60 * 1000)
-    let nextScriptedIdea = null
-
-    if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-      const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'SCRIPT_READY', 12_000)
-      if (status?.pipelineStage === 'SCRIPT_READY') {
-        nextScriptedIdea = await fetchContentIdeaById(idea.id)
-      }
-    }
-
-    if (!nextScriptedIdea || !hasScriptGenerationResult(nextScriptedIdea)) {
-      nextScriptedIdea = await waitForScriptGeneration(idea.id, idea)
-    }
-
-    setScriptedIdea(nextScriptedIdea)
-    setGeneratedIdeas((currentIdeas) => mergeIdeasById(currentIdeas, [nextScriptedIdea]))
-    await refreshPipelineData()
-    markWorkflowFinished({
-      runId: workflowRun?.runId,
-      workflowType: workflowRun?.workflowType || 'CHECK_SHOTSTACK',
-      contentIdeaId: idea.id,
-      state: 'succeeded',
-      message: 'Script, caption et keyword disponibles.',
-    })
-    showSuccess(successMessage)
-  }).catch((error) => {
-    showError(error, "La generation script n'a pas abouti.")
-  })
-
-  const handleValidateCreation = async () => {
-    if (!selectedGeneratedIdea?.id) {
-      showError(new Error('Genere une idee avant de valider cette etape.'), 'Genere une idee avant de valider cette etape.')
-      return
-    }
-    goToStep('init-publish')
-  }
-
-  const handleRegenerateScript = async () => {
-    const idea = selectedGeneratedIdea
-    await runScriptWorkflow({
-      idea,
-      source: 'backoffice-tiktok-step-regenerate-script',
-      force: true,
-      successMessage: 'Script regenere avec succes.',
-    })
-  }
-
-  return { handleValidateCreation, handleRegenerateScript }
 }
 
 export function useRenderStep({

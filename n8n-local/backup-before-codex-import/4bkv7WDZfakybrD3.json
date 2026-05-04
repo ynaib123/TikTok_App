@@ -1,7 +1,11 @@
 {
+  "updatedAt": "2026-05-04T00:59:15.621Z",
+  "createdAt": "2026-05-04T00:59:15.621Z",
+  "id": "4bkv7WDZfakybrD3",
   "name": "script-generation-maintainable",
   "description": "Script generation with reduced critical logic and clear error paths",
   "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -14,17 +18,36 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "script-webhook"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"name": "contentIdeaId", "value": "={{ Number($json.body?.contentIdeaId || $json.contentIdeaId || 0) }}", "type": "number"},
-            {"name": "topic", "value": "={{ String($json.body?.topic || $json.topic || '').trim() }}", "type": "string"},
-            {"name": "category", "value": "={{ String($json.body?.category || $json.category || '').trim().replace(/^null$/i, '') }}", "type": "string"},
-            {"name": "workflowRunId", "value": "={{ Number($json.body?.workflowRunId || $json.workflowRunId || 0) }}", "type": "number"}
+            {
+              "name": "contentIdeaId",
+              "value": "={{ Number($json.body?.contentIdeaId || $json.contentIdeaId || 0) }}",
+              "type": "number"
+            },
+            {
+              "name": "topic",
+              "value": "={{ String($json.body?.topic || $json.topic || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "name": "category",
+              "value": "={{ String($json.body?.category || $json.category || '').trim().replace(/^null$/i, '') }}",
+              "type": "string"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ Number($json.body?.workflowRunId || $json.workflowRunId || 0) }}",
+              "type": "number"
+            }
           ]
         },
         "options": {}
@@ -33,35 +56,54 @@
       "name": "Extract Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "cond1",
               "leftValue": "={{ Number($json.contentIdeaId || 0) > 0 }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             },
             {
               "id": "cond2",
               "leftValue": "={{ !!($json.topic && $json.topic.length > 0) }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             },
             {
               "id": "cond3",
               "leftValue": "={{ !!($json.category && $json.category.length > 0) }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             },
             {
               "id": "cond4",
               "leftValue": "={{ Number($json.workflowRunId || 0) > 0 }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             }
           ],
@@ -73,7 +115,10 @@
       "name": "Validate Inputs",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -82,15 +127,25 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "Content-Type", "value": "application/json"},
-            {"name": "Authorization", "value": "={{ 'Bearer ' + $env.GROQ_API_KEY }}"}
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GROQ_API_KEY }}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.6, max_tokens: 500, messages: [ { role: 'system', content: 'Tu es un expert en création de contenu viral TikTok. Tu generes des scripts courts, punchant et optimisés pour mobile. Retourne UNIQUEMENT un JSON valide sans markdown.' }, { role: 'user', content: 'Categorie: ' + $json.category + '\\nTopic: ' + $json.topic + '\\n\\nGenere un script TikTok professionnel:\\n- Script: 1-3 phrases courtes et impactantes, francais naturel et conversationnel\\n- Caption: 1-2 phrases accrochantes avec 2-3 hashtags pertinents\\n- Hook: une premiere phrase engageante pour accrocher en 1s\\n- Tone: professionnel mais accessible\\n\\nRetourne ce JSON exactement:\\n{\"script\":\"...\",\"caption\":\"...\",\"hook\":\"...\",\"background_keyword\":\"...\"}' } ] }) }}",
         "options": {
-          "retry": {"maxRetries": 2, "delayMultiplier": 2, "initialDelay": 1000},
+          "retry": {
+            "maxRetries": 2,
+            "delayMultiplier": 2,
+            "initialDelay": 1000
+          },
           "timeout": 30000
         }
       },
@@ -98,7 +153,10 @@
       "name": "Call Groq API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [720, 0],
+      "position": [
+        720,
+        0
+      ],
       "onError": "continueErrorOutput"
     },
     {
@@ -109,18 +167,45 @@
       "name": "Parse LLM Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 0]
+      "position": [
+        960,
+        0
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"name": "script", "value": "={{ String($json.script || '').trim().slice(0, 300) }}", "type": "string"},
-            {"name": "caption", "value": "={{ String($json.caption || '').trim().slice(0, 150) }}", "type": "string"},
-            {"name": "hook", "value": "={{ String($json.hook || '').trim().slice(0, 100) }}", "type": "string"},
-            {"name": "background_keyword", "value": "={{ String($json.background_keyword || '').trim().slice(0, 50) }}", "type": "string"},
-            {"name": "contentIdeaId", "value": "={{ $('Extract Input').item.json.contentIdeaId }}", "type": "number"},
-            {"name": "workflowRunId", "value": "={{ $('Extract Input').item.json.workflowRunId }}", "type": "number"}
+            {
+              "name": "script",
+              "value": "={{ String($json.script || '').trim().slice(0, 300) }}",
+              "type": "string"
+            },
+            {
+              "name": "caption",
+              "value": "={{ String($json.caption || '').trim().slice(0, 150) }}",
+              "type": "string"
+            },
+            {
+              "name": "hook",
+              "value": "={{ String($json.hook || '').trim().slice(0, 100) }}",
+              "type": "string"
+            },
+            {
+              "name": "background_keyword",
+              "value": "={{ String($json.background_keyword || '').trim().slice(0, 50) }}",
+              "type": "string"
+            },
+            {
+              "name": "contentIdeaId",
+              "value": "={{ $('Extract Input').item.json.contentIdeaId }}",
+              "type": "number"
+            },
+            {
+              "name": "workflowRunId",
+              "value": "={{ $('Extract Input').item.json.workflowRunId }}",
+              "type": "number"
+            }
           ]
         },
         "options": {}
@@ -129,29 +214,45 @@
       "name": "Normalize Output",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "script_length",
               "leftValue": "={{ ($json.script || '').length >= 10 }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             },
             {
               "id": "caption_length",
               "leftValue": "={{ ($json.caption || '').length >= 5 }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             },
             {
               "id": "hook_length",
               "leftValue": "={{ ($json.hook || '').length >= 5 }}",
-              "operator": {"type": "boolean", "operation": "equals"},
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
               "rightValue": true
             }
           ],
@@ -163,7 +264,10 @@
       "name": "Validate Output Quality",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1440, 0]
+      "position": [
+        1440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -172,15 +276,25 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "Content-Type", "value": "application/json"},
-            {"name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"}
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Video-Ops-Internal-Secret",
+              "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ scripts: $json.script, script_status: 'done', script_hook: $json.hook, caption: $json.caption, background_keyword: $json.background_keyword, pipeline_status: 'script_ready', llm_model: 'llama-3.3-70b-versatile' }) }}",
         "options": {
-          "retry": {"maxRetries": 2, "delayMultiplier": 2, "initialDelay": 1000},
+          "retry": {
+            "maxRetries": 2,
+            "delayMultiplier": 2,
+            "initialDelay": 1000
+          },
           "timeout": 20000
         }
       },
@@ -188,20 +302,28 @@
       "name": "Save to Backend",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [1680, 0],
+      "position": [
+        1680,
+        0
+      ],
       "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { ok: true, contentIdeaId: $('Normalize Output').item.json.contentIdeaId, status: 'script_ready', hook: $('Normalize Output').item.json.hook, script_length: ($('Normalize Output').item.json.script || '').length } }}",
-        "options": {"responseCode": 200}
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "respond-success",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [1920, 0]
+      "position": [
+        1920,
+        0
+      ]
     },
     {
       "parameters": {
@@ -211,7 +333,10 @@
       "name": "Callback Success",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2160, 0]
+      "position": [
+        2160,
+        0
+      ]
     },
     {
       "parameters": {
@@ -221,7 +346,10 @@
       "name": "Prepare Error Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 200]
+      "position": [
+        480,
+        200
+      ]
     },
     {
       "parameters": {
@@ -231,31 +359,44 @@
       "name": "Callback Error Handler",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 200]
+      "position": [
+        720,
+        200
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { ok: false, error: $json.error, action: 'check_logs_and_retry' } }}",
-        "options": {"responseCode": 500}
+        "options": {
+          "responseCode": 500
+        }
       },
       "id": "respond-error",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [960, 200]
+      "position": [
+        960,
+        200
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { ok: false, error: 'Script quality failed (too short)', contentIdeaId: $json.contentIdeaId, action: 'review_llm_quality' } }}",
-        "options": {"responseCode": 422}
+        "options": {
+          "responseCode": 422
+        }
       },
       "id": "respond-quality-error",
       "name": "Respond Quality Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [1440, 200]
+      "position": [
+        1440,
+        200
+      ]
     },
     {
       "parameters": {
@@ -265,55 +406,200 @@
       "name": "Callback Quality Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1440, 400]
+      "position": [
+        1440,
+        400
+      ]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{"node": "Extract Input", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Extract Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract Input": {
-      "main": [[{"node": "Validate Inputs", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Validate Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Validate Inputs": {
-      "main": [[{"node": "Call Groq API", "type": "main", "index": 0}], [{"node": "Prepare Error Context", "type": "main", "index": 0}]],
-      "error": [[{"node": "Prepare Error Context", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Call Groq API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Prepare Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Call Groq API": {
       "main": [
-        [{"node": "Parse LLM Response", "type": "main", "index": 0}],
-        [{"node": "Prepare Error Context", "type": "main", "index": 0}]
+        [
+          {
+            "node": "Parse LLM Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse LLM Response": {
-      "main": [[{"node": "Normalize Output", "type": "main", "index": 0}]],
-      "error": [[{"node": "Prepare Error Context", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Normalize Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Prepare Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalize Output": {
-      "main": [[{"node": "Validate Output Quality", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Validate Output Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Validate Output Quality": {
-      "main": [[{"node": "Save to Backend", "type": "main", "index": 0}], [{"node": "Callback Quality Error", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Save to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback Quality Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Save to Backend": {
       "main": [
-        [{"node": "Respond Success", "type": "main", "index": 0}],
-        [{"node": "Prepare Error Context", "type": "main", "index": 0}]
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Respond Success": {
-      "main": [[{"node": "Callback Success", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Callback Success": {
       "main": [],
-      "error": [[{"node": "Prepare Error Context", "type": "main", "index": 0}]]
+      "error": [
+        [
+          {
+            "node": "Prepare Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Error Context": {
-      "main": [[{"node": "Callback Error Handler", "type": "main", "index": 0}]],
-      "error": [[{"node": "Respond Error", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Callback Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Callback Error Handler": {
-      "main": [[{"node": "Respond Error", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Respond Error": {
       "main": []
@@ -322,10 +608,52 @@
       "main": []
     },
     "Callback Quality Error": {
-      "main": [[{"node": "Respond Quality Error", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Respond Quality Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": {"executionOrder": "v1", "binaryMode": "separate"},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "pinData": {},
-  "meta": {"templateCredsSetupCompleted": true}
+  "versionId": "ada4547c-8ea2-4e32-966e-2ce28f6d43c7",
+  "activeVersionId": "ada4547c-8ea2-4e32-966e-2ce28f6d43c7",
+  "versionCounter": 13,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-04T00:59:15.645Z",
+      "createdAt": "2026-05-04T00:59:15.645Z",
+      "role": "workflow:owner",
+      "workflowId": "4bkv7WDZfakybrD3",
+      "projectId": "FguAIXCXAEmDp8ri",
+      "project": {
+        "updatedAt": "2026-04-30T01:59:12.417Z",
+        "createdAt": "2026-04-30T01:11:03.676Z",
+        "id": "FguAIXCXAEmDp8ri",
+        "name": "naib youssef <youssefnaib47@icloud.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "decd1a7a-b0c1-416f-86c4-a90b89c828b7"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
 }
