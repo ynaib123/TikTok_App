@@ -236,57 +236,46 @@ function AccountSideCard({
   )
 }
 
-/* ── Footer accordion (activity log) ─────────────────────────────────── */
+/* ── Side-card: live activity log ─────────────────────────────────────── */
 
-function FooterAccordion({ log, stateLabel, stateClass }: {
+function ActivitySideCard({ log, stateLabel, stateClass }: {
   log: LogEntry[]
   stateLabel: string
   stateClass: string
 }) {
-  const [isOpen, setIsOpen] = useState(false)
   return (
-    <section className={`journey-wizard-footer ${isOpen ? 'is-open' : ''}`} aria-label="Activite du parcours">
-      <button
-        type="button"
-        className="journey-wizard-footer-summary"
-        onClick={() => setIsOpen((v) => !v)}
-        aria-expanded={isOpen}
-      >
-        <span className="journey-wizard-footer-summary-group">
-          <span className={`journey-wizard-footer-state ${stateClass}`}>{stateLabel}</span>
-          <span className="journey-wizard-footer-log-count">Activite ({log.length})</span>
-        </span>
-        <span className="journey-wizard-footer-chevron" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
-      </button>
-      {isOpen ? (
-        <div className="journey-wizard-footer-body journey-wizard-footer-body-single">
-          {log.length === 0 ? (
-            <div className="journey-account-row-detail" style={{ padding: '8px 0' }}>
-              Les actions apparaitront ici en temps reel.
-            </div>
-          ) : (
-            <ul className="journey-log-list">
-              {log.map((entry, i) => (
-                <li key={`${entry.ts}-${i}`} className="journey-log-item">
-                  <span className={`journey-log-item-icon is-${entry.status}`} aria-hidden="true" />
-                  <div className="journey-log-item-body">
-                    <span className="journey-log-item-msg">{entry.msg}</span>
-                    {entry.meta ? <span className="journey-log-item-meta">{entry.meta}</span> : null}
-                  </div>
-                  <span className="journey-log-item-time">{fmtTime(entry.ts)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
-    </section>
+    <div className="journey-wizard-side-card">
+      <div className="journey-wizard-side-card-head">
+        <h3>Activite ({log.length})</h3>
+        <span className={`journey-wizard-footer-state ${stateClass}`}>{stateLabel}</span>
+      </div>
+      {log.length === 0 ? (
+        <span className="journey-account-row-detail">Les actions apparaitront ici en temps reel.</span>
+      ) : (
+        <ul className="journey-log-list journey-log-list-side">
+          {log.map((entry, i) => (
+            <li key={`${entry.ts}-${i}`} className="journey-log-item">
+              <span className={`journey-log-item-icon is-${entry.status}`} aria-hidden="true" />
+              <div className="journey-log-item-body">
+                <span className="journey-log-item-msg">{entry.msg}</span>
+                {entry.meta ? <span className="journey-log-item-meta">{entry.meta}</span> : null}
+              </div>
+              <span className="journey-log-item-time">{fmtTime(entry.ts)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
 /* ── Step bodies ──────────────────────────────────────────────────────── */
 
-function CreationStep(p: TikTokStepScreenProps) {
+interface StepBodyProps extends TikTokStepScreenProps {
+  activitySlot: JSX.Element
+}
+
+function CreationStep(p: StepBodyProps) {
   // Single-result mode: auto-select the first generated idea so validation can fire.
   const { displayedGeneratedIdeas, selectedGeneratedIdea, setSelectedGeneratedIdeaId } = p
   useEffect(() => {
@@ -299,39 +288,6 @@ function CreationStep(p: TikTokStepScreenProps) {
 
   return (
     <div className="journey-wizard-grid">
-      <section className="journey-wizard-grid-main">
-        <span className="journey-wizard-card-label">Resultat</span>
-        {!p.isJourneyReady ? (
-          <div className="journey-empty">
-            <strong>Comptes incomplets</strong>
-            <p>Connecte TikTok, n8n, Groq, Shotstack et Pexels dans Accounts avant de generer.</p>
-            <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
-              Ouvrir Accounts
-            </button>
-          </div>
-        ) : p.isGeneratingIdeas || p.isGeneratingScript ? (
-          <div className="journey-loading">
-            <div className="journey-loading-spinner" />
-            <div className="journey-loading-copy">
-              <strong>Generation en cours</strong>
-              <span>Idee + script en preparation…</span>
-            </div>
-          </div>
-        ) : idea ? (
-          <div className="journey-kv-grid">
-            <KV label="Topic"   value={idea.topic} />
-            <KV label="Script"  value={idea.script} />
-            <KV label="Caption" value={idea.caption} />
-            <KV label="Keyword" value={idea.keyword} />
-          </div>
-        ) : (
-          <div className="journey-empty">
-            <strong>Aucune idee generee</strong>
-            <p>Choisis une categorie a droite puis clique sur Generer.</p>
-          </div>
-        )}
-      </section>
-
       <aside className="journey-wizard-grid-side">
         <div className="journey-wizard-side-card">
           <span className="journey-wizard-card-label">Parametres</span>
@@ -390,6 +346,8 @@ function CreationStep(p: TikTokStepScreenProps) {
           </div>
         </div>
 
+        {p.activitySlot}
+
         <AccountSideCard
           connectedTikTokAccount={p.connectedTikTokAccount}
           hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
@@ -398,32 +356,50 @@ function CreationStep(p: TikTokStepScreenProps) {
           navigate={p.navigate}
         />
       </aside>
+
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Resultat</span>
+        {!p.isJourneyReady ? (
+          <div className="journey-empty">
+            <strong>Comptes incomplets</strong>
+            <p>Connecte TikTok, n8n, Groq, Shotstack et Pexels dans Accounts avant de generer.</p>
+            <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
+              Ouvrir Accounts
+            </button>
+          </div>
+        ) : p.isGeneratingIdeas || p.isGeneratingScript ? (
+          <div className="journey-loading">
+            <div className="journey-loading-spinner" />
+            <div className="journey-loading-copy">
+              <strong>Generation en cours</strong>
+              <span>Idee + script en preparation…</span>
+            </div>
+          </div>
+        ) : idea ? (
+          <div className="journey-kv-grid">
+            <KV label="Topic"   value={idea.topic} />
+            <KV label="Script"  value={idea.script} />
+            <KV label="Caption" value={idea.caption} />
+            <KV label="Keyword" value={idea.keyword} />
+          </div>
+        ) : (
+          <div className="journey-empty">
+            <strong>Aucune idee generee</strong>
+            <p>Choisis une categorie a gauche puis clique sur Generer.</p>
+          </div>
+        )}
+      </section>
     </div>
   )
 }
 
-function RenderStep(p: TikTokStepScreenProps) {
+function RenderStep(p: StepBodyProps) {
   const previewUrl = p.manualAction?.shotstackUrl
     || p.scriptedIdea?.shotstackUrl
     || p.selectedGeneratedIdea?.shotstackUrl
 
   return (
     <div className="journey-wizard-grid">
-      <section className="journey-wizard-grid-main">
-        <span className="journey-wizard-card-label">Apercu video</span>
-        {p.isPreparingVideo && !previewUrl ? (
-          <div className="journey-loading">
-            <div className="journey-loading-spinner" />
-            <div className="journey-loading-copy">
-              <strong>Generation video en cours</strong>
-              <span>Le rendu Shotstack peut prendre quelques minutes.</span>
-            </div>
-          </div>
-        ) : (
-          <p.VideoPreview url={previewUrl} />
-        )}
-      </section>
-
       <aside className="journey-wizard-grid-side">
         {p.scriptedIdea ? (
           <div className="journey-wizard-side-card">
@@ -453,6 +429,8 @@ function RenderStep(p: TikTokStepScreenProps) {
           </div>
         </div>
 
+        {p.activitySlot}
+
         <AccountSideCard
           connectedTikTokAccount={p.connectedTikTokAccount}
           hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
@@ -461,31 +439,32 @@ function RenderStep(p: TikTokStepScreenProps) {
           navigate={p.navigate}
         />
       </aside>
+
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Apercu video</span>
+        {p.isPreparingVideo && !previewUrl ? (
+          <div className="journey-loading">
+            <div className="journey-loading-spinner" />
+            <div className="journey-loading-copy">
+              <strong>Generation video en cours</strong>
+              <span>Le rendu Shotstack peut prendre quelques minutes.</span>
+            </div>
+          </div>
+        ) : (
+          <p.VideoPreview url={previewUrl} />
+        )}
+      </section>
     </div>
   )
 }
 
-function UploadStep(p: TikTokStepScreenProps) {
+function UploadStep(p: StepBodyProps) {
   const previewUrl = p.manualAction?.shotstackUrl
     || p.scriptedIdea?.shotstackUrl
     || p.selectedGeneratedIdea?.shotstackUrl
 
   return (
     <div className="journey-wizard-grid">
-      <section className="journey-wizard-grid-main">
-        <span className="journey-wizard-card-label">Apercu</span>
-        {previewUrl ? <p.VideoPreview url={previewUrl} /> : (
-          <div className="journey-empty">
-            <strong>Aucune video disponible</strong>
-            <p>Reviens a l etape Video pour generer un rendu.</p>
-          </div>
-        )}
-        <div className="journey-kv-grid">
-          <KV label="Upload URL"      value={p.manualAction?.uploadUrl} mono />
-          <KV label="Resultat upload" value={p.uploadResult ? 'Upload termine.' : null} />
-        </div>
-      </section>
-
       <aside className="journey-wizard-grid-side">
         <div className="journey-wizard-side-card">
           <span className="journey-wizard-card-label">Actions</span>
@@ -517,6 +496,8 @@ function UploadStep(p: TikTokStepScreenProps) {
           </div>
         </div>
 
+        {p.activitySlot}
+
         <AccountSideCard
           connectedTikTokAccount={p.connectedTikTokAccount}
           hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
@@ -525,26 +506,31 @@ function UploadStep(p: TikTokStepScreenProps) {
           navigate={p.navigate}
         />
       </aside>
+
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Apercu</span>
+        {previewUrl ? <p.VideoPreview url={previewUrl} /> : (
+          <div className="journey-empty">
+            <strong>Aucune video disponible</strong>
+            <p>Reviens a l etape Video pour generer un rendu.</p>
+          </div>
+        )}
+        <div className="journey-kv-grid">
+          <KV label="Upload URL"      value={p.manualAction?.uploadUrl} mono />
+          <KV label="Resultat upload" value={p.uploadResult ? 'Upload termine.' : null} />
+        </div>
+      </section>
     </div>
   )
 }
 
-function PublishStep(p: TikTokStepScreenProps) {
+function PublishStep(p: StepBodyProps) {
   const previewUrl = p.manualAction?.shotstackUrl
     || p.scriptedIdea?.shotstackUrl
     || p.selectedGeneratedIdea?.shotstackUrl
 
   return (
     <div className="journey-wizard-grid">
-      <section className="journey-wizard-grid-main">
-        <span className="journey-wizard-card-label">Publication finale</span>
-        {previewUrl ? <p.VideoPreview url={previewUrl} /> : null}
-        <div className="journey-kv-grid">
-          <KV label="Video"  value={p.activeIdea?.topic} />
-          <KV label="Status" value={p.successMessage || 'Pret pour publication finale.'} />
-        </div>
-      </section>
-
       <aside className="journey-wizard-grid-side">
         <div className="journey-wizard-side-card">
           <span className="journey-wizard-card-label">Actions</span>
@@ -560,6 +546,8 @@ function PublishStep(p: TikTokStepScreenProps) {
           </div>
         </div>
 
+        {p.activitySlot}
+
         <AccountSideCard
           connectedTikTokAccount={p.connectedTikTokAccount}
           hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
@@ -568,6 +556,15 @@ function PublishStep(p: TikTokStepScreenProps) {
           navigate={p.navigate}
         />
       </aside>
+
+      <section className="journey-wizard-grid-main">
+        <span className="journey-wizard-card-label">Publication finale</span>
+        {previewUrl ? <p.VideoPreview url={previewUrl} /> : null}
+        <div className="journey-kv-grid">
+          <KV label="Video"  value={p.activeIdea?.topic} />
+          <KV label="Status" value={p.successMessage || 'Pret pour publication finale.'} />
+        </div>
+      </section>
     </div>
   )
 }
@@ -576,12 +573,6 @@ function PublishStep(p: TikTokStepScreenProps) {
 
 export default function TikTokStepScreen(props: TikTokStepScreenProps) {
   const log = useActivityLog(props)
-
-  let body: JSX.Element
-  if      (props.currentStep.id === 'creation')     body = <CreationStep {...props} />
-  else if (props.currentStep.id === 'init-publish') body = <RenderStep   {...props} />
-  else if (props.currentStep.id === 'upload')       body = <UploadStep   {...props} />
-  else                                              body = <PublishStep  {...props} />
 
   const stateLabel = props.isBusy
     ? 'Action en cours'
@@ -595,6 +586,14 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
     ? 'is-ready'
     : ''
 
+  const activitySlot = <ActivitySideCard log={log} stateLabel={stateLabel} stateClass={stateClass} />
+
+  let body: JSX.Element
+  if      (props.currentStep.id === 'creation')     body = <CreationStep {...props} activitySlot={activitySlot} />
+  else if (props.currentStep.id === 'init-publish') body = <RenderStep   {...props} activitySlot={activitySlot} />
+  else if (props.currentStep.id === 'upload')       body = <UploadStep   {...props} activitySlot={activitySlot} />
+  else                                              body = <PublishStep  {...props} activitySlot={activitySlot} />
+
   return (
     <div className="journey-wizard">
       <ProgressStepper
@@ -606,18 +605,8 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
       />
 
       <main className="journey-wizard-main">
-        <header className="journey-wizard-main-head">
-          <div>
-            <h2>{props.currentStep.label}</h2>
-            {props.currentStep.sub ? <p>{props.currentStep.sub}</p> : null}
-          </div>
-          <span className={`journey-wizard-main-head-state ${stateClass}`}>{stateLabel}</span>
-        </header>
-
         {body}
       </main>
-
-      <FooterAccordion log={log} stateLabel={stateLabel} stateClass={stateClass} />
     </div>
   )
 }

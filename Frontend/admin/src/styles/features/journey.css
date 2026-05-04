@@ -418,36 +418,42 @@
 .journey-wizard-steps {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   list-style: none;
   margin: 0;
   padding: 0;
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
 }
 
 .journey-wizard-step {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+  gap: 0;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.journey-wizard-step:last-child {
+  flex: 0 0 auto;
 }
 
 .journey-wizard-step-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
   color: var(--admin-text-soft);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   transition: all var(--admin-motion-fast);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .journey-wizard-step-btn:hover:not(:disabled) {
@@ -500,10 +506,16 @@
 }
 
 .journey-wizard-step-bar {
-  width: 24px;
+  flex: 1 1 auto;
+  min-width: 16px;
   height: 1px;
   background: var(--admin-border-soft);
-  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+.journey-wizard-step.is-done .journey-wizard-step-bar,
+.journey-wizard-step.is-current ~ .journey-wizard-step .journey-wizard-step-bar {
+  /* future: distinguish bars after current step (kept simple for now) */
 }
 
 @media (max-width: 720px) {
@@ -521,7 +533,6 @@
   margin: 0 auto;
 }
 
-.journey-wizard-main-head,
 .journey-wizard-grid-main,
 .journey-wizard-side-card {
   background: var(--admin-panel-surface);
@@ -529,13 +540,9 @@
   border-radius: var(--admin-radius-md);
 }
 
-.journey-wizard-main-head {
-  padding: 18px 22px;
-}
-
 .journey-wizard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 1.85fr);
   gap: 18px;
   align-items: start;
 }
@@ -631,101 +638,19 @@
   .journey-wizard-grid-main { padding: 18px 16px; }
 }
 
-.journey-wizard-main-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--admin-border-faint);
-}
-
-.journey-wizard-main-head h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--admin-text);
-  margin: 0 0 4px;
-  letter-spacing: -0.01em;
-}
-
-.journey-wizard-main-head p {
-  font-size: 13px;
-  color: var(--admin-text-soft);
-  margin: 0;
-  max-width: 540px;
-  line-height: 1.5;
-}
-
-.journey-wizard-main-head-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--admin-surface-overlay);
-  border: 1px solid var(--admin-border-soft);
-  font-size: 12px;
-  color: var(--admin-text-soft);
-  white-space: nowrap;
-}
-
-.journey-wizard-main-head-state.is-busy {
-  color: var(--admin-warm-strong);
-  border-color: var(--admin-warm-border);
-}
-
-.journey-wizard-main-head-state.is-ready {
-  color: var(--admin-accent);
-  border-color: var(--admin-accent-soft);
-}
-
-/* ----- Footer accordion (account state + activity log) ------------------ */
-
-.journey-wizard-footer {
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  background: var(--admin-panel-surface);
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-md);
-  overflow: hidden;
-}
-
-.journey-wizard-footer-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  padding: 12px 18px;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: background var(--admin-motion-fast);
-}
-
-.journey-wizard-footer-summary:hover { background: var(--admin-surface-overlay-faint); }
-
-.journey-wizard-footer-summary-group {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
+/* ----- State pill (used inside ActivitySideCard head) -------------------- */
 
 .journey-wizard-footer-state {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 999px;
   background: var(--admin-surface-overlay);
   border: 1px solid var(--admin-border-soft);
   font-size: 11px;
   color: var(--admin-text-soft);
+  white-space: nowrap;
 }
 
 .journey-wizard-footer-state.is-busy {
@@ -738,48 +663,14 @@
   border-color: var(--admin-accent-soft);
 }
 
-.journey-wizard-footer-account {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--admin-text);
-}
+/* ----- Activity log inside side card ------------------------------------ */
 
-.journey-wizard-footer-log-count {
-  font-size: 12px;
-  color: var(--admin-text-soft);
-}
-
-.journey-wizard-footer-chevron {
-  font-size: 14px;
-  color: var(--admin-text-dim);
-  flex-shrink: 0;
-}
-
-.journey-wizard-footer-body {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
-  gap: 18px;
-  padding: 16px 18px 18px;
-  border-top: 1px solid var(--admin-border-faint);
-}
-
-.journey-wizard-footer-body.journey-wizard-footer-body-single {
-  grid-template-columns: 1fr;
-}
-
-@media (max-width: 720px) {
-  .journey-wizard-footer-body { grid-template-columns: 1fr; }
-}
-
-.journey-wizard-footer-col h3 {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--admin-text-dim);
-  font-weight: 500;
-  margin: 0 0 10px;
+.journey-log-list-side {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .journey-flow-main-section {
