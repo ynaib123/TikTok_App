@@ -1,0 +1,163 @@
+{
+  "name": "script-generation-maintainable",
+  "description": "Simplified script generation with reduced Code node logic and operator recovery",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "script-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "mode": "each",
+        "expression": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "extract-body",
+      "name": "Extract Body",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "mode": "custom",
+        "customData": {
+          "contentIdeaId": "={{ $json.contentIdeaId }}",
+          "topic": "={{ $json.topic }}",
+          "category": "={{ $json.category }}",
+          "workflowRunId": "={{ $json.workflowRunId }}",
+          "timestamp": "={{ new Date().toISOString() }}"
+        }
+      },
+      "id": "prepare-context",
+      "name": "Prepare Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.contentIdeaId }}",
+              "operator": {
+                "type": "number",
+                "operation": "notnull"
+              }
+            },
+            {
+              "leftValue": "={{ Number($json.contentIdeaId || 0) > 0 }}",
+              "operator": {"type": "boolean", "operation": "equals"},
+              "rightValue": true
+            },
+            {
+              "leftValue": "={{ $json.topic }}",
+              "operator": {"type": "string", "operation": "notEmpty"}
+            },
+            {
+              "leftValue": "={{ $json.category }}",
+              "operator": {"type": "string", "operation": "notEmpty"}
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "validate-inputs",
+      "name": "Validate Inputs (If)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 0]
+    },
+    {
+      "parameters": {
+        "mode": "custom",
+        "customData": {
+          "error": "Input validation failed",
+          "missingFields": "={{ $json.contentIdeaId ? '' : 'contentIdeaId; ' }}{{ $json.topic ? '' : 'topic; ' }}{{ $json.category ? '' : 'category' }}"
+        }
+      },
+      "id": "validation-error",
+      "name": "Log Validation Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "Authorization", "value": "={{ 'Bearer ' + $env.GROQ_API_KEY }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.6, max_tokens: 500, messages: [ { role: 'system', content: 'Tu es un expert en création de contenu viral TikTok. Tu generes des scripts courts, punchant et optimisés pour mobile. Retourne UNIQUEMENT un JSON valide sans markdown.' }, { role: 'user', content: 'Categorie: ' + $json.category + '\\nTopic: ' + $json.topic + '\\n\\nGenere un script TikTok professionnel:\\n- Script: 1-3 phrases courtes et impactantes, francais naturel et conversationnel\\n- Caption: 1-2 phrases accrochantes avec 2-3 hashtags pertinents\\n- Hook: une premiere phrase engageante pour accrocher en 1s\\n- Tone: professionnel mais accessible\\n\\nRetourne ce JSON exactement:\\n{\"script\":\"...\",\"caption\":\"...\",\"hook\":\"...\",\"background_keyword\":\"...\"}' } ] }) }}",
+        "options": {
+          "retry": {"maxRetries": 2, "delayMultiplier": 2, "initialDelay": 1000},
+          "timeout": 30000
+        }
+      },
+      "id": "call-groq",
+      "name": "HTTP: Call Groq LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [960, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.choices?.[0]?.message?.content || '').trim();\nconst cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();\nlet parsed;\ntry { parsed = JSON.parse(cleaned); } catch (e) {\n  throw new Error('LLM response JSON invalid');\n}\nreturn [{ json: parsed }];"
+      },
+      "id": "parse-json",
+      "name": "Parse JSON Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {\n            "caseSensitive": true,\n            "leftValue": "",\n            "typeValidation": "strict"\n          },\n          "combinator": "and",\n          "conditions": [\n            {
+              "leftValue": "={{ $json.script }}",
+              "operator": {"type": "string", "operation": "notEmpty"}
+            },\n            {
+              "leftValue": "={{ ($json.script || '').length >= 10 }}",
+              "operator": {"type": "boolean", "operation": "equals"},
+              "rightValue": true
+            },\n            {
+              "leftValue": "={{ $json.hook }}",
+              "operator": {"type": "string", "operation": "notEmpty"}
+            },\n            {\n              "leftValue": "={{ $json.caption }}",
+              "operator": {"type": "string", "operation": "notEmpty"}
+            }\n          ]\n        },\n        "options": {}\n      },
+      "id": "validate-output",
+      "name": "Validate Output Quality",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1440, 0]\n    },\n    {\n      "parameters": {\n        "jsCode": "return [{ json: { ...($('Prepare Context').item.json || {}), script: String($json.script || '').slice(0, 300), caption: String($json.caption || '').slice(0, 150), hook: String($json.hook || '').slice(0, 100), background_keyword: String($json.background_keyword || $('Prepare Context').item.json.topic || '').slice(0, 50) } }];"\n      },\n      "id": "normalize-output",\n      "name": "Normalize Output",\n      "type": "n8n-nodes-base.code",\n      "typeVersion": 2,\n      "position": [1680, 0]\n    },\n    {\n      "parameters": {\n        "method": "PATCH",\n        "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/content-ideas/' + $json.contentIdeaId }}",\n        "sendHeaders": true,\n        "headerParameters": {\n          "parameters": [\n            {"name": "Content-Type", "value": "application/json"},\n            {"name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"}\n          ]\n        },\n        "sendBody": true,\n        "specifyBody": "json",\n        "jsonBody": "={{ JSON.stringify({ scripts: $json.script, script_status: 'done', script_hook: $json.hook, caption: $json.caption, background_keyword: $json.background_keyword, pipeline_status: 'script_ready', llm_model: 'llama-3.3-70b-versatile', generated_at: new Date().toISOString() }) }}",\n        "options": {\n          "retry": {"maxRetries": 2, "delayMultiplier": 2, "initialDelay": 1000},\n          "timeout": 20000\n        }\n      },\n      "id": "save-script",\n      "name": "HTTP: Save to Backend",\n      "type": "n8n-nodes-base.httpRequest",\n      "typeVersion": 4.4,\n      "position": [1920, 0]\n    },\n    {\n      "parameters": {\n        "respondWith": "json",\n        "responseBody": "={{ { ok: true, contentIdeaId: $json.contentIdeaId, status: 'script_ready', hook: $json.hook, script_length: ($json.script || '').length, timestamp: new Date().toISOString() } }}",\n        "options": {"responseCode": 200}\n      },\n      "id": "respond-success",\n      "name": "Respond: Success",\n      "type": "n8n-nodes-base.respondToWebhook",\n      "typeVersion": 1.5,\n      "position": [2160, 0]\n    },\n    {\n      "parameters": {\n        "mode": "custom",\n        "customData": {\n          "status": "FAILED",\n          "error": "{{ $json.message || 'Unknown error' }}",\n          "contentIdeaId": "={{ $('Prepare Context')?.item?.json?.contentIdeaId || 'unknown' }}",\n          "timestamp": "={{ new Date().toISOString() }}"\n        }\n      },\n      "id": "prepare-error-log",\n      "name": "Prepare Error Log",\n      "type": "n8n-nodes-base.set",\n      "typeVersion": 3.4,\n      "position": [1440, 300]\n    },\n    {\n      "parameters": {\n        "conditions": {\n          "options": {\n            "caseSensitive": true,\n            "leftValue": "",\n            "typeValidation": "strict"\n          },\n          "conditions": [\n            {\n              "leftValue": "={{ $json.message.includes('timeout') || $json.message.includes('connection') }}",\n              "operator": {"type": "boolean", "operation": "equals"},\n              "rightValue": true\n            }\n          ]\n        },\n        "options": {}\n      },\n      "id": "is-transient-error",\n      "name": "Is Transient Error?",\n      "type": "n8n-nodes-base.if",\n      "typeVersion": 2.2,\n      "position": [1680, 300]\n    },\n    {\n      "parameters": {\n        "mode": "custom",\n        "customData": {\n          "action": "pause_for_review",\n          "reason": "Transient error - operator can retry",\n          "contentIdeaId": "={{ $('Prepare Context')?.item?.json?.contentIdeaId || 'unknown' }}"\n        }\n      },\n      "id": "pause-for-retry",\n      "name": "Pause For Retry",\n      "type": "n8n-nodes-base.set",\n      "typeVersion": 3.4,\n      "position": [1920, 200]\n    },\n    {\n      "parameters": {\n        "mode": "custom",\n        "customData": {\n          "action": "callback_backend",\n          "status": "FAILED",\n          "reason": "Permanent error - fatal",\n          "error": "={{ $json.message }}"\n        }\n      },\n      "id": "prepare-callback-error",\n      "name": "Prepare Callback Error",\n      "type": "n8n-nodes-base.set",\n      "typeVersion": 3.4,\n      "position": [1920, 400]\n    },\n    {\n      "parameters": {\n        "jsCode": "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst workflowRunId = Number($('Prepare Context')?.item?.json?.workflowRunId || 0);\nconst contentIdeaId = Number($('Prepare Context')?.item?.json?.contentIdeaId || 0);\nconst error = String($json.error || 'Unknown error');\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  return [{ json: { ok: false, error: 'Missing callback config' } }];\n}\n\nconst body = JSON.stringify({\n  status: 'FAILED',\n  message: error.slice(0, 200),\n  responsePayload: JSON.stringify({ contentIdeaId, error: error.slice(0, 500) })\n});\n\nconst http = require('http');\nconst { URL } = require('url');\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + workflowRunId + '/complete');\n\nconst response = await new Promise((resolve) => {\n  let attempts = 0;\n  const maxAttempts = 2;\n  \n  const tryRequest = () => {\n    const req = http.request({\n      hostname: url.hostname,\n      port: url.port || 80,\n      path: url.pathname + url.search,\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Content-Length': Buffer.byteLength(body),\n        'X-Video-Ops-Callback-Secret': callbackSecret,\n        'X-Request-Timestamp': Date.now().toString()\n      }\n    }, (res) => {\n      let data = '';\n      res.on('data', (chunk) => { data += chunk; });\n      res.on('end', () => resolve({ statusCode: res.statusCode || 0 }));\n    });\n    \n    req.on('error', () => {\n      attempts++;\n      if (attempts < maxAttempts) {\n        setTimeout(tryRequest, 2000);\n      } else {\n        resolve({ statusCode: 0 });\n      }\n    });\n    \n    req.setTimeout(10000, () => {\n      req.destroy();\n      attempts++;\n      if (attempts < maxAttempts) {\n        setTimeout(tryRequest, 2000);\n      } else {\n        resolve({ statusCode: 0 });\n      }\n    });\n    \n    req.write(body);\n    req.end();\n  };\n  \n  tryRequest();\n});\n\nreturn [{ json: { ok: true, callbackSent: response.statusCode >= 200 && response.statusCode < 300 } }];"
+      },
+      "id": "callback-error-handler",
+      "name": "Callback: Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 400]\n    },\n    {\n      "parameters": {\n        "respondWith": "json",\n        "responseBody": "={{ { ok: false, error: $json.message || 'Script generation failed', action: 'check_logs' } }}",\n        "options": {"responseCode": 500}\n      },\n      "id": "respond-error",\n      "name": "Respond: Error",\n      "type": "n8n-nodes-base.respondToWebhook",\n      "typeVersion": 1.5,\n      "position": [2400, 400]\n    }\n  ],\n  "connections": {\n    "Webhook": {\n      "main": [[{"node": "Extract Body", "type": "main", "index": 0}]]\n    },\n    "Extract Body": {\n      "main": [[{"node": "Prepare Context", "type": "main", "index": 0}]]\n    },\n    "Prepare Context": {\n      "main": [[{"node": "Validate Inputs (If)", "type": "main", "index": 0}]]\n    },\n    "Validate Inputs (If)": {\n      "main": [[{"node": "HTTP: Call Groq LLM", "type": "main", "index": 0}], [{"node": "Log Validation Error", "type": "main", "index": 0}]]\n    },\n    "Log Validation Error": {\n      "main": [[{"node": "Prepare Error Log", "type": "main", "index": 0}]]\n    },\n    "HTTP: Call Groq LLM": {\n      "main": [[{"node": "Parse JSON Response", "type": "main", "index": 0}]],\n      "error": [[{"node": "Prepare Error Log", "type": "main", "index": 0}]]\n    },\n    "Parse JSON Response": {\n      "main": [[{"node": "Validate Output Quality", "type": "main", "index": 0}]],\n      "error": [[{"node": "Prepare Error Log", "type": "main", "index": 0}]]\n    },\n    "Validate Output Quality": {\n      "main": [[{"node": "Normalize Output", "type": "main", "index": 0}], [{"node": "Prepare Error Log", "type": "main", "index": 0}]]\n    },\n    "Normalize Output": {\n      "main": [[{"node": "HTTP: Save to Backend", "type": "main", "index": 0}]],\n      "error": [[{"node": "Prepare Error Log", "type": "main", "index": 0}]]\n    },\n    "HTTP: Save to Backend": {\n      "main": [[{"node": "Respond: Success", "type": "main", "index": 0}]],\n      "error": [[{"node": "Prepare Error Log", "type": "main", "index": 0}]]\n    },\n    "Respond: Success": {\n      "main": []\n    },\n    "Prepare Error Log": {\n      "main": [[{"node": "Is Transient Error?", "type": "main", "index": 0}]]\n    },\n    "Is Transient Error?": {\n      "main": [[{"node": "Pause For Retry", "type": "main", "index": 0}], [{"node": "Prepare Callback Error", "type": "main", "index": 0}]]\n    },\n    "Pause For Retry": {\n      "main": [[{"node": "Respond: Error", "type": "main", "index": 0}]]\n    },\n    "Prepare Callback Error": {\n      "main": [[{"node": "Callback: Error Handler", "type": "main", "index": 0}]]\n    },\n    "Callback: Error Handler": {\n      "main": [[{"node": "Respond: Error", "type": "main", "index": 0}]]\n    }\n  },\n  "settings": {"executionOrder": "v1", "binaryMode": "separate"},\n  "pinData": {},\n  "meta": {"templateCredsSetupCompleted": true}\n}

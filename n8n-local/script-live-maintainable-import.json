@@ -1,0 +1,647 @@
+{
+    "name":  "script-generation-maintainable",
+    "description":  "Script generation with reduced critical logic and clear error paths",
+    "active":  true,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "script-generation",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "webhook",
+                      "name":  "Webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       0,
+                                       0
+                                   ],
+                      "webhookId":  "script-webhook"
+                  },
+                  {
+                      "parameters":  {
+                                         "assignments":  {
+                                                             "assignments":  [
+                                                                                 {
+                                                                                     "name":  "contentIdeaId",
+                                                                                     "value":  "={{ Number($json.body?.contentIdeaId || $json.contentIdeaId || 0) }}",
+                                                                                     "type":  "number"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "topic",
+                                                                                     "value":  "={{ String($json.body?.topic || $json.topic || \u0027\u0027).trim() }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "category",
+                                                                                     "value":  "={{ String($json.body?.category || $json.category || \u0027\u0027).trim() }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "workflowRunId",
+                                                                                     "value":  "={{ Number($json.body?.workflowRunId || $json.workflowRunId || 0) }}",
+                                                                                     "type":  "number"
+                                                                                 }
+                                                                             ]
+                                                         },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "extract-input",
+                      "name":  "Extract Input",
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       240,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "cond1",
+                                                                                   "leftValue":  "={{ Number($json.contentIdeaId || 0) \u003e 0 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               },
+                                                                               {
+                                                                                   "id":  "cond2",
+                                                                                   "leftValue":  "={{ $json.topic \u0026\u0026 $json.topic.length \u003e 0 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               },
+                                                                               {
+                                                                                   "id":  "cond3",
+                                                                                   "leftValue":  "={{ $json.category \u0026\u0026 $json.category.length \u003e 0 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               },
+                                                                               {
+                                                                                   "id":  "cond4",
+                                                                                   "leftValue":  "={{ Number($json.workflowRunId || 0) \u003e 0 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "validate-inputs",
+                      "name":  "Validate Inputs",
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.2,
+                      "position":  [
+                                       480,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.groq.com/openai/v1/chat/completions",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "Authorization",
+                                                                                         "value":  "={{ \u0027Bearer \u0027 + $env.GROQ_API_KEY }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ model: \u0027llama-3.3-70b-versatile\u0027, temperature: 0.6, max_tokens: 500, messages: [ { role: \u0027system\u0027, content: \u0027Tu es un expert en crÃ©ation de contenu viral TikTok. Tu generes des scripts courts, punchant et optimisÃ©s pour mobile. Retourne UNIQUEMENT un JSON valide sans markdown.\u0027 }, { role: \u0027user\u0027, content: \u0027Categorie: \u0027 + $json.category + \u0027\\nTopic: \u0027 + $json.topic + \u0027\\n\\nGenere un script TikTok professionnel:\\n- Script: 1-3 phrases courtes et impactantes, francais naturel et conversationnel\\n- Caption: 1-2 phrases accrochantes avec 2-3 hashtags pertinents\\n- Hook: une premiere phrase engageante pour accrocher en 1s\\n- Tone: professionnel mais accessible\\n\\nRetourne ce JSON exactement:\\n{\"script\":\"...\",\"caption\":\"...\",\"hook\":\"...\",\"background_keyword\":\"...\"}\u0027 } ] }) }}",
+                                         "options":  {
+                                                         "retry":  {
+                                                                       "maxRetries":  2,
+                                                                       "delayMultiplier":  2,
+                                                                       "initialDelay":  1000
+                                                                   },
+                                                         "timeout":  30000
+                                                     }
+                                     },
+                      "id":  "call-groq",
+                      "name":  "Call Groq API",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       720,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const raw = String($json.choices?.[0]?.message?.content || \u0027\u0027).trim();\nconst cleaned = raw.replace(/^```json\\s*/i, \u0027\u0027).replace(/^```/i, \u0027\u0027).replace(/```$/i, \u0027\u0027).trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(\u0027LLM_PARSE_ERROR: \u0027 + e.message);\n}\n\nif (!parsed.script) throw new Error(\u0027LLM_MISSING_FIELD: script\u0027);\nif (!parsed.caption) throw new Error(\u0027LLM_MISSING_FIELD: caption\u0027);\nif (!parsed.hook) throw new Error(\u0027LLM_MISSING_FIELD: hook\u0027);\n\nreturn [{ json: { script: parsed.script, caption: parsed.caption, hook: parsed.hook, background_keyword: parsed.background_keyword || \u0027\u0027 } }];"
+                                     },
+                      "id":  "parse-llm-response",
+                      "name":  "Parse LLM Response",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       960,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "assignments":  {
+                                                             "assignments":  [
+                                                                                 {
+                                                                                     "name":  "script",
+                                                                                     "value":  "={{ String($json.script || \u0027\u0027).trim().slice(0, 300) }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "caption",
+                                                                                     "value":  "={{ String($json.caption || \u0027\u0027).trim().slice(0, 150) }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "hook",
+                                                                                     "value":  "={{ String($json.hook || \u0027\u0027).trim().slice(0, 100) }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "background_keyword",
+                                                                                     "value":  "={{ String($json.background_keyword || \u0027\u0027).trim().slice(0, 50) }}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "contentIdeaId",
+                                                                                     "value":  "={{ $(\u0027Extract Input\u0027).item.json.contentIdeaId }}",
+                                                                                     "type":  "number"
+                                                                                 },
+                                                                                 {
+                                                                                     "name":  "workflowRunId",
+                                                                                     "value":  "={{ $(\u0027Extract Input\u0027).item.json.workflowRunId }}",
+                                                                                     "type":  "number"
+                                                                                 }
+                                                                             ]
+                                                         },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "normalize-output",
+                      "name":  "Normalize Output",
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  3.4,
+                      "position":  [
+                                       1200,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "script_length",
+                                                                                   "leftValue":  "={{ ($json.script || \u0027\u0027).length \u003e= 10 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               },
+                                                                               {
+                                                                                   "id":  "caption_length",
+                                                                                   "leftValue":  "={{ ($json.caption || \u0027\u0027).length \u003e= 5 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               },
+                                                                               {
+                                                                                   "id":  "hook_length",
+                                                                                   "leftValue":  "={{ ($json.hook || \u0027\u0027).length \u003e= 5 }}",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                },
+                                                                                   "rightValue":  true
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "validate-output",
+                      "name":  "Validate Output Quality",
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.2,
+                      "position":  [
+                                       1440,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "PATCH",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.contentIdeaId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ scripts: $json.script, script_status: \u0027done\u0027, script_hook: $json.hook, caption: $json.caption, background_keyword: $json.background_keyword, pipeline_status: \u0027script_ready\u0027, llm_model: \u0027llama-3.3-70b-versatile\u0027 }) }}",
+                                         "options":  {
+                                                         "retry":  {
+                                                                       "maxRetries":  2,
+                                                                       "delayMultiplier":  2,
+                                                                       "initialDelay":  1000
+                                                                   },
+                                                         "timeout":  20000
+                                                     }
+                                     },
+                      "id":  "save-backend",
+                      "name":  "Save to Backend",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       1680,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Normalize Output\u0027).item.json.contentIdeaId, status: \u0027script_ready\u0027, hook: $(\u0027Normalize Output\u0027).item.json.hook, script_length: ($(\u0027Normalize Output\u0027).item.json.script || \u0027\u0027).length } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "respond-success",
+                      "name":  "Respond Success",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       1920,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($(\u0027Normalize Output\u0027).item.json.workflowRunId || 0);\nconst contentIdeaId = Number($(\u0027Normalize Output\u0027).item.json.contentIdeaId || 0);\nconst scriptLength = ($(\u0027Normalize Output\u0027).item.json.script || \u0027\u0027).length;\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  throw new Error(\u0027Missing callback config\u0027);\n}\n\nconst body = JSON.stringify({\n  status: \u0027SUCCEEDED\u0027,\n  message: \u0027Script generation complete.\u0027,\n  responsePayload: JSON.stringify({ contentIdeaId, scriptLength })\n});\n\nconst http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\n\nlet attempts = 0;\nconst maxAttempts = 2;\n\nconst makeRequest = () =\u003e {\n  return new Promise((resolve, reject) =\u003e {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80),\n      path: url.pathname + url.search,\n      method: \u0027POST\u0027,\n      headers: {\n        \u0027Content-Type\u0027: \u0027application/json\u0027,\n        \u0027Content-Length\u0027: Buffer.byteLength(body),\n        \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret,\n        \u0027X-Request-Timestamp\u0027: Date.now().toString()\n      }\n    }, (res) =\u003e {\n      res.on(\u0027data\u0027, () =\u003e {});\n      res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0 }));\n    });\n\n    req.on(\u0027error\u0027, (err) =\u003e {\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(() =\u003e makeRequest().then(resolve).catch(reject), Math.pow(2, attempts) * 1000);\n      } else {\n        reject(err);\n      }\n    });\n\n    req.setTimeout(10000, () =\u003e {\n      req.destroy();\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(() =\u003e makeRequest().then(resolve).catch(reject), Math.pow(2, attempts) * 1000);\n      } else {\n        reject(new Error(\u0027Callback timeout\u0027));\n      }\n    });\n\n    req.write(body);\n    req.end();\n  });\n};\n\nconst response = await makeRequest();\nif (response.statusCode \u003c 200 || response.statusCode \u003e= 300) {\n  throw new Error(\u0027Success callback failed: \u0027 + response.statusCode);\n}\n\nreturn [{ json: { ok: true, statusCode: response.statusCode, contentIdeaId, workflowRunId } }];"
+                                     },
+                      "id":  "callback-success",
+                      "name":  "Callback Success",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       2160,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const contentIdeaId = Number($(\u0027Extract Input\u0027)?.item?.json?.contentIdeaId || 0);\nconst workflowRunId = Number($(\u0027Extract Input\u0027)?.item?.json?.workflowRunId || 0);\nconst error = $json;\nlet errorMsg = \u0027Input validation failed\u0027;\n\nif (typeof error === \u0027string\u0027 \u0026\u0026 error.trim()) {\n  errorMsg = error;\n} else if (error?.message) {\n  errorMsg = String(error.message);\n} else if (error?.error) {\n  errorMsg = String(error.error);\n} else if (error \u0026\u0026 (error.contentIdeaId || error.topic || error.category || error.workflowRunId)) {\n  errorMsg = \u0027Input validation failed\u0027;\n}\n\nreturn [{ json: { contentIdeaId, workflowRunId, error: errorMsg, error_at: new Date().toISOString() } }];"
+                                     },
+                      "id":  "prepare-error",
+                      "name":  "Prepare Error Context",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       480,
+                                       200
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($json.workflowRunId || 0);\nconst contentIdeaId = Number($json.contentIdeaId || 0);\nconst errorMsg = String($json.error || \u0027Unknown error\u0027);\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  return [{ json: { ok: false, error: errorMsg, statusCode: 0 } }];\n}\n\nconst body = JSON.stringify({\n  status: \u0027FAILED\u0027,\n  message: \u0027Script generation failed: \u0027 + errorMsg.slice(0, 200),\n  responsePayload: JSON.stringify({ contentIdeaId, error: errorMsg.slice(0, 500) })\n});\n\nconst http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\n\nlet attempts = 0;\nconst maxAttempts = 2;\n\nconst makeRequest = () =\u003e {\n  return new Promise((resolve) =\u003e {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80),\n      path: url.pathname + url.search,\n      method: \u0027POST\u0027,\n      headers: {\n        \u0027Content-Type\u0027: \u0027application/json\u0027,\n        \u0027Content-Length\u0027: Buffer.byteLength(body),\n        \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret,\n        \u0027X-Request-Timestamp\u0027: Date.now().toString()\n      }\n    }, (res) =\u003e {\n      res.on(\u0027data\u0027, () =\u003e {});\n      res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0 }));\n    });\n    \n    req.on(\u0027error\u0027, () =\u003e {\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(() =\u003e makeRequest().then(resolve), Math.pow(2, attempts) * 1000);\n      } else {\n        resolve({ statusCode: 0, error: \u0027Request failed\u0027 });\n      }\n    });\n    \n    req.setTimeout(10000, () =\u003e {\n      req.destroy();\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(() =\u003e makeRequest().then(resolve), Math.pow(2, attempts) * 1000);\n      } else {\n        resolve({ statusCode: 0, error: \u0027Timeout\u0027 });\n      }\n    });\n    \n    req.write(body);\n    req.end();\n  });\n};\n\nconst response = await makeRequest();\nreturn [{ json: { ok: response.statusCode \u003e= 200 \u0026\u0026 response.statusCode \u003c 300, statusCode: response.statusCode, error: errorMsg, contentIdeaId, workflowRunId } }];"
+                                     },
+                      "id":  "callback-error",
+                      "name":  "Callback Error Handler",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       720,
+                                       200
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: false, error: $json.error, action: \u0027check_logs_and_retry\u0027 } }}",
+                                         "options":  {
+                                                         "responseCode":  500
+                                                     }
+                                     },
+                      "id":  "respond-error",
+                      "name":  "Respond Error",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       960,
+                                       200
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: false, error: \u0027Script quality failed (too short)\u0027, contentIdeaId: $json.contentIdeaId, action: \u0027review_llm_quality\u0027 } }}",
+                                         "options":  {
+                                                         "responseCode":  422
+                                                     }
+                                     },
+                      "id":  "respond-quality-error",
+                      "name":  "Respond Quality Error",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       1440,
+                                       200
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($json.workflowRunId || 0);\nconst contentIdeaId = Number($json.contentIdeaId || 0);\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  return [{ json: { ok: false, contentIdeaId, workflowRunId } }];\n}\n\nconst body = JSON.stringify({\n  status: \u0027FAILED\u0027,\n  message: \u0027Script output quality validation failed\u0027,\n  responsePayload: JSON.stringify({ contentIdeaId, reason: \u0027output_too_short\u0027 })\n});\n\nconst http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\n\nlet attempts = 0;\nconst maxAttempts = 2;\n\nconst makeRequest = () =\u003e {\n  return new Promise((resolve) =\u003e {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80),\n      path: url.pathname + url.search,\n      method: \u0027POST\u0027,\n      headers: {\n        \u0027Content-Type\u0027: \u0027application/json\u0027,\n        \u0027Content-Length\u0027: Buffer.byteLength(body),\n        \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret,\n        \u0027X-Request-Timestamp\u0027: Date.now().toString()\n      }\n    }, (res) =\u003e {\n      res.on(\u0027data\u0027, () =\u003e {});\n      res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0 }));\n    });\n    \n    req.on(\u0027error\u0027, () =\u003e {\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(() =\u003e makeRequest().then(resolve), Math.pow(2, attempts) * 1000);\n      } else {\n        resolve({ statusCode: 0 });\n      }\n    });\n    \n    req.setTimeout(10000, () =\u003e {\n      req.destroy();\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(() =\u003e makeRequest().then(resolve), Math.pow(2, attempts) * 1000);\n      } else {\n        resolve({ statusCode: 0 });\n      }\n    });\n    \n    req.write(body);\n    req.end();\n  });\n};\n\nconst response = await makeRequest();\nreturn [{ json: { ok: response.statusCode \u003e= 200 \u0026\u0026 response.statusCode \u003c 300, contentIdeaId, workflowRunId } }];"
+                                     },
+                      "id":  "callback-quality-error",
+                      "name":  "Callback Quality Error",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1440,
+                                       400
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Extract Input",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Extract Input":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Validate Inputs",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          },
+                        "Validate Inputs":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Call Groq API",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ],
+                                                             [
+                                                                 {
+                                                                     "node":  "Prepare Error Context",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ],
+                                                "error":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "Prepare Error Context",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                            },
+                        "Call Groq API":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Parse LLM Response",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ],
+                                              "error":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Prepare Error Context",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                          },
+                        "Parse LLM Response":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Normalize Output",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ],
+                                                   "error":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Prepare Error Context",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                               },
+                        "Normalize Output":  {
+                                                 "main":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "Validate Output Quality",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                             },
+                        "Validate Output Quality":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Save to Backend",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ],
+                                                                     [
+                                                                         {
+                                                                             "node":  "Callback Quality Error",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "Save to Backend":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Respond Success",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ],
+                                                "error":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "Prepare Error Context",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                            },
+                        "Respond Success":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Callback Success",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                            },
+                        "Callback Success":  {
+                                                 "main":  [
+
+                                                          ],
+                                                 "error":  [
+                                                               [
+                                                                   {
+                                                                       "node":  "Prepare Error Context",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ]
+                                                           ]
+                                             },
+                        "Prepare Error Context":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Callback Error Handler",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ],
+                                                      "error":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Respond Error",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                  },
+                        "Callback Error Handler":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Respond Error",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "Respond Error":  {
+                                              "main":  [
+
+                                                       ]
+                                          },
+                        "Respond Quality Error":  {
+                                                      "main":  [
+
+                                                               ]
+                                                  },
+                        "Callback Quality Error":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Respond Quality Error",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "binaryMode":  "separate"
+                 },
+    "pinData":  {
+
+                },
+    "meta":  {
+                 "templateCredsSetupCompleted":  true
+             },
+    "id":  "aynirSUsBIS10A7S"
+}

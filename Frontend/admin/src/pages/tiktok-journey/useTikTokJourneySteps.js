@@ -84,6 +84,7 @@ export function useCreationStep({
         source: 'backoffice-tiktok-step-creation-script',
         contentIdeaId: idea.id,
         topic: idea.topic,
+        category: idea.category,
       })
       markWorkflowStarted({
         runId: scriptWorkflowRun?.runId,
@@ -161,6 +162,7 @@ export function useScriptStep({
       source,
       contentIdeaId: idea.id,
       topic: idea.topic,
+      category: idea.category,
       force,
     })
     markWorkflowStarted({

@@ -588,15 +588,47 @@ public class VideoOpsService {
             );
         }
 
+        String category = trimToNull(request.getCategory());
+        String topic = trimToNull(request.getTopic());
+        String script = trimToNull(request.getScript());
+        String caption = trimToNull(request.getCaption());
+        String keyword = trimToNull(request.getKeyword());
+        String tiktokAccountOpenId = trimToNull(request.getTiktokAccountOpenId());
+
+        if (workflowType == VideoWorkflowType.RENDER_TEMPLATE_VIDEO && contentIdeaId != null
+                && (isBlank(topic) || isBlank(script) || isBlank(caption) || isBlank(keyword))) {
+            JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
+            if (!rows.isArray() || rows.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
+            }
+
+            JsonNode idea = rows.get(0);
+            if (isBlank(topic)) {
+                topic = trimToNull(text(idea, "topic", ""));
+            }
+            if (isBlank(script)) {
+                script = trimToNull(text(idea, "scripts", ""));
+            }
+            if (isBlank(caption)) {
+                caption = trimToNull(text(idea, "caption", ""));
+            }
+            if (isBlank(keyword)) {
+                keyword = trimToNull(text(idea, "background_keyword", ""));
+            }
+            if (isBlank(tiktokAccountOpenId)) {
+                tiktokAccountOpenId = trimToNull(text(idea, "tiktok_account_open_id", ""));
+            }
+        }
+
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("contentIdeaId", contentIdeaId);
-        payload.put("category", trimToNull(request.getCategory()));
+        payload.put("category", category);
         payload.put("ideaCount", normalizeIdeaCount(request.getIdeaCount()));
-        payload.put("topic", request.getTopic());
-        payload.put("script", trimToNull(request.getScript()));
-        payload.put("caption", trimToNull(request.getCaption()));
-        payload.put("keyword", trimToNull(request.getKeyword()));
-        payload.put("tiktokAccountOpenId", trimToNull(request.getTiktokAccountOpenId()));
+        payload.put("topic", topic);
+        payload.put("script", script);
+        payload.put("caption", caption);
+        payload.put("keyword", keyword);
+        payload.put("tiktokAccountOpenId", tiktokAccountOpenId);
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);

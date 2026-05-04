@@ -1,0 +1,556 @@
+{
+    "updatedAt":  "2026-05-02T13:48:24.882Z",
+    "createdAt":  "2026-05-02T00:00:00.000Z",
+    "name":  "check-shotstack-fixed",
+    "description":  "Robust Shotstack render status check with error handling, retry, and idempotence",
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "check-shotstack",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "webhook",
+                      "name":  "Webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       -840,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const contentIdeaId = Number($json.body?.contentIdeaId || $json.contentIdeaId || 0);\nconst workflowRunId = Number($json.body?.workflowRunId || $json.workflowRunId || 0);\n\nif (!contentIdeaId || contentIdeaId \u003c= 0) {\n  throw new Error(\u0027contentIdeaId invalide ou manquant: \u0027 + contentIdeaId);\n}\nif (!workflowRunId || workflowRunId \u003c= 0) {\n  throw new Error(\u0027workflowRunId invalide ou manquant: \u0027 + workflowRunId);\n}\n\nreturn [{ json: { contentIdeaId, workflowRunId } }];"
+                                     },
+                      "id":  "set-input",
+                      "name":  "Validate Input",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -600,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "GET",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.contentIdeaId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "options":  {
+                                                         "retry":  {
+                                                                       "maxRetries":  2,
+                                                                       "delayMultiplier":  2,
+                                                                       "initialDelay":  1000
+                                                                   },
+                                                         "timeout":  20000,
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "fullResponse":  true
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "id":  "get-idea",
+                      "name":  "HTTP: Get Content Idea",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       -360,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const idea = $json.body || $json;\nif (!idea || !idea.id) throw new Error(\u0027contentIdea introuvable ou invalide\u0027);\nif (idea.id !== Number($(\u0027Validate Input\u0027).item.json.contentIdeaId)) {\n  throw new Error(\u0027Mismatch: contentIdeaId does not match\u0027);\n}\nif (!idea.shotstack_render_id) throw new Error(\u0027Aucun shotstack_render_id pour cette contentIdea\u0027);\n\nconst status = String(idea.shotstack_status || \u0027\u0027).toLowerCase();\nconst validStatuses = [\u0027queued\u0027, \u0027rendering\u0027, \u0027preparing\u0027, \u0027done\u0027, \u0027failed\u0027, \u0027timeout\u0027];\nif (!validStatuses.includes(status)) {\n  throw new Error(\u0027Invalid shotstack_status: \u0027 + status);\n}\n\nif (![\u0027queued\u0027, \u0027rendering\u0027, \u0027preparing\u0027].includes(status)) {\n  return [{ json: { skip: true, reason: \u0027shotstack_status=\u0027 + status + \u0027 — rien a faire\u0027, idea } }];\n}\n\nreturn [{ json: { skip: false, renderId: idea.shotstack_render_id, ideaId: idea.id, ideaStatus: idea.pipeline_status, idea } }];"
+                                     },
+                      "id":  "validate-render",
+                      "name":  "Validate Render State",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -120,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "skip-check",
+                                                                                   "leftValue":  "={{ $json.skip }}",
+                                                                                   "rightValue":  true,
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "if-skip",
+                      "name":  "Skip if not pending",
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.2,
+                      "position":  [
+                                       120,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "GET",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/shotstack/render/\u0027 + $json.renderId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "options":  {
+                                                         "retry":  {
+                                                                       "maxRetries":  2,
+                                                                       "delayMultiplier":  2,
+                                                                       "initialDelay":  1000
+                                                                   },
+                                                         "timeout":  20000,
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "fullResponse":  true
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "id":  "shotstack-status",
+                      "name":  "HTTP: Get Shotstack Status",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       360,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const statusData = $json.body || $json;\nif (!statusData || !statusData.response) throw new Error(\u0027Invalid Shotstack response\u0027);\n\nconst status = String(statusData.response?.status || \u0027\u0027).toLowerCase();\nconst ideaId = $(\u0027Validate Render State\u0027).item.json.ideaId;\nconst validStatuses = [\u0027queued\u0027, \u0027rendering\u0027, \u0027preparing\u0027, \u0027done\u0027, \u0027failed\u0027, \u0027timeout\u0027];\n\nif (!validStatuses.includes(status)) {\n  throw new Error(\u0027Invalid Shotstack status: \u0027 + status);\n}\n\nif (status === \u0027done\u0027) {\n  if (!statusData.response?.url) throw new Error(\u0027No video URL in completed Shotstack response\u0027);\n  return [{ json: {\n    noUpdate: false,\n    ideaId,\n    patch: {\n      shotstack_status: \u0027done\u0027,\n      shotstack_url: statusData.response.url,\n      final_video_status: \u0027ready\u0027,\n      pipeline_status: \u0027render_ready\u0027\n    },\n    callbackStatus: \u0027SUCCEEDED\u0027,\n    callbackMessage: \u0027Render Shotstack termine.\u0027\n  } }];\n}\n\nif (status === \u0027failed\u0027 || status === \u0027timeout\u0027) {\n  return [{ json: {\n    noUpdate: false,\n    ideaId,\n    patch: {\n      shotstack_status: status,\n      final_video_status: \u0027failed\u0027,\n      pipeline_status: \u0027failed\u0027\n    },\n    callbackStatus: \u0027FAILED\u0027,\n    callbackMessage: \u0027Render Shotstack en echec (\u0027 + status + \u0027).\u0027\n  } }];\n}\n\nreturn [{ json: {\n  noUpdate: true,\n  ideaId,\n  shotstackStatus: status,\n  message: \u0027Render Shotstack toujours en cours.\u0027\n} }];"
+                                     },
+                      "id":  "map-update",
+                      "name":  "Build Update Payload",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       600,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "pending-check",
+                                                                                   "leftValue":  "={{ $json.noUpdate }}",
+                                                                                   "rightValue":  true,
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "if-pending",
+                      "name":  "Pending without update?",
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.2,
+                      "position":  [
+                                       840,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "PATCH",
+                                         "url":  "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027) + \u0027/api/video-ops/internal/content-ideas/\u0027 + $json.ideaId }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "X-Video-Ops-Internal-Secret",
+                                                                                         "value":  "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify($json.patch) }}",
+                                         "options":  {
+                                                         "retry":  {
+                                                                       "maxRetries":  2,
+                                                                       "delayMultiplier":  2,
+                                                                       "initialDelay":  1000
+                                                                   },
+                                                         "timeout":  20000
+                                                     }
+                                     },
+                      "id":  "update-row",
+                      "name":  "HTTP: Update Content Idea",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       1080,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Validate Input\u0027).item.json.contentIdeaId, shotstackStatus: $(\u0027Build Update Payload\u0027).item.json.patch.shotstack_status } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "respond",
+                      "name":  "Respond: Success",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       1320,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Validate Input\u0027).item.json.contentIdeaId, pending: true, shotstackStatus: $json.shotstackStatus, message: $json.message } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "respond-pending",
+                      "name":  "Respond: Pending",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       1080,
+                                       280
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($(\u0027Validate Input\u0027).item.json.workflowRunId || 0);\nconst status = $json.callbackStatus;\nconst message = $json.callbackMessage;\nconst contentIdeaId = $json.ideaId;\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  throw new Error(\u0027Missing config for callback\u0027);\n}\n\nconst body = JSON.stringify({\n  status: status,\n  message: message,\n  responsePayload: JSON.stringify({\n    contentIdeaId: contentIdeaId,\n    shotstackStatus: $json.patch?.shotstack_status\n  })\n});\n\nconst http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\n\nconst response = await new Promise((resolve, reject) =\u003e {\n  let attempts = 0;\n  const maxAttempts = 3;\n\n  const tryRequest = () =\u003e {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80),\n      path: url.pathname + url.search,\n      method: \u0027POST\u0027,\n      headers: {\n        \u0027Content-Type\u0027: \u0027application/json\u0027,\n        \u0027Content-Length\u0027: Buffer.byteLength(body),\n        \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret,\n        \u0027X-Request-Timestamp\u0027: Date.now().toString()\n      }\n    }, (res) =\u003e {\n      let data = \u0027\u0027;\n      res.on(\u0027data\u0027, (chunk) =\u003e { data += chunk; });\n      res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0, body: data }));\n    });\n\n    req.on(\u0027error\u0027, (err) =\u003e {\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(tryRequest, Math.pow(2, attempts) * 1000);\n      } else {\n        reject(err);\n      }\n    });\n\n    req.setTimeout(20000, () =\u003e {\n      req.destroy();\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(tryRequest, Math.pow(2, attempts) * 1000);\n      } else {\n        reject(new Error(\u0027Callback timeout\u0027));\n      }\n    });\n\n    req.write(body);\n    req.end();\n  };\n\n  tryRequest();\n});\n\nif (response.statusCode \u003c 200 || response.statusCode \u003e= 300) {\n  throw new Error(\u0027Callback failed: \u0027 + response.statusCode + \u0027 \u0027 + response.body);\n}\n\nreturn [{ json: { ok: true, callbackStatusCode: response.statusCode } }];"
+                                     },
+                      "id":  "callback",
+                      "name":  "Callback: Backend (with retry)",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1560,
+                                       100
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: true, contentIdeaId: $(\u0027Validate Input\u0027).item.json.contentIdeaId, skipped: true, reason: $(\u0027Validate Render State\u0027).item.json.reason } }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "respond-skip",
+                      "name":  "Respond: Skipped",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       360,
+                                       300
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || \u0027\u0027).replace(/\\/+$/, \u0027\u0027);\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || \u0027\u0027);\nconst workflowRunId = Number($(\u0027Validate Input\u0027).item.json.workflowRunId || 0);\nconst contentIdeaId = Number($(\u0027Validate Input\u0027).item.json.contentIdeaId || 0);\nconst error = $json;\n\nlet errorMessage = \u0027Unknown error\u0027;\nif (typeof error === \u0027string\u0027) errorMessage = error;\nelse if (error.message) errorMessage = error.message;\nelse if (error.error?.message) errorMessage = error.error.message;\n\nif (!baseUrl || !callbackSecret || !workflowRunId) {\n  return [{ json: { status: \u0027FAILED\u0027, message: \u0027Missing config for error callback\u0027 } }];\n}\n\nconst body = JSON.stringify({\n  status: \u0027FAILED\u0027,\n  message: \u0027Shotstack check failed: \u0027 + errorMessage.slice(0, 200),\n  responsePayload: JSON.stringify({ contentIdeaId, error: errorMessage.slice(0, 500) })\n});\n\nconst http = require(\u0027http\u0027);\nconst https = require(\u0027https\u0027);\nconst { URL } = require(\u0027url\u0027);\nconst url = new URL(baseUrl + \u0027/api/video-ops/workflow-runs/\u0027 + workflowRunId + \u0027/complete\u0027);\nconst client = url.protocol === \u0027https:\u0027 ? https : http;\n\nconst response = await new Promise((resolve, reject) =\u003e {\n  let attempts = 0;\n  const maxAttempts = 2;\n\n  const tryRequest = () =\u003e {\n    const req = client.request({\n      protocol: url.protocol,\n      hostname: url.hostname,\n      port: url.port || (url.protocol === \u0027https:\u0027 ? 443 : 80),\n      path: url.pathname + url.search,\n      method: \u0027POST\u0027,\n      headers: {\n        \u0027Content-Type\u0027: \u0027application/json\u0027,\n        \u0027Content-Length\u0027: Buffer.byteLength(body),\n        \u0027X-Video-Ops-Callback-Secret\u0027: callbackSecret,\n        \u0027X-Request-Timestamp\u0027: Date.now().toString()\n      }\n    }, (res) =\u003e {\n      let data = \u0027\u0027;\n      res.on(\u0027data\u0027, (chunk) =\u003e { data += chunk; });\n      res.on(\u0027end\u0027, () =\u003e resolve({ statusCode: res.statusCode || 0, body: data }));\n    });\n\n    req.on(\u0027error\u0027, (err) =\u003e {\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(tryRequest, Math.pow(2, attempts) * 1000);\n      } else {\n        resolve({ statusCode: 0, body: \u0027Error callback failed: \u0027 + err.message });\n      }\n    });\n\n    req.setTimeout(15000, () =\u003e {\n      req.destroy();\n      attempts++;\n      if (attempts \u003c maxAttempts) {\n        setTimeout(tryRequest, Math.pow(2, attempts) * 1000);\n      } else {\n        resolve({ statusCode: 0, body: \u0027Error callback timeout\u0027 });\n      }\n    });\n\n    req.write(body);\n    req.end();\n  };\n\n  tryRequest();\n});\n\nreturn [{ json: { status: \u0027FAILED\u0027, message: \u0027Error callback sent (best effort)\u0027, statusCode: response.statusCode } }];"
+                                     },
+                      "id":  "callback-error",
+                      "name":  "Callback: Error (best effort)",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       360,
+                                       500
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ { ok: false, error: $json.message || \u0027Unknown error\u0027 } }}",
+                                         "options":  {
+                                                         "responseCode":  500
+                                                     }
+                                     },
+                      "id":  "respond-error",
+                      "name":  "Respond: Error",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       600,
+                                       500
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Validate Input",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Validate Input":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "HTTP: Get Content Idea",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ],
+                                               "error":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Callback: Error (best effort)",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                           },
+                        "HTTP: Get Content Idea":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Validate Render State",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ],
+                                                       "error":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Callback: Error (best effort)",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                   },
+                        "Validate Render State":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Skip if not pending",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ],
+                                                      "error":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Callback: Error (best effort)",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                  },
+                        "Skip if not pending":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Respond: Skipped",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ],
+                                                                 [
+                                                                     {
+                                                                         "node":  "HTTP: Get Shotstack Status",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "HTTP: Get Shotstack Status":  {
+                                                           "main":  [
+                                                                        [
+                                                                            {
+                                                                                "node":  "Build Update Payload",
+                                                                                "type":  "main",
+                                                                                "index":  0
+                                                                            }
+                                                                        ]
+                                                                    ],
+                                                           "error":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Callback: Error (best effort)",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                       },
+                        "Build Update Payload":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Pending without update?",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ],
+                                                     "error":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Callback: Error (best effort)",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                 },
+                        "Pending without update?":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Respond: Pending",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ],
+                                                                     [
+                                                                         {
+                                                                             "node":  "HTTP: Update Content Idea",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "HTTP: Update Content Idea":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "Respond: Success",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ],
+                                                          "error":  [
+                                                                        [
+                                                                            {
+                                                                                "node":  "Callback: Error (best effort)",
+                                                                                "type":  "main",
+                                                                                "index":  0
+                                                                            }
+                                                                        ]
+                                                                    ]
+                                                      },
+                        "Respond: Success":  {
+                                                 "main":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "Callback: Backend (with retry)",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                             },
+                        "Callback: Backend (with retry)":  {
+                                                               "main":  [
+
+                                                                        ],
+                                                               "error":  [
+                                                                             [
+                                                                                 {
+                                                                                     "node":  "Callback: Error (best effort)",
+                                                                                     "type":  "main",
+                                                                                     "index":  0
+                                                                                 }
+                                                                             ]
+                                                                         ]
+                                                           },
+                        "Respond: Skipped":  {
+                                                 "main":  [
+
+                                                          ]
+                                             },
+                        "Callback: Error (best effort)":  {
+                                                              "main":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "Respond: Error",
+                                                                                   "type":  "main",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                          }
+                    },
+    "pinData":  {
+
+                },
+    "meta":  {
+                 "templateCredsSetupCompleted":  true
+             },
+    "id":  "FVCRU7rTMuMCR1J3",
+    "active":  true
+}

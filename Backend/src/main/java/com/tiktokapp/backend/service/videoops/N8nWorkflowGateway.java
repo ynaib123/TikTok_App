@@ -112,7 +112,7 @@ public class N8nWorkflowGateway {
 
     private String resolveWebhookPath(String metadataJson, VideoWorkflowType workflowType) {
         String defaultPath = switch (workflowType) {
-            case MAIN_PIPELINE -> "/webhook/creation-ideas";
+            case MAIN_PIPELINE -> "/webhook/fused-idea-script";
             case SCRIPT_GENERATION -> "/webhook/script-generation";
             case CHECK_SHOTSTACK -> "/webhook/check-shotstack";
             case RENDER_TEMPLATE_VIDEO -> "/webhook/render-template-video";
