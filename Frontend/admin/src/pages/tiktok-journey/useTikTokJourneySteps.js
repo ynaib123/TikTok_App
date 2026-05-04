@@ -1,6 +1,5 @@
 import {
   MAX_IDEA_BATCH_SIZE,
-  hasScriptGenerationResult,
   isRenderReady,
   mergeIdeasById,
 } from './journeyHelpers.js'
@@ -9,7 +8,6 @@ export function useCreationStep({
   displayedGeneratedIdeas,
   generationCategory,
   connectedTikTokAccount,
-  fetchContentIdeaById,
   fetchRecentContentIdeas,
   triggerMainContentPipeline,
   refreshPipelineData,
@@ -22,7 +20,6 @@ export function useCreationStep({
   setLastGenerationBaselineId,
   setLastGenerationExpectedCount,
   waitForNewIdeas,
-  waitForContentIdeaStatus,
   waitForScriptGeneration,
   showSuccess,
   showError,
@@ -67,15 +64,10 @@ export function useCreationStep({
       setManualAction(null)
       setUploadResult(null)
 
-      // Fused workflow produces both idea and script. Wait until SCRIPT_READY then refresh.
-      let scriptedIdea = null
-      const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'SCRIPT_READY', 30_000)
-      if (status?.pipelineStage === 'SCRIPT_READY') {
-        scriptedIdea = await fetchContentIdeaById(idea.id)
-      }
-      if (!scriptedIdea || !hasScriptGenerationResult(scriptedIdea)) {
-        scriptedIdea = await waitForScriptGeneration(idea.id, idea)
-      }
+      // Fused workflow PATCHes script content directly on the idea row.
+      // Poll the idea content (not pipelineStage) so we don't depend on
+      // the backend state-machine being up to date.
+      const scriptedIdea = await waitForScriptGeneration(idea.id, idea)
 
       setScriptedIdea(scriptedIdea)
       setGeneratedIdeas(() => [scriptedIdea])
