@@ -2,7 +2,6 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.model.VideoWorkflowType;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,11 +19,11 @@ import java.util.Map;
 @Service
 public class N8nWorkflowGateway {
 
-    private final VideoOpsProperties properties;
+    private final N8nWorkflowContractService workflowContractService;
     private final ObjectMapper objectMapper;
 
-    public N8nWorkflowGateway(VideoOpsProperties properties, ObjectMapper objectMapper) {
-        this.properties = properties;
+    public N8nWorkflowGateway(N8nWorkflowContractService workflowContractService, ObjectMapper objectMapper) {
+        this.workflowContractService = workflowContractService;
         this.objectMapper = objectMapper;
     }
 
@@ -76,33 +75,16 @@ public class N8nWorkflowGateway {
     }
 
     private String resolveWebhookUrl(VideoWorkflowType workflowType) {
-        VideoOpsProperties.N8n cfg = properties.getN8n();
-        String baseUrl = normalizeBaseUrl(cfg.getBaseUrl());
-        String path = resolveWebhookPath(cfg, workflowType);
-        return baseUrl + (path.startsWith("/") ? path : "/" + path);
-    }
-
-    private String normalizeBaseUrl(String baseUrl) {
-        String normalized = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
-        if (normalized.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "L URL de base n8n n'est pas configuree (app.video-ops.n8n.base-url)."
-            );
-        }
-        return normalized;
-    }
-
-    private String resolveWebhookPath(VideoOpsProperties.N8n cfg, VideoWorkflowType workflowType) {
-        return switch (workflowType) {
-            case MAIN_PIPELINE -> cfg.getMainPipelinePath();
-            case CHECK_SHOTSTACK -> cfg.getCheckShotstackPath();
-            case RENDER_TEMPLATE_VIDEO -> cfg.getRenderTemplateVideoPath();
-            case INIT_PUBLISH_TIKTOK -> cfg.getInitPublishTikTokPath();
+        String workflowPathKey = switch (workflowType) {
+            case MAIN_PIPELINE -> "mainPipeline";
+            case CHECK_SHOTSTACK -> "checkShotstack";
+            case RENDER_TEMPLATE_VIDEO -> "renderTemplateVideo";
+            case INIT_PUBLISH_TIKTOK -> "initPublishTikTok";
             default -> throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Aucun webhook n8n configure pour " + workflowType + "."
             );
         };
+        return workflowContractService.requireWebhookUrl(workflowPathKey);
     }
 }

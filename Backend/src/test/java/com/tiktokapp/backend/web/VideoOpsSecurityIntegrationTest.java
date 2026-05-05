@@ -6,6 +6,7 @@ import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
 import com.tiktokapp.backend.dto.videoops.PexelsVideoSearchRequest;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
+import com.tiktokapp.backend.dto.videoops.N8nWorkflowContractResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
 import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
@@ -57,7 +58,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.security.jwt-secret=integration-test-secret-12345678901234567890",
         "app.security.secure-cookies=false",
         "app.security.bootstrap-admin-on-startup=true",
-        "app.video-ops.internal-api-secret=internal-test-secret"
+        "app.video-ops.internal-api-secret=internal-test-secret",
+        "app.video-ops.allow-legacy-workflow-callback-secret=true"
 })
 @AutoConfigureMockMvc
 class VideoOpsSecurityIntegrationTest {
@@ -129,7 +131,16 @@ class VideoOpsSecurityIntegrationTest {
                         List.of(new VideoWorkflowRunDetailResponse(99L, 42L, "INIT_PUBLISH_TIKTOK", "SUCCEEDED", 1, null, "{}", "2026-04-29T00:00:00Z", "2026-04-29T00:00:02Z")),
                         List.of(),
                         List.of(new VideoPipelineEventResponse(42L, 99L, "ERROR", "workflow_failed", "boom", "2026-04-29T00:00:03Z")),
-                        List.of()
+                        List.of(),
+                        new N8nWorkflowContractResponse(
+                                true,
+                                "service_connection",
+                                "http://n8n:5678",
+                                Map.of("mainPipeline", "/webhook/fused-idea-script"),
+                                List.of(),
+                                false,
+                                0
+                        )
                 )
         );
         when(accountsService.fetchOverview()).thenReturn(

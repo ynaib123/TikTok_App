@@ -67,6 +67,9 @@ class VideoOpsServiceTest {
     @Mock
     private VideoOpsRunPersistenceHelper runPersistenceHelper;
 
+    @Mock
+    private N8nWorkflowContractService n8nWorkflowContractService;
+
     @Test
     void triggerMainPipelineSendsCategoryAndIdeaCountToN8n() {
         VideoOpsProperties properties = new VideoOpsProperties();
@@ -113,7 +116,8 @@ class VideoOpsServiceTest {
                 eventRepository,
                 properties,
                 new ObjectMapper(),
-                runPersistenceHelper
+                runPersistenceHelper,
+                n8nWorkflowContractService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -176,7 +180,8 @@ class VideoOpsServiceTest {
                 eventRepository,
                 properties,
                 new ObjectMapper(),
-                runPersistenceHelper
+                runPersistenceHelper,
+                n8nWorkflowContractService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -245,7 +250,8 @@ class VideoOpsServiceTest {
                 eventRepository,
                 properties,
                 new ObjectMapper(),
-                runPersistenceHelper
+                runPersistenceHelper,
+                n8nWorkflowContractService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -288,7 +294,8 @@ class VideoOpsServiceTest {
                 eventRepository,
                 properties,
                 new ObjectMapper(),
-                runPersistenceHelper
+                runPersistenceHelper,
+                n8nWorkflowContractService
         );
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();

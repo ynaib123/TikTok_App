@@ -7,7 +7,6 @@ import {
   fetchContentIdeasPage,
   fetchManualActions,
   fetchTikTokAccounts,
-  fetchVideoOpsObservability,
 } from '../services/videoOpsSupabase.js';
 import type {
   AccountsReadiness,
@@ -16,7 +15,6 @@ import type {
   ManualAction,
   SpringPageResponse,
   TikTokAccount,
-  VideoObservability,
   WorkflowState,
 } from '../types';
 
@@ -26,12 +24,6 @@ const EMPTY_READINESS: AccountsReadiness = {
   missingItems: [],
 };
 
-const EMPTY_OBSERVABILITY: VideoObservability = {
-  recentRuns: [],
-  failedRuns: [],
-  recentErrors: [],
-  recentEvents: [],
-};
 const CONTENT_IDEAS_PAGE_SIZE = 20;
 const CONTENT_IDEAS_SORT = 'id,DESC';
 
@@ -83,12 +75,6 @@ export function useTikTokWorkflow() {
     refetchInterval: 15_000,
   });
 
-  const observabilityQuery = useQuery<VideoObservability>({
-    queryKey: ['video-ops-observability'],
-    queryFn: fetchVideoOpsObservability,
-    refetchInterval: 10_000,
-  });
-
   const manualActionsQuery = useQuery<ManualAction[]>({
     queryKey: ['manual-actions'],
     queryFn: fetchManualActions,
@@ -104,7 +90,6 @@ export function useTikTokWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
       queryClient.invalidateQueries({ queryKey: ['manual-actions'] }),
       queryClient.invalidateQueries({ queryKey: ['video-dashboard'] }),
-      queryClient.invalidateQueries({ queryKey: ['video-ops-observability'] }),
       queryClient.invalidateQueries({ queryKey: ['accounts-readiness'] }),
     ]);
   }, [queryClient]);
@@ -132,13 +117,11 @@ export function useTikTokWorkflow() {
     accountsReadiness: readinessQuery.data ?? EMPTY_READINESS,
     contentIdeas,
     manualActions: manualActionsQuery.data ?? [],
-    observability: observabilityQuery.data ?? EMPTY_OBSERVABILITY,
     selectedGeneratedIdea,
     state,
     tiktokAccounts: tiktokAccountsQuery.data ?? [],
     contentIdeasQuery,
     manualActionsQuery,
-    observabilityQuery,
     patchState,
     readinessQuery,
     refreshPipelineData,

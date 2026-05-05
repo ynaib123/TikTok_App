@@ -34,7 +34,7 @@ app:
     workflow-callback-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET}
     workflow-callback-hmac-secret: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET}
     workflow-callback-max-skew-seconds: ${APP_VIDEO_OPS_WORKFLOW_CALLBACK_MAX_SKEW_SECONDS:300}
-    allow-legacy-workflow-callback-secret: ${APP_VIDEO_OPS_ALLOW_LEGACY_WORKFLOW_CALLBACK_SECRET:true}
+    allow-legacy-workflow-callback-secret: ${APP_VIDEO_OPS_ALLOW_LEGACY_WORKFLOW_CALLBACK_SECRET:false}
     token-encryption-key: ${APP_VIDEO_OPS_TOKEN_ENCRYPTION_KEY}
     tiktok-client-key: ${APP_VIDEO_OPS_TIKTOK_CLIENT_KEY:}
     tiktok-client-secret: ${APP_VIDEO_OPS_TIKTOK_CLIENT_SECRET:}
@@ -47,6 +47,7 @@ app:
     n8n:
       base-url: ${APP_VIDEO_OPS_N8N_BASE_URL:http://localhost:5678}
       main-pipeline-path: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_PATH:/webhook/fused-idea-script}
+      script-generation-path: ${APP_VIDEO_OPS_N8N_SCRIPT_GENERATION_PATH:/webhook/script-generation}
       render-template-video-path: ${APP_VIDEO_OPS_N8N_RENDER_PATH:/webhook/render-template-video}
       check-shotstack-path: ${APP_VIDEO_OPS_N8N_CHECK_PATH:/webhook/check-shotstack}
       init-publish-tik-tok-path: ${APP_VIDEO_OPS_N8N_INIT_PUBLISH_PATH:/webhook/init-publish-tiktok}

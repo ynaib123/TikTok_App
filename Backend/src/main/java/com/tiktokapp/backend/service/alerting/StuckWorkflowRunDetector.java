@@ -50,7 +50,7 @@ public class StuckWorkflowRunDetector {
         logger.warn("Detected {} stuck workflow runs older than {}s", stuck.size(), properties.getStuckRunThresholdSeconds());
 
         for (VideoWorkflowRun run : stuck) {
-            String errorMsg = "Timeout — aucun callback reçu en "
+            String errorMsg = "Timeout - aucun callback recu en "
                     + (properties.getStuckRunThresholdSeconds() / 60) + " min.";
             SlackAlertService.AlertNotification alert = new SlackAlertService.AlertNotification(
                     run.getWorkflowType() == null ? "unknown" : run.getWorkflowType().name(),

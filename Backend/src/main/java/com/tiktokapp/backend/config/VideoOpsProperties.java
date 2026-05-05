@@ -39,6 +39,7 @@ public class VideoOpsProperties {
     public static class N8n {
         private String baseUrl = "http://localhost:5678";
         private String mainPipelinePath = "/webhook/fused-idea-script";
+        private String scriptGenerationPath = "/webhook/script-generation";
         private String renderTemplateVideoPath = "/webhook/render-template-video";
         private String checkShotstackPath = "/webhook/check-shotstack";
         private String initPublishTikTokPath = "/webhook/init-publish-tiktok";
@@ -47,6 +48,8 @@ public class VideoOpsProperties {
         public void setBaseUrl(String v) { this.baseUrl = v; }
         public String getMainPipelinePath() { return mainPipelinePath; }
         public void setMainPipelinePath(String v) { this.mainPipelinePath = v; }
+        public String getScriptGenerationPath() { return scriptGenerationPath; }
+        public void setScriptGenerationPath(String v) { this.scriptGenerationPath = v; }
         public String getRenderTemplateVideoPath() { return renderTemplateVideoPath; }
         public void setRenderTemplateVideoPath(String v) { this.renderTemplateVideoPath = v; }
         public String getCheckShotstackPath() { return checkShotstackPath; }

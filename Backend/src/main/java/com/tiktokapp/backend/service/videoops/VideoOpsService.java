@@ -10,6 +10,7 @@ import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
+import com.tiktokapp.backend.dto.videoops.N8nWorkflowContractResponse;
 import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
 import com.tiktokapp.backend.dto.videoops.VideoPipelineEventResponse;
 import com.tiktokapp.backend.dto.videoops.VideoStatCardResponse;
@@ -70,6 +71,7 @@ public class VideoOpsService {
     private final VideoOpsProperties properties;
     private final ObjectMapper objectMapper;
     private final VideoOpsRunPersistenceHelper runPersistenceHelper;
+    private final N8nWorkflowContractService n8nWorkflowContractService;
 
     public VideoOpsService(
             SupabaseVideoOpsGateway supabaseGateway,
@@ -83,7 +85,8 @@ public class VideoOpsService {
             VideoPipelineEventRepository eventRepository,
             VideoOpsProperties properties,
             ObjectMapper objectMapper,
-            VideoOpsRunPersistenceHelper runPersistenceHelper
+            VideoOpsRunPersistenceHelper runPersistenceHelper,
+            N8nWorkflowContractService n8nWorkflowContractService
     ) {
         this.supabaseGateway = supabaseGateway;
         this.contentIdeaRepository = contentIdeaRepository;
@@ -97,6 +100,7 @@ public class VideoOpsService {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.runPersistenceHelper = runPersistenceHelper;
+        this.n8nWorkflowContractService = n8nWorkflowContractService;
     }
 
     @Transactional(readOnly = true)
@@ -199,7 +203,8 @@ public class VideoOpsService {
         List<VideoPipelineEventResponse> recentEvents = eventRepository.findTop8ByOrderByCreatedAtDesc().stream()
                 .map(this::toEventResponse)
                 .toList();
-        return new VideoObservabilityResponse(recentRuns, failedRuns, recentErrors, recentEvents);
+        N8nWorkflowContractResponse n8nContract = n8nWorkflowContractService.describeContract();
+        return new VideoObservabilityResponse(recentRuns, failedRuns, recentErrors, recentEvents, n8nContract);
     }
 
     @Transactional(readOnly = true)
@@ -528,7 +533,7 @@ public class VideoOpsService {
         VideoWorkflowRun run = workflowRunRepository.findById(runId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
 
-        VideoWorkflowRunStatus nextStatus = normalizeWorkflowCompletionStatus(request.getStatus());
+        VideoWorkflowRunStatus nextStatus = WorkflowCompletionStatusMapper.toRunStatus(request.getStatus());
 
         VideoWorkflowRunStatus currentStatus = run.getStatus();
         if (currentStatus == VideoWorkflowRunStatus.SUCCEEDED || currentStatus == VideoWorkflowRunStatus.FAILED) {
@@ -583,26 +588,6 @@ public class VideoOpsService {
         workflowRunRepository.save(run);
 
         return fetchWorkflowRun(runId);
-    }
-
-    private VideoWorkflowRunStatus normalizeWorkflowCompletionStatus(String rawStatus) {
-        String normalizedStatus = trimToNull(rawStatus);
-        if (normalizedStatus == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow invalide.");
-        }
-
-        String canonical = normalizedStatus
-                .trim()
-                .replace('-', '_')
-                .replace(' ', '_')
-                .toUpperCase(Locale.ROOT);
-
-        return switch (canonical) {
-            case "SUCCEEDED", "SUCCESS", "COMPLETED", "COMPLETE", "DONE", "OK",
-                    "SCRIPT_READY", "RENDERING_REQUESTED", "RENDER_READY", "INIT_DONE" -> VideoWorkflowRunStatus.SUCCEEDED;
-            case "FAILED", "FAIL", "ERROR" -> VideoWorkflowRunStatus.FAILED;
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status workflow doit etre SUCCEEDED ou FAILED.");
-        };
     }
 
     public void validateWorkflowCallbackRequest(String method, String path, String body, String timestamp, String signature, String legacySecret) {

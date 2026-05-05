@@ -83,4 +83,13 @@ export interface VideoObservability {
   failedRuns: WorkflowRun[];
   recentErrors: Array<Record<string, unknown>>;
   recentEvents: Array<Record<string, unknown>>;
+  n8nContract: {
+    healthy: boolean;
+    source: string | null;
+    baseUrl: string | null;
+    workflowPaths: Record<string, string>;
+    warnings: string[];
+    legacyCallbackSecretAllowed: boolean;
+    stuckRunCount: number;
+  } | null;
 }
