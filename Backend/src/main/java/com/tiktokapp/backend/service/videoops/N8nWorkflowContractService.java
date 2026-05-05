@@ -1,10 +1,8 @@
 package com.tiktokapp.backend.service.videoops;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.tiktokapp.backend.config.AlertingProperties;
 import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.dto.videoops.N8nWorkflowContractResponse;
-import com.tiktokapp.backend.model.ServiceConnectionProvider;
 import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.repository.VideoWorkflowRunRepository;
 import org.springframework.http.HttpStatus;
@@ -22,41 +20,30 @@ import java.util.Map;
 public class N8nWorkflowContractService {
 
     private static final String SOURCE_APPLICATION_PROPERTIES = "application_properties";
-    private static final String SOURCE_SERVICE_CONNECTION = "service_connection";
 
     private final VideoOpsProperties properties;
-    private final ServiceConnectionResolver serviceConnectionResolver;
     private final VideoWorkflowRunRepository workflowRunRepository;
     private final AlertingProperties alertingProperties;
 
     public N8nWorkflowContractService(
             VideoOpsProperties properties,
-            ServiceConnectionResolver serviceConnectionResolver,
             VideoWorkflowRunRepository workflowRunRepository,
             AlertingProperties alertingProperties
     ) {
         this.properties = properties;
-        this.serviceConnectionResolver = serviceConnectionResolver;
         this.workflowRunRepository = workflowRunRepository;
         this.alertingProperties = alertingProperties;
     }
 
     public ResolvedN8nWorkflowConfiguration resolveConfiguration() {
         VideoOpsProperties.N8n defaults = properties.getN8n();
-        ResolvedServiceConnection connection = serviceConnectionResolver.findConnected(ServiceConnectionProvider.N8N);
-        String source = connection == null ? SOURCE_APPLICATION_PROPERTIES : SOURCE_SERVICE_CONNECTION;
-        JsonNode metadata = connection == null ? null : connection.metadata();
-        JsonNode workflowPaths = metadata == null ? null : metadata.path("workflowPaths");
-
         Map<String, String> resolvedPaths = new LinkedHashMap<>();
-        resolvedPaths.put("mainPipeline", firstNonBlank(readJsonText(workflowPaths, "mainPipeline"), defaults.getMainPipelinePath()));
-        resolvedPaths.put("scriptGeneration", firstNonBlank(readJsonText(workflowPaths, "scriptGeneration"), defaults.getScriptGenerationPath()));
-        resolvedPaths.put("renderTemplateVideo", firstNonBlank(readJsonText(workflowPaths, "renderTemplateVideo"), defaults.getRenderTemplateVideoPath()));
-        resolvedPaths.put("checkShotstack", firstNonBlank(readJsonText(workflowPaths, "checkShotstack"), defaults.getCheckShotstackPath()));
-        resolvedPaths.put("initPublishTikTok", firstNonBlank(readJsonText(workflowPaths, "initPublishTikTok"), defaults.getInitPublishTikTokPath()));
-
-        String baseUrl = firstNonBlank(connection == null ? null : connection.baseUrl(), defaults.getBaseUrl());
-        return new ResolvedN8nWorkflowConfiguration(source, trimToNull(baseUrl), resolvedPaths);
+        resolvedPaths.put("mainPipeline", trimToNull(defaults.getMainPipelinePath()));
+        resolvedPaths.put("scriptGeneration", trimToNull(defaults.getScriptGenerationPath()));
+        resolvedPaths.put("renderTemplateVideo", trimToNull(defaults.getRenderTemplateVideoPath()));
+        resolvedPaths.put("checkShotstack", trimToNull(defaults.getCheckShotstackPath()));
+        resolvedPaths.put("initPublishTikTok", trimToNull(defaults.getInitPublishTikTokPath()));
+        return new ResolvedN8nWorkflowConfiguration(SOURCE_APPLICATION_PROPERTIES, trimToNull(defaults.getBaseUrl()), resolvedPaths);
     }
 
     public N8nWorkflowContractResponse describeContract() {
@@ -133,19 +120,6 @@ public class N8nWorkflowContractService {
                 List.of(VideoWorkflowRunStatus.PENDING, VideoWorkflowRunStatus.ACCEPTED),
                 threshold
         ).size();
-    }
-
-    private String readJsonText(JsonNode node, String fieldName) {
-        if (node == null || node.isMissingNode() || node.isNull()) {
-            return null;
-        }
-        JsonNode child = node.get(fieldName);
-        return child == null || child.isNull() ? null : trimToNull(child.asText(null));
-    }
-
-    private String firstNonBlank(String primary, String fallback) {
-        String first = trimToNull(primary);
-        return first != null ? first : trimToNull(fallback);
     }
 
     private String normalizeBaseUrl(String baseUrl) {

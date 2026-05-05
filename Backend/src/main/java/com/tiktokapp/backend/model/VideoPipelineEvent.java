@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
@@ -34,8 +33,7 @@ public class VideoPipelineEvent {
     @Column(nullable = false, length = 500)
     private String message;
 
-    @Lob
-    @Column(name = "payload_json")
+    @Column(name = "payload_json", columnDefinition = "text")
     private String payloadJson;
 
     @Column(name = "created_at", nullable = false)

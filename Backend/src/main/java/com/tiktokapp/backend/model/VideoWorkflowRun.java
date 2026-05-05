@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -45,12 +44,10 @@ public class VideoWorkflowRun {
     @Column(name = "force_requested", nullable = false)
     private boolean forceRequested;
 
-    @Lob
-    @Column(name = "request_payload")
+    @Column(name = "request_payload", columnDefinition = "text")
     private String requestPayload;
 
-    @Lob
-    @Column(name = "response_payload")
+    @Column(name = "response_payload", columnDefinition = "text")
     private String responsePayload;
 
     @Column(name = "error_message", length = 500)

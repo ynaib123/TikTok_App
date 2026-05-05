@@ -1,6 +1,5 @@
 package com.tiktokapp.backend.service.videoops;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.config.AlertingProperties;
 import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.dto.videoops.N8nWorkflowContractResponse;
@@ -17,55 +16,38 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class N8nWorkflowContractServiceTest {
 
     @Mock
-    private ServiceConnectionResolver serviceConnectionResolver;
-
-    @Mock
     private VideoWorkflowRunRepository workflowRunRepository;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @Test
-    void prefersActiveServiceConnectionPathsOverApplicationDefaults() throws Exception {
+    void resolvesWebhookPathsFromApplicationProperties() {
         VideoOpsProperties properties = new VideoOpsProperties();
-        properties.getN8n().setBaseUrl("http://localhost:5678");
+        properties.getN8n().setBaseUrl("http://n8n:5678");
+        properties.getN8n().setMainPipelinePath("/webhook/fused-idea-script");
+        properties.getN8n().setRenderTemplateVideoPath("/webhook/render-template-video");
+        properties.getN8n().setCheckShotstackPath("/webhook/check-shotstack");
+        properties.getN8n().setInitPublishTikTokPath("/webhook/init-publish-tiktok");
         AlertingProperties alertingProperties = new AlertingProperties();
 
-        when(serviceConnectionResolver.findConnected(eq(com.tiktokapp.backend.model.ServiceConnectionProvider.N8N)))
-                .thenReturn(new ResolvedServiceConnection(
-                        "http://n8n:5678",
-                        null,
-                        null,
-                        "n8n",
-                        objectMapper.readTree("""
-                                {
-                                  "workflowPaths": {
-                                    "mainPipeline": "/webhook/fused-idea-script",
-                                    "renderTemplateVideo": "/webhook/SAn6Iepn4rCpkHJg/webhook/render-template-video",
-                                    "checkShotstack": "/webhook/FVCRU7rTMuMCR1J3/webhook/check-shotstack",
-                                    "initPublishTikTok": "/webhook/init-publish-tiktok"
-                                  }
-                                }
-                                """)
-                ));
         N8nWorkflowContractService service = new N8nWorkflowContractService(
                 properties,
-                serviceConnectionResolver,
                 workflowRunRepository,
                 alertingProperties
         );
 
         ResolvedN8nWorkflowConfiguration configuration = service.resolveConfiguration();
 
-        assertEquals("service_connection", configuration.source());
+        assertEquals("application_properties", configuration.source());
         assertEquals("http://n8n:5678", configuration.baseUrl());
-        assertEquals("/webhook/FVCRU7rTMuMCR1J3/webhook/check-shotstack", configuration.workflowPaths().get("checkShotstack"));
+        assertEquals("/webhook/fused-idea-script", configuration.workflowPaths().get("mainPipeline"));
+        assertEquals("/webhook/render-template-video", configuration.workflowPaths().get("renderTemplateVideo"));
+        assertEquals("/webhook/check-shotstack", configuration.workflowPaths().get("checkShotstack"));
+        assertEquals("/webhook/init-publish-tiktok", configuration.workflowPaths().get("initPublishTikTok"));
     }
 
     @Test
@@ -78,14 +60,11 @@ class N8nWorkflowContractServiceTest {
         AlertingProperties alertingProperties = new AlertingProperties();
         alertingProperties.setStuckRunThresholdSeconds(60);
 
-        when(serviceConnectionResolver.findConnected(eq(com.tiktokapp.backend.model.ServiceConnectionProvider.N8N)))
-                .thenReturn(null);
         when(workflowRunRepository.findByStatusInAndCreatedAtBefore(any(), any(Instant.class)))
                 .thenReturn(List.of(new com.tiktokapp.backend.model.VideoWorkflowRun()));
 
         N8nWorkflowContractService service = new N8nWorkflowContractService(
                 properties,
-                serviceConnectionResolver,
                 workflowRunRepository,
                 alertingProperties
         );
