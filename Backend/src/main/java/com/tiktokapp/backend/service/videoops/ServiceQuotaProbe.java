@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.dto.videoops.RateUsageDto;
 import com.tiktokapp.backend.model.ServiceConnectionProvider;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -70,7 +71,8 @@ public class ServiceQuotaProbe {
         return Optional.ofNullable(value);
     }
 
-    private RateUsageDto probePexels(String baseUrl, String secret) throws Exception {
+    @CircuitBreaker(name = "pexels", fallbackMethod = "probeFallback")
+    public RateUsageDto probePexels(String baseUrl, String secret) throws Exception {
         String url = (baseUrl == null || baseUrl.isBlank() ? "https://api.pexels.com" : baseUrl.trim())
                 + "/videos/popular?per_page=1";
         HttpRequest request = HttpRequest.newBuilder()
@@ -91,7 +93,8 @@ public class ServiceQuotaProbe {
         return new RateUsageDto(Math.max(0, limit - remaining), limit);
     }
 
-    private RateUsageDto probeShotstack(String baseUrl, String secret) throws Exception {
+    @CircuitBreaker(name = "shotstack", fallbackMethod = "probeFallback")
+    public RateUsageDto probeShotstack(String baseUrl, String secret) throws Exception {
         // Shotstack /me sits on the production host regardless of edit/v1 path.
         String url = "https://api.shotstack.io/edit/v1/me";
         HttpRequest request = HttpRequest.newBuilder()
@@ -112,6 +115,12 @@ public class ServiceQuotaProbe {
             return null;
         }
         return new RateUsageDto(used, limit);
+    }
+
+    @SuppressWarnings("unused")
+    private RateUsageDto probeFallback(String baseUrl, String secret, Throwable cause) {
+        logger.debug("quota probe fallback baseUrl={} cause={}", baseUrl, cause.getMessage());
+        return null;
     }
 
     private record CachedQuota(long timestampMillis, RateUsageDto value) {}

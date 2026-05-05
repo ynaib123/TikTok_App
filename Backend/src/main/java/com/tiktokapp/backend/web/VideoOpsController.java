@@ -43,6 +43,7 @@ import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextServic
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
+import com.tiktokapp.backend.service.AuditService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -87,6 +88,7 @@ public class VideoOpsController {
     private final BatchPublishService batchPublishService;
     private final VideoOpsHealthService videoOpsHealthService;
     private final ObjectMapper objectMapper;
+    private final AuditService auditService;
 
     public VideoOpsController(
             VideoOpsService videoOpsService,
@@ -100,7 +102,8 @@ public class VideoOpsController {
             SlackAlertService slackAlertService,
             BatchPublishService batchPublishService,
             VideoOpsHealthService videoOpsHealthService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            AuditService auditService
     ) {
         this.videoOpsService = videoOpsService;
         this.videoOpsDataService = videoOpsDataService;
@@ -114,6 +117,7 @@ public class VideoOpsController {
         this.batchPublishService = batchPublishService;
         this.videoOpsHealthService = videoOpsHealthService;
         this.objectMapper = objectMapper;
+        this.auditService = auditService;
     }
 
     @GetMapping("/health")
@@ -213,8 +217,16 @@ public class VideoOpsController {
     }
 
     @DeleteMapping("/content-ideas/{contentIdeaId}")
-    public ResponseEntity<Void> deleteContentIdea(@PathVariable long contentIdeaId) {
+    public ResponseEntity<Void> deleteContentIdea(@PathVariable long contentIdeaId, Authentication authentication) {
         videoOpsService.deleteContentIdea(contentIdeaId);
+        auditService.log(
+                null,
+                authentication == null ? null : authentication.getName(),
+                "content_idea.deleted",
+                "content_idea",
+                String.valueOf(contentIdeaId),
+                null
+        );
         return ResponseEntity.noContent().build();
     }
 

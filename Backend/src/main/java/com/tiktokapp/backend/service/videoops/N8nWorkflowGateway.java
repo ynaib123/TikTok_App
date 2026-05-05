@@ -3,6 +3,11 @@ package com.tiktokapp.backend.service.videoops;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.model.VideoWorkflowType;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +24,8 @@ import java.util.Map;
 @Service
 public class N8nWorkflowGateway {
 
+    private static final Logger logger = LoggerFactory.getLogger(N8nWorkflowGateway.class);
+
     private final N8nWorkflowContractService workflowContractService;
     private final ObjectMapper objectMapper;
 
@@ -27,6 +34,8 @@ public class N8nWorkflowGateway {
         this.objectMapper = objectMapper;
     }
 
+    @CircuitBreaker(name = "n8n", fallbackMethod = "triggerFallback")
+    @Retry(name = "n8n")
     public JsonNode trigger(VideoWorkflowType workflowType, Map<String, Object> payload) {
         String webhookUrl = resolveWebhookUrl(workflowType);
         HttpURLConnection connection = null;
@@ -42,6 +51,10 @@ public class N8nWorkflowGateway {
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Connection", "close");
+            String traceId = MDC.get("traceId");
+            if (traceId != null && !traceId.isBlank()) {
+                connection.setRequestProperty("X-Request-Id", traceId);
+            }
             try (OutputStream outputStream = connection.getOutputStream()) {
                 outputStream.write(requestBody);
                 outputStream.flush();
@@ -63,6 +76,16 @@ public class N8nWorkflowGateway {
                 connection.disconnect();
             }
         }
+    }
+
+    @SuppressWarnings("unused")
+    private JsonNode triggerFallback(VideoWorkflowType workflowType, Map<String, Object> payload, Throwable cause) {
+        logger.warn("n8n circuit breaker open or retries exhausted for {}: {}", workflowType, cause.getMessage());
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "n8n est indisponible (" + workflowType + "). Reessaie dans 30s.",
+                cause
+        );
     }
 
     private String readBody(InputStream inputStream) throws IOException {

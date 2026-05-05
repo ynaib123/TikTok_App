@@ -60,3 +60,17 @@ jobs:
         env:
           PLAYWRIGHT_ENABLE_VIDEO_OPS_E2E: "true"
         run: npm run test:e2e -- tiktok-journey.spec.js
+
+  security:
+    name: Security scan (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"

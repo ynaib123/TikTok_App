@@ -65,3 +65,73 @@ app:
     rate-limit-window-seconds: ${APP_ALERTING_RATE_LIMIT_WINDOW_SECONDS:600}
     stuck-run-threshold-seconds: ${APP_ALERTING_STUCK_RUN_THRESHOLD_SECONDS:600}
     stuck-run-check-interval-ms: ${APP_ALERTING_STUCK_RUN_CHECK_INTERVAL_MS:120000}
+
+# Phase 1.2 — Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: tiktok-backend
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+# Phase 1.5 — OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tagsSorter: alpha
+    operationsSorter: alpha
+
+# Phase 1.4 — Resilience4j
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      n8n:
+        baseConfig: default
+        waitDurationInOpenState: 30s
+      tiktok:
+        baseConfig: default
+        waitDurationInOpenState: 60s
+      shotstack:
+        baseConfig: default
+      pexels:
+        baseConfig: default
+      groq:
+        baseConfig: default
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+    instances:
+      n8n:
+        baseConfig: default
+      tiktok:
+        baseConfig: default
+        maxAttempts: 2
+      shotstack:
+        baseConfig: default
+      pexels:
+        baseConfig: default
+      groq:
+        baseConfig: default

@@ -81,7 +81,13 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/groq/chat-completions",
                                 "/api/video-ops/internal/pexels/videos/search",
                                 "/api/video-ops/internal/shotstack/render",
-                                "/api/video-ops/internal/shotstack/render/*"
+                                "/api/video-ops/internal/shotstack/render/*",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/actuator/prometheus"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
