@@ -529,6 +529,20 @@ public class VideoOpsService {
 
         VideoWorkflowRunStatus nextStatus = normalizeWorkflowCompletionStatus(request.getStatus());
 
+        VideoWorkflowRunStatus currentStatus = run.getStatus();
+        if (currentStatus == VideoWorkflowRunStatus.SUCCEEDED || currentStatus == VideoWorkflowRunStatus.FAILED) {
+            recordEvent(
+                    run.getContentIdeaId(),
+                    run,
+                    "INFO",
+                    "workflow_callback_ignored",
+                    "Callback ignore : run deja en etat terminal " + currentStatus + ".",
+                    payloadOf("incomingStatus", nextStatus.name())
+            );
+            logWorkflowInfo("workflow_callback_ignored", run, "Run deja " + currentStatus + ", callback " + nextStatus + " ignore.");
+            return fetchWorkflowRun(runId);
+        }
+
         run.setStatus(nextStatus);
         run.setCompletedAt(Instant.now());
         if (request.getResponsePayload() != null && !request.getResponsePayload().isBlank()) {
