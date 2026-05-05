@@ -1,5 +1,21 @@
 export type ServiceProvider = 'GROQ' | 'SHOTSTACK' | 'PEXELS';
 
+export type ServiceCategory = 'llm' | 'video' | 'photo' | 'social';
+
+export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  llm: 'Modèles de langage',
+  video: 'Génération vidéo',
+  photo: 'Banques d\'images / vidéos',
+  social: 'Réseaux sociaux',
+};
+
+export const SERVICE_PROVIDER_CATEGORY: Record<ServiceProvider | 'TIKTOK', ServiceCategory> = {
+  GROQ: 'llm',
+  SHOTSTACK: 'video',
+  PEXELS: 'photo',
+  TIKTOK: 'social',
+};
+
 export interface ServiceConnection {
   id: number;
   providerKey: ServiceProvider | string;

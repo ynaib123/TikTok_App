@@ -1052,6 +1052,87 @@
   border-color: var(--admin-border-soft);
 }
 
+.journey-btn.is-secondary {
+  background: var(--admin-panel-surface);
+  border-color: var(--admin-panel-border);
+  color: var(--admin-text);
+}
+.journey-btn.is-secondary:hover:not(:disabled) {
+  background: var(--admin-panel-surface-hover);
+}
+
+/* ----- Confirm modal (dark, site-themed) -------------------------------- */
+
+.journey-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.journey-modal-card {
+  width: min(560px, 100%);
+  background: var(--admin-panel-surface);
+  border: 1px solid var(--admin-panel-border);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.journey-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--admin-panel-border);
+}
+
+.journey-modal-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--admin-text);
+}
+
+.journey-modal-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-dim);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.journey-modal-close:hover {
+  background: var(--admin-panel-surface-hover);
+  color: var(--admin-text);
+}
+
+.journey-modal-body {
+  padding: 18px 22px;
+  color: var(--admin-text-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.journey-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--admin-panel-border);
+}
+
 /* ----- Toolbar (library) ------------------------------------------------- */
 
 .journey-toolbar {

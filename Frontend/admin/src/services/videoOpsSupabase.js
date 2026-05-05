@@ -226,6 +226,10 @@ export async function fetchVideoOpsObservability() {
   return apiGet('/video-ops/observability')
 }
 
+export async function fetchVideoOpsHealth() {
+  return apiGet('/video-ops/health')
+}
+
 export async function triggerMainContentPipeline(payload = {}) {
   return apiPost('/video-ops/workflows/main-pipeline', payload)
 }

@@ -14,9 +14,7 @@ const AdminLogin = lazy(() => import('./pages/AdminLogin'))
 const VideoDashboardPage = lazy(() => import('./pages/VideoDashboardPage'))
 const TikTokJourneyPage = lazy(() => import('./pages/TikTokJourneyPage'))
 const TikTokOAuthCallbackPage = lazy(() => import('./pages/TikTokOAuthCallbackPage'))
-const ContentPipelinePage = lazy(() => import('./pages/ContentPipelinePage'))
 const TikTokAccountsPage = lazy(() => import('./pages/TikTokAccountsPage'))
-const ManualActionsPage = lazy(() => import('./pages/ManualActionsPage'))
 const ADMIN_DESKTOP_ONLY_MEDIA_QUERY = '(max-width: 980px)'
 
 function AdminMobileBlockedPage() {
@@ -110,14 +108,8 @@ export default function AdminApp() {
             </AdminOnlyRoute>
           )}
         />
-        <Route
-          path="/content-pipeline"
-          element={(
-            <AdminOnlyRoute>
-              <ContentPipelinePage />
-            </AdminOnlyRoute>
-          )}
-        />
+        <Route path="/content-pipeline" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/manual-actions" element={<Navigate to="/dashboard" replace />} />
         <Route
           path="/accounts"
           element={(
@@ -127,14 +119,6 @@ export default function AdminApp() {
           )}
         />
         <Route path="/tiktok-accounts" element={<Navigate to="/accounts" replace />} />
-        <Route
-          path="/manual-actions"
-          element={(
-            <AdminOnlyRoute>
-              <ManualActionsPage />
-            </AdminOnlyRoute>
-          )}
-        />
         <Route path="/" element={<AdminIndexRedirect />} />
         <Route path="*" element={<AdminIndexRedirect />} />
       </Routes>

@@ -9,7 +9,9 @@ import {
 } from '../components/accounts/AccountsPresenters'
 import { AccountsHeader } from '../components/accounts/AccountsHeader'
 import { AccountsToolbar } from '../components/accounts/AccountsToolbar'
+import { AccountsCategoryTabs } from '../components/accounts/AccountsCategoryTabs'
 import { getErrorMessage } from '../components/accounts/getErrorMessage'
+import { SERVICE_PROVIDER_CATEGORY, type ServiceCategory } from '../types/services'
 import {
   useAccountsFeedback,
   useAccountsForm,
@@ -49,6 +51,7 @@ export default function TikTokAccountsPage() {
   // New UI state
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [search, setSearch] = useState('')
+  const [activeCategory, setActiveCategory] = useState<ServiceCategory | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | DerivedStatus>('all')
   const [connectMenuOpen, setConnectMenuOpen] = useState(false)
   const [stepperStep, setStepperStep] = useState(0) // 0=closed, 1=auth, 2=scopes, 3=done
@@ -379,6 +382,10 @@ export default function TikTokAccountsPage() {
     const q = search.trim().toLowerCase()
     return rows.filter((row) => {
       if (statusFilter !== 'all' && row.status !== statusFilter) return false
+      if (activeCategory !== 'all') {
+        const rowCategory = SERVICE_PROVIDER_CATEGORY[row.providerKey as keyof typeof SERVICE_PROVIDER_CATEGORY]
+        if (rowCategory !== activeCategory) return false
+      }
       if (!q) return true
       return (
         row.title.toLowerCase().includes(q) ||
@@ -386,7 +393,16 @@ export default function TikTokAccountsPage() {
         row.providerKey.toLowerCase().includes(q)
       )
     })
-  }, [rows, search, statusFilter])
+  }, [rows, search, statusFilter, activeCategory])
+
+  const countsByCategory = useMemo(() => {
+    const counts: Record<string, number> = { all: rows.length }
+    for (const row of rows) {
+      const c = SERVICE_PROVIDER_CATEGORY[row.providerKey as keyof typeof SERVICE_PROVIDER_CATEGORY]
+      if (c) counts[c] = (counts[c] || 0) + 1
+    }
+    return counts as Partial<Record<ServiceCategory | 'all', number>>
+  }, [rows])
 
   /* ------------------------------------------------------------------ */
   /* Stats                                                               */
@@ -472,6 +488,12 @@ export default function TikTokAccountsPage() {
               trend={stats.off > 0 ? 'warn' : null}
             />
           </section>
+
+          <AccountsCategoryTabs
+            activeCategory={activeCategory}
+            onChange={setActiveCategory}
+            countsByCategory={countsByCategory}
+          />
 
           <AccountsToolbar
             search={search}

@@ -11,9 +11,7 @@ const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
 const PREFETCH_ROUTE_HANDLERS = {
   '/dashboard': () => import('../pages/VideoDashboardPage'),
   '/tiktok': () => import('../pages/TikTokJourneyPage'),
-  '/content-pipeline': () => import('../pages/ContentPipelinePage'),
   '/accounts': () => import('../pages/TikTokAccountsPage'),
-  '/manual-actions': () => import('../pages/ManualActionsPage'),
 }
 const ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS = 5000
 const ADMIN_LOGOUT_FALLBACK_STORAGE_KEY = 'admin-logout-fallback-until'
@@ -180,14 +178,14 @@ export default function AdminShell({
 
     return [
       {
-        id: 'operations',
-        label: 'Operations',
-        items: ['dashboard', 'tiktok', 'content-pipeline'].map((id) => navItemsById[id]).filter(Boolean),
+        id: 'production',
+        label: 'Production',
+        items: ['dashboard', 'tiktok'].map((id) => navItemsById[id]).filter(Boolean),
       },
       {
-        id: 'distribution',
-        label: 'Distribution',
-        items: ['accounts', 'manual-actions'].map((id) => navItemsById[id]).filter(Boolean),
+        id: 'configuration',
+        label: 'Configuration',
+        items: ['accounts'].map((id) => navItemsById[id]).filter(Boolean),
       },
     ]
   }, [])

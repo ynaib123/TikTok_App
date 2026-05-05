@@ -143,25 +143,75 @@ function KV({ label, value, mono = false }: { label: string; value: string | nul
   )
 }
 
+/* ── Leave confirmation modal ─────────────────────────────────────────── */
+
+function LeaveConfirmModal({ activeIdea, onClose, onLeaveWithoutSaving, onSaveAndLeave }: {
+  activeIdea: ContentIdea | null
+  onClose: () => void
+  onLeaveWithoutSaving: () => void
+  onSaveAndLeave: () => void
+}) {
+  return (
+    <div
+      className="journey-modal-overlay"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="journey-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="leave-confirm-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="journey-modal-head">
+          <h3 id="leave-confirm-title">Quitter le parcours ?</h3>
+          <button type="button" className="journey-modal-close" onClick={onClose} aria-label="Fermer">×</button>
+        </header>
+        <div className="journey-modal-body">
+          <p>
+            Tu vas retourner à la bibliothèque. {activeIdea?.id ? (
+              <>L&apos;idée en cours (#{activeIdea.id}) est sauvegardée côté serveur — tu pourras la reprendre depuis la bibliothèque.</>
+            ) : (
+              <>Aucune idée n&apos;a encore été créée pour ce parcours.</>
+            )}
+          </p>
+        </div>
+        <footer className="journey-modal-actions">
+          <button type="button" className="journey-btn is-ghost" onClick={onClose}>
+            Continuer le parcours
+          </button>
+          <button type="button" className="journey-btn is-secondary" onClick={onLeaveWithoutSaving}>
+            Quitter sans sauvegarder
+          </button>
+          <button type="button" className="journey-btn is-primary" onClick={onSaveAndLeave}>
+            Sauvegarder et quitter
+          </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
 /* ── Top stepper ──────────────────────────────────────────────────────── */
 
-function ProgressStepper({ steps, currentStepIndex, goToStep, goBackInFlow, BackArrow }: {
+function ProgressStepper({ steps, currentStepIndex, goToStep, onLibraryClick, BackArrow }: {
   steps: StepDescriptor[]
   currentStepIndex: number
   goToStep: (id: string) => void
-  goBackInFlow: () => void
+  onLibraryClick: () => void
   BackArrow: IconComponent
 }) {
   return (
     <header className="journey-wizard-head" aria-label="Progression du parcours">
-      <button type="button" className="journey-wizard-head-back" onClick={goBackInFlow}>
+      <button type="button" className="journey-wizard-head-back" onClick={onLibraryClick}>
         <BackArrow /> Bibliotheque
       </button>
       <ol className="journey-wizard-steps" role="list">
         {steps.map((step, index) => {
           const isCurrent = index === currentStepIndex
           const isDone    = index < currentStepIndex
-          const isLocked  = index > currentStepIndex
+          const isLocked  = index !== currentStepIndex
           const cls = `journey-wizard-step ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''} ${isLocked ? 'is-locked' : ''}`
           return (
             <li key={step.id} className={cls}>
@@ -171,6 +221,7 @@ function ProgressStepper({ steps, currentStepIndex, goToStep, goBackInFlow, Back
                 onClick={() => !isLocked && goToStep(step.id)}
                 disabled={isLocked}
                 aria-current={isCurrent ? 'step' : undefined}
+                title={isDone ? 'Étape validée — pas de retour arrière' : undefined}
               >
                 <span className="journey-wizard-step-num">{isDone ? '✓' : index + 1}</span>
                 <span className="journey-wizard-step-label">{step.label}</span>
@@ -587,6 +638,19 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
 
   const activitySlot = <ActivitySideCard log={log} stateLabel={stateLabel} stateClass={stateClass} />
 
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const handleLeaveWithoutSaving = () => {
+    setShowLeaveConfirm(false)
+    props.goBackInFlow()
+  }
+  const handleSaveAndLeave = () => {
+    setShowLeaveConfirm(false)
+    // Backend already persists the ContentIdea row at every step (script,
+    // render, upload). The "save" here just means: leave the row as-is and
+    // come back later via the library. Equivalent to closing the wizard.
+    props.goBackInFlow()
+  }
+
   let body: JSX.Element
   if      (props.currentStep.id === 'creation')     body = <CreationStep {...props} activitySlot={activitySlot} />
   else if (props.currentStep.id === 'init-publish') body = <RenderStep   {...props} activitySlot={activitySlot} />
@@ -599,13 +663,22 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
         steps={props.steps}
         currentStepIndex={props.currentStepIndex}
         goToStep={props.goToStep}
-        goBackInFlow={props.goBackInFlow}
+        onLibraryClick={() => setShowLeaveConfirm(true)}
         BackArrow={props.BackArrow}
       />
 
       <main className="journey-wizard-main">
         {body}
       </main>
+
+      {showLeaveConfirm ? (
+        <LeaveConfirmModal
+          activeIdea={props.activeIdea}
+          onClose={() => setShowLeaveConfirm(false)}
+          onLeaveWithoutSaving={handleLeaveWithoutSaving}
+          onSaveAndLeave={handleSaveAndLeave}
+        />
+      ) : null}
     </div>
   )
 }
