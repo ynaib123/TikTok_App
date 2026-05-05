@@ -1,7 +1,7 @@
 package com.tiktokapp.backend.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.tiktokapp.backend.service.videoops.SupabaseVideoOpsGateway;
+import com.tiktokapp.backend.service.videoops.ContentIdeaGateway;
 import com.tiktokapp.backend.service.videoops.VideoOpsCryptoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,14 +18,14 @@ public class TikTokTokenEncryptionBackfillRunner implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(TikTokTokenEncryptionBackfillRunner.class);
 
     private final VideoOpsCryptoService cryptoService;
-    private final SupabaseVideoOpsGateway supabaseGateway;
+    private final ContentIdeaGateway contentIdeaGateway;
 
     public TikTokTokenEncryptionBackfillRunner(
             VideoOpsCryptoService cryptoService,
-            SupabaseVideoOpsGateway supabaseGateway
+            ContentIdeaGateway contentIdeaGateway
     ) {
         this.cryptoService = cryptoService;
-        this.supabaseGateway = supabaseGateway;
+        this.contentIdeaGateway = contentIdeaGateway;
     }
 
     @Override
@@ -36,7 +36,7 @@ public class TikTokTokenEncryptionBackfillRunner implements ApplicationRunner {
         }
 
         try {
-            JsonNode rows = supabaseGateway.fetchTikTokAccountsForEncryptionMigration();
+            JsonNode rows = contentIdeaGateway.fetchTikTokAccountsForEncryptionMigration();
             if (!rows.isArray() || rows.isEmpty()) {
                 logger.info("video_ops token encryption backfill found no TikTok accounts to inspect");
                 return;
@@ -57,7 +57,7 @@ public class TikTokTokenEncryptionBackfillRunner implements ApplicationRunner {
                 }
 
                 if (!patch.isEmpty()) {
-                    supabaseGateway.updateTikTokAccount(accountId, patch);
+                    contentIdeaGateway.updateTikTokAccount(accountId, patch);
                     migratedCount++;
                 }
             }

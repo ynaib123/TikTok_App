@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
 class VideoOpsServiceTest {
 
     @Mock
-    private SupabaseVideoOpsGateway supabaseGateway;
+    private ContentIdeaGateway contentIdeaGateway;
 
     @Mock
     private ContentIdeaRepository contentIdeaRepository;
@@ -109,7 +109,7 @@ class VideoOpsServiceTest {
                 .thenReturn(new ObjectMapper().createObjectNode());
 
         VideoOpsService service = new VideoOpsService(
-                supabaseGateway,
+                contentIdeaGateway,
                 contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
@@ -165,7 +165,7 @@ class VideoOpsServiceTest {
             return run;
         }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
 
-        when(supabaseGateway.fetchContentIdeaById(55L))
+        when(contentIdeaGateway.fetchContentIdeaById(55L))
                 .thenReturn(new ObjectMapper().valueToTree(java.util.List.of(Map.of(
                         "id", 55,
                         "shotstack_render_id", "render-123",
@@ -174,7 +174,7 @@ class VideoOpsServiceTest {
                 ))));
 
         VideoOpsService service = new VideoOpsService(
-                supabaseGateway,
+                contentIdeaGateway,
                 contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
@@ -232,7 +232,7 @@ class VideoOpsServiceTest {
 
         when(workflowRunRepository.countByContentIdeaIdAndWorkflowType(19L, VideoWorkflowType.RENDER_TEMPLATE_VIDEO))
                 .thenReturn(0L);
-        when(supabaseGateway.fetchContentIdeaById(19L))
+        when(contentIdeaGateway.fetchContentIdeaById(19L))
                 .thenReturn(new ObjectMapper().valueToTree(java.util.List.of(Map.of(
                         "id", 19,
                         "topic", "Idea",
@@ -245,7 +245,7 @@ class VideoOpsServiceTest {
                 .thenReturn(new ObjectMapper().createObjectNode());
 
         VideoOpsService service = new VideoOpsService(
-                supabaseGateway,
+                contentIdeaGateway,
                 contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
@@ -290,7 +290,7 @@ class VideoOpsServiceTest {
         when(workflowRunRepository.save(any(VideoWorkflowRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         VideoOpsService service = new VideoOpsService(
-                supabaseGateway,
+                contentIdeaGateway,
                 contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,
@@ -334,7 +334,7 @@ class VideoOpsServiceTest {
                 .thenReturn(Optional.of(existingRun));
 
         VideoOpsService service = new VideoOpsService(
-                supabaseGateway,
+                contentIdeaGateway,
                 contentIdeaRepository,
                 n8nWorkflowGateway,
                 videoOpsInternalProxyService,

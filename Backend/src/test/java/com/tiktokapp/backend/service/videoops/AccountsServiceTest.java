@@ -21,7 +21,7 @@ class AccountsServiceTest {
     private ServiceConnectionRepository serviceConnectionRepository;
 
     @Mock
-    private SupabaseVideoOpsGateway supabaseGateway;
+    private ContentIdeaGateway contentIdeaGateway;
 
     @Mock
     private VideoOpsCryptoService cryptoService;
@@ -38,7 +38,7 @@ class AccountsServiceTest {
     void setUp() {
         accountsService = new AccountsService(
                 serviceConnectionRepository,
-                supabaseGateway,
+                contentIdeaGateway,
                 cryptoService,
                 videoOpsService,
                 gatewayService

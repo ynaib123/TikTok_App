@@ -14,20 +14,20 @@ import java.util.List;
 @Service
 public class TikTokInitPublishContextService {
 
-    private final SupabaseVideoOpsGateway supabaseGateway;
+    private final ContentIdeaGateway contentIdeaGateway;
     private final TikTokInternalAccountContextService accountContextService;
 
     public TikTokInitPublishContextService(
-            SupabaseVideoOpsGateway supabaseGateway,
+            ContentIdeaGateway contentIdeaGateway,
             TikTokInternalAccountContextService accountContextService
     ) {
-        this.supabaseGateway = supabaseGateway;
+        this.contentIdeaGateway = contentIdeaGateway;
         this.accountContextService = accountContextService;
     }
 
     public TikTokInitPublishContextResponse buildContext(TikTokInitPublishContextRequest request) {
         long contentIdeaId = requirePositive(request.getContentIdeaId(), "contentIdeaId est obligatoire.");
-        JsonNode rows = supabaseGateway.fetchInitPublishContentIdea(contentIdeaId);
+        JsonNode rows = contentIdeaGateway.fetchInitPublishContentIdea(contentIdeaId);
         if (!rows.isArray() || rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
         }

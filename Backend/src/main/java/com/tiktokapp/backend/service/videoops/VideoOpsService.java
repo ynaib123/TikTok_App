@@ -59,7 +59,7 @@ public class VideoOpsService {
 
     private static final Logger logger = LoggerFactory.getLogger(VideoOpsService.class);
 
-    private final SupabaseVideoOpsGateway supabaseGateway;
+    private final ContentIdeaGateway contentIdeaGateway;
     private final ContentIdeaRepository contentIdeaRepository;
     private final N8nWorkflowGateway n8nWorkflowGateway;
     private final VideoOpsInternalProxyService videoOpsInternalProxyService;
@@ -75,7 +75,7 @@ public class VideoOpsService {
     private final VideoOpsTrackingService trackingService;
 
     public VideoOpsService(
-            SupabaseVideoOpsGateway supabaseGateway,
+            ContentIdeaGateway contentIdeaGateway,
             ContentIdeaRepository contentIdeaRepository,
             N8nWorkflowGateway n8nWorkflowGateway,
             VideoOpsInternalProxyService videoOpsInternalProxyService,
@@ -90,7 +90,7 @@ public class VideoOpsService {
             N8nWorkflowContractService n8nWorkflowContractService,
             VideoOpsTrackingService trackingService
     ) {
-        this.supabaseGateway = supabaseGateway;
+        this.contentIdeaGateway = contentIdeaGateway;
         this.contentIdeaRepository = contentIdeaRepository;
         this.n8nWorkflowGateway = n8nWorkflowGateway;
         this.videoOpsInternalProxyService = videoOpsInternalProxyService;
@@ -108,7 +108,7 @@ public class VideoOpsService {
 
     @Transactional(readOnly = true)
     public List<VideoContentIdeaResponse> fetchContentIdeas() {
-        JsonNode rows = supabaseGateway.fetchContentIdeas();
+        JsonNode rows = contentIdeaGateway.fetchContentIdeas();
         List<Long> contentIdeaIds = new ArrayList<>();
         rows.forEach(row -> contentIdeaIds.add(row.path("id").asLong()));
         Map<Long, VideoPipelineState> stateByIdeaId = pipelineStateRepository.findByContentIdeaIdIn(contentIdeaIds).stream()
@@ -165,7 +165,7 @@ public class VideoOpsService {
 
     @Transactional(readOnly = true)
     public List<TikTokAccountResponse> fetchTikTokAccounts() {
-        JsonNode rows = supabaseGateway.fetchTikTokAccounts();
+        JsonNode rows = contentIdeaGateway.fetchTikTokAccounts();
         List<TikTokAccountResponse> accounts = new ArrayList<>();
         rows.forEach(row -> {
             String openId = text(row, "open_id", "");
@@ -212,7 +212,7 @@ public class VideoOpsService {
 
     @Transactional(readOnly = true)
     public VideoContentIdeaStatusResponse fetchContentIdeaStatus(long contentIdeaId) {
-        JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
+        JsonNode rows = contentIdeaGateway.fetchContentIdeaById(contentIdeaId);
         if (!rows.isArray() || rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
         }
@@ -356,7 +356,7 @@ public class VideoOpsService {
     @Transactional
     public VideoWorkflowActionResponse triggerCheckShotstack(WorkflowTriggerRequest request, String requestedByEmail) {
         Long contentIdeaId = requireContentIdeaId(request.getContentIdeaId(), "contentIdeaId est obligatoire pour verifier le rendu.");
-        JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
+        JsonNode rows = contentIdeaGateway.fetchContentIdeaById(contentIdeaId);
         if (!rows.isArray() || rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
         }
@@ -402,7 +402,7 @@ public class VideoOpsService {
 
         if ("done".equals(providerStatus)) {
             String shotstackUrl = trimToNull(response.path("response").path("url").asText(""));
-            supabaseGateway.updateContentIdea(contentIdeaId, Map.of(
+            contentIdeaGateway.updateContentIdea(contentIdeaId, Map.of(
                     "shotstack_status", "done",
                     "shotstack_url", shotstackUrl == null ? "" : shotstackUrl,
                     "final_video_status", "ready",
@@ -416,7 +416,7 @@ public class VideoOpsService {
         }
 
         if ("failed".equals(providerStatus)) {
-            supabaseGateway.updateContentIdea(contentIdeaId, Map.of(
+            contentIdeaGateway.updateContentIdea(contentIdeaId, Map.of(
                     "shotstack_status", "failed",
                     "final_video_status", "failed",
                     "pipeline_status", "failed"
@@ -428,7 +428,7 @@ public class VideoOpsService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Render Shotstack en echec.");
         }
 
-        supabaseGateway.updateContentIdea(contentIdeaId, Map.of(
+        contentIdeaGateway.updateContentIdea(contentIdeaId, Map.of(
                 "shotstack_status", providerStatus.isBlank() ? "queued" : providerStatus,
                 "final_video_status", "processing",
                 "pipeline_status", "rendering_requested"
@@ -481,7 +481,7 @@ public class VideoOpsService {
 
         try {
             TikTokUploadResponse response = tikTokUploadService.uploadFromShotstack(shotstackUrl, uploadUrl);
-            supabaseGateway.updateContentIdea(contentIdeaId, Map.of(
+            contentIdeaGateway.updateContentIdea(contentIdeaId, Map.of(
                     "tiktok_upload_status", "uploaded",
                     "publish_status", "uploaded",
                     "uploaded_at", Instant.now().toString()
@@ -512,7 +512,7 @@ public class VideoOpsService {
         );
 
         try {
-            supabaseGateway.updateContentIdea(contentIdeaId, Map.of(
+            contentIdeaGateway.updateContentIdea(contentIdeaId, Map.of(
                     "publish_status", "published",
                     "tiktok_check_status", "PUBLISH_COMPLETE",
                     "published_at", Instant.now().toString()
@@ -628,7 +628,7 @@ public class VideoOpsService {
 
         if (workflowType == VideoWorkflowType.RENDER_TEMPLATE_VIDEO && contentIdeaId != null
                 && (isBlank(topic) || isBlank(script) || isBlank(caption) || isBlank(keyword))) {
-            JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
+            JsonNode rows = contentIdeaGateway.fetchContentIdeaById(contentIdeaId);
             if (!rows.isArray() || rows.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
             }
@@ -754,7 +754,7 @@ public class VideoOpsService {
             return false;
         }
 
-        JsonNode rows = supabaseGateway.fetchContentIdeaById(contentIdeaId);
+        JsonNode rows = contentIdeaGateway.fetchContentIdeaById(contentIdeaId);
         if (!rows.isArray() || rows.isEmpty()) {
             return false;
         }

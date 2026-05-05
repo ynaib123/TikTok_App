@@ -21,12 +21,12 @@ public class VideoOpsDataService {
 
     private final ContentIdeaRepository contentIdeaRepo;
     private final TikTokAccountRepository tiktokAccountRepo;
-    private final SupabaseVideoOpsGateway gateway;
+    private final ContentIdeaGateway gateway;
 
     public VideoOpsDataService(
             ContentIdeaRepository contentIdeaRepo,
             TikTokAccountRepository tiktokAccountRepo,
-            SupabaseVideoOpsGateway gateway
+            ContentIdeaGateway gateway
     ) {
         this.contentIdeaRepo = contentIdeaRepo;
         this.tiktokAccountRepo = tiktokAccountRepo;

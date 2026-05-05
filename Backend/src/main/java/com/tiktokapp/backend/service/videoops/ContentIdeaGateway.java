@@ -16,17 +16,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Data gateway for content_ideas and tiktok_accounts — backed by local PostgreSQL via JPA.
- * Kept as a facade so all callers remain unchanged.
+ * Data gateway for content_ideas and tiktok_accounts. Backed by the local PostgreSQL
+ * database via JPA. The legacy name (SupabaseVideoOpsGateway) referred to a
+ * previous Supabase REST setup that has been fully replaced by Postgres + JPA.
  */
 @Service
-public class SupabaseVideoOpsGateway {
+public class ContentIdeaGateway {
 
     private final ContentIdeaRepository contentIdeaRepo;
     private final TikTokAccountRepository tiktokAccountRepo;
     private final ObjectMapper objectMapper;
 
-    public SupabaseVideoOpsGateway(
+    public ContentIdeaGateway(
             ContentIdeaRepository contentIdeaRepo,
             TikTokAccountRepository tiktokAccountRepo,
             ObjectMapper objectMapper

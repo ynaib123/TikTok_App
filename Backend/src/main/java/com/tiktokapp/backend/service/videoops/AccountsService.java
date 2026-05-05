@@ -32,20 +32,20 @@ public class AccountsService {
     private static final Logger logger = LoggerFactory.getLogger(AccountsService.class);
 
     private final ServiceConnectionRepository serviceConnectionRepository;
-    private final SupabaseVideoOpsGateway supabaseGateway;
+    private final ContentIdeaGateway contentIdeaGateway;
     private final VideoOpsCryptoService cryptoService;
     private final VideoOpsService videoOpsService;
     private final ServiceConnectionGatewayService gatewayService;
 
     public AccountsService(
             ServiceConnectionRepository serviceConnectionRepository,
-            SupabaseVideoOpsGateway supabaseGateway,
+            ContentIdeaGateway contentIdeaGateway,
             VideoOpsCryptoService cryptoService,
             VideoOpsService videoOpsService,
             ServiceConnectionGatewayService gatewayService
     ) {
         this.serviceConnectionRepository = serviceConnectionRepository;
-        this.supabaseGateway = supabaseGateway;
+        this.contentIdeaGateway = contentIdeaGateway;
         this.cryptoService = cryptoService;
         this.videoOpsService = videoOpsService;
         this.gatewayService = gatewayService;
@@ -193,7 +193,7 @@ public class AccountsService {
 
     @Transactional
     public void disconnectTikTokAccount(long accountId) {
-        supabaseGateway.deleteTikTokAccount(accountId);
+        contentIdeaGateway.deleteTikTokAccount(accountId);
     }
 
     private AccountsReadinessResponse buildReadiness(
