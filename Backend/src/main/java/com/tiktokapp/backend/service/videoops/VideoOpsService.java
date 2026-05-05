@@ -36,6 +36,7 @@ import com.tiktokapp.backend.service.TikTokUploadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -692,15 +693,31 @@ public class VideoOpsService {
             JsonNode response = n8nWorkflowGateway.trigger(workflowType, payloadWithRunMetadata(payload, run));
             validateWorkflowAcceptance(workflowType, response);
             if (workflowType == VideoWorkflowType.INIT_PUBLISH_TIKTOK && hasCompletedInitPublishState(contentIdeaId, response)) {
-                markRunSucceeded(run, json(response));
-                syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(workflowType, currentStage(contentIdeaId)), null, run);
-                recordEvent(contentIdeaId, run, "INFO", "workflow_succeeded_inline", "Workflow " + workflowType + " termine inline par n8n.", Map.of("runId", run.getId()));
-                logWorkflowInfo("workflow_succeeded_inline", run, "Workflow " + workflowType + " termine inline par n8n.");
+                VideoWorkflowRun freshRun = workflowRunRepository.findById(run.getId()).orElse(run);
+                if (freshRun.getStatus() == VideoWorkflowRunStatus.SUCCEEDED) {
+                    logWorkflowInfo("workflow_succeeded_inline_callback_won", freshRun, "Callback already marked run SUCCEEDED.");
+                    return new VideoWorkflowActionResponse(
+                            freshRun.getId(),
+                            contentIdeaId,
+                            workflowType.name(),
+                            freshRun.getStatus().name(),
+                            "Workflow termine inline par n8n.",
+                            false
+                    );
+                }
+                try {
+                    markRunSucceeded(run, json(response));
+                    syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(workflowType, currentStage(contentIdeaId)), null, run);
+                    recordEvent(contentIdeaId, run, "INFO", "workflow_succeeded_inline", "Workflow " + workflowType + " termine inline par n8n.", Map.of("runId", run.getId()));
+                    logWorkflowInfo("workflow_succeeded_inline", run, "Workflow " + workflowType + " termine inline par n8n.");
+                } catch (ObjectOptimisticLockingFailureException raceEx) {
+                    logWorkflowInfo("workflow_succeeded_inline_race", run, "Callback raced ahead during inline completion; treating as success.");
+                }
                 return new VideoWorkflowActionResponse(
                         run.getId(),
                         contentIdeaId,
                         workflowType.name(),
-                        run.getStatus().name(),
+                        VideoWorkflowRunStatus.SUCCEEDED.name(),
                         "Workflow termine inline par n8n.",
                         false
                 );
