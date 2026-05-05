@@ -205,8 +205,8 @@ public class AccountsService {
             missingItems.add("TikTok");
         }
 
+        // n8n is no longer a user-managed connection (configured in application.yml).
         for (ServiceConnectionProvider provider : Arrays.asList(
-                ServiceConnectionProvider.N8N,
                 ServiceConnectionProvider.GROQ,
                 ServiceConnectionProvider.SHOTSTACK,
                 ServiceConnectionProvider.PEXELS

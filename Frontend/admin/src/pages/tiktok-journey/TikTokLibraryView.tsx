@@ -355,7 +355,7 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       {!isJourneyReady ? (
         <section className="journey-empty" aria-live="polite">
           <strong>Comptes incomplets</strong>
-          <p>Connecte TikTok, n8n, Groq, Shotstack et Pexels dans Accounts avant de lancer un nouveau parcours.</p>
+          <p>Connecte TikTok, Groq, Shotstack et Pexels dans Accounts avant de lancer un nouveau parcours.</p>
         </section>
       ) : null}
 
