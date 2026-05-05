@@ -29,4 +29,6 @@ public interface VideoWorkflowRunRepository extends JpaRepository<VideoWorkflowR
     List<VideoWorkflowRun> findTop8ByOrderByCreatedAtDesc();
 
     List<VideoWorkflowRun> findTop8ByStatusOrderByCreatedAtDesc(VideoWorkflowRunStatus status);
+
+    void deleteByContentIdeaId(Long contentIdeaId);
 }

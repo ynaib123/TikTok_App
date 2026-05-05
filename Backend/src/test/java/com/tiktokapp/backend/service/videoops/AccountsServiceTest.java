@@ -41,7 +41,8 @@ class AccountsServiceTest {
                 contentIdeaGateway,
                 cryptoService,
                 videoOpsService,
-                gatewayService
+                gatewayService,
+                new ServiceQuotaProbe()
         );
     }
 

@@ -120,7 +120,12 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
       await refreshAdminSession()
     }
 
-    let parsed = await performFetch(endpoint, options, { skipAuth, suppressConsoleError })
+    const willRetryAuth = retryOnUnauthorized && shouldTryRefresh
+    const willRetryCsrf = retryOnForbiddenWithFreshCsrf && shouldRetryCsrf
+    let parsed = await performFetch(endpoint, options, {
+      skipAuth,
+      suppressConsoleError: suppressConsoleError || willRetryAuth || willRetryCsrf,
+    })
 
     if (
       parsed.status === 401
@@ -128,7 +133,10 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
       && shouldTryRefresh
     ) {
       await refreshAdminSession()
-      parsed = await performFetch(endpoint, options, { skipAuth, suppressConsoleError })
+      parsed = await performFetch(endpoint, options, {
+        skipAuth,
+        suppressConsoleError: suppressConsoleError || willRetryCsrf,
+      })
     }
 
     if (
@@ -145,6 +153,10 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
         clearAdminSession()
       }
       throw createHttpError(parsed)
+    }
+
+    if (shouldRetryCsrf) {
+      clearAdminCsrfTokenCache()
     }
 
     return parsed.data

@@ -3,4 +3,3 @@ export * from './errors';
 export * from './services';
 export * from './tiktok';
 export * from './workflow';
-export * from './batchPublish';

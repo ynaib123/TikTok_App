@@ -120,6 +120,18 @@
   color: var(--admin-provider-pexels);
 }
 
+.accounts-glyph-logo {
+  padding: 4px;
+  background: #0b1320;
+  border-color: var(--admin-border);
+}
+
+.accounts-glyph-logo svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 /* ------------------------------------------------------------------ */
 /* Toolbar — shape accounts, colors journey-dark                      */
 /* ------------------------------------------------------------------ */

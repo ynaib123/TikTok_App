@@ -1,25 +1,19 @@
 /**
- * TikTokLibraryView — full rebuild (Proposal C).
- *
- * Cards / Table hybrid view, with stat tiles rendered upstream by the page.
- * Wraps the existing SelectionProvider / useBatchPublish / BatchSelectionBar
- * / BatchProgressDrawer / BatchPublishConfirmModal flow unchanged.
+ * TikTokLibraryView — Cards / Table hybrid view with bulk-delete selection.
  */
 
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useMemo, useState, type JSX } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminToolbarMenuButton from '../admin-dashboard/AdminToolbarMenuButton'
 import VideoCard from '../../components/video-card/VideoCard'
 import type { ContentIdea } from '../../types'
 import { SelectionProvider, useSelection } from '../../contexts/SelectionContext'
-import { useBatchPublish } from '../../hooks/useBatchPublish'
-import BatchSelectionBar from '../../components/batch-publish/BatchSelectionBar'
-import BatchProgressDrawer from '../../components/batch-publish/BatchProgressDrawer'
-import BatchPublishConfirmModal from '../../components/batch-publish/BatchPublishConfirmModal'
-import { evaluateBatchPublishEligibility } from '../../components/batch-publish/eligibility'
+import BulkDeleteSelectionBar from '../../components/bulk-delete/BulkDeleteSelectionBar'
+import BulkDeleteConfirmModal from '../../components/bulk-delete/BulkDeleteConfirmModal'
 import { useToasts } from '../../contexts/ToastContext'
-import '../../components/batch-publish/batch-publish.css'
+import { deleteContentIdea } from '../../services/videoOpsSupabase'
+import '../../components/bulk-delete/bulk-delete.css'
 
 type Option = { value: string; label: string }
 type IconComponent = () => JSX.Element
@@ -92,20 +86,12 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
   } = props
 
   const selection = useSelection()
-  const batch = useBatchPublish(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const toasts = useToasts()
+  const queryClient = useQueryClient()
 
-  const eligibilityByIdeaId = useMemo(() => {
-    const map = new Map<number, { selectable: boolean; reason: string | null }>()
-    for (const idea of filteredIdeas) map.set(idea.id, evaluateBatchPublishEligibility(idea))
-    return map
-  }, [filteredIdeas])
-
-  const eligibleIdsOnPage = useMemo(
-    () => filteredIdeas.filter((idea) => eligibilityByIdeaId.get(idea.id)?.selectable).map((idea) => idea.id),
-    [filteredIdeas, eligibilityByIdeaId],
-  )
+  const visibleIds = useMemo(() => filteredIdeas.map((idea) => idea.id), [filteredIdeas])
 
   const selectedIdeas = useMemo(() => {
     const all = new Map<number, ContentIdea>()
@@ -118,69 +104,42 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
     return result
   }, [contentIdeas, selection.selectedIds])
 
-  const tiktokAccountOpenId = selectedIdeas.find((idea) => idea.tiktokAccountOpenId)?.tiktokAccountOpenId ?? null
-  const tokenAccountReady = selectedIdeas.length === 0 || selectedIdeas.every((idea) => Boolean(idea.tiktokAccountOpenId))
-
-  const handlePublishClick = () => { if (selection.size === 0) return; setConfirmOpen(true) }
-  const handleConfirmPublish = async () => {
-    setConfirmOpen(false)
-    setDrawerOpen(true)
-    const ids = Array.from(selection.selectedIds)
-    const result = await batch.start({ contentIdeaIds: ids, tiktokAccountOpenId })
-    if (result) selection.clear()
+  const handleDeleteClick = () => {
+    if (selection.size === 0) return
+    setConfirmDeleteOpen(true)
   }
-  const handleRetryFailed = async () => { await batch.retryFailed() }
-  const handleDismissBatch = () => { setDrawerOpen(false); batch.reset() }
-  const showProgress = () => setDrawerOpen(true)
 
-  const inFlightCount = batch.batch ? batch.batch.completedCount + batch.batch.failedCount : 0
-  const totalInFlight = batch.batch?.totalCount ?? 0
-
-  const toasts = useToasts()
-  const queryClient = useQueryClient()
-  const lastToastedPhaseRef = useRef<string | null>(null)
-  const activeToastIdRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    if (batch.phase === 'idle' || batch.phase === 'running') {
-      lastToastedPhaseRef.current = null
+  const handleConfirmDelete = async () => {
+    const ids = Array.from(selection.selectedIds)
+    if (ids.length === 0) {
+      setConfirmDeleteOpen(false)
+      return
     }
-  }, [batch.phase])
-  useEffect(() => {
-    const phase = batch.phase
-    const total = batch.batch?.totalCount ?? 0
-    const completed = batch.batch?.completedCount ?? 0
-    const failed = batch.batch?.failedCount ?? 0
-    const signature = `${phase}:${batch.batch?.batchId ?? ''}`
-    if (signature === lastToastedPhaseRef.current) return
-    const isTerminal = phase === 'completed' || phase === 'partial_failure' || phase === 'failed'
-    if (isTerminal) {
-      queryClient.invalidateQueries({ queryKey: ['content-ideas'] })
-      queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['video-ops-observability'] })
-      queryClient.invalidateQueries({ queryKey: ['manual-actions'] })
+    setIsDeleting(true)
+    let failures = 0
+    let successes = 0
+    for (const id of ids) {
+      try {
+        await deleteContentIdea(id)
+        successes += 1
+      } catch {
+        failures += 1
+      }
     }
-    if (phase === 'completed' && total > 0) {
-      lastToastedPhaseRef.current = signature
-      activeToastIdRef.current = toasts.push(`${completed} video(s) publiee(s) avec succes`, { variant: 'success', title: 'Lot termine', actionLabel: 'Voir le detail', onAction: () => setDrawerOpen(true) })
-    } else if (phase === 'partial_failure') {
-      lastToastedPhaseRef.current = signature
-      activeToastIdRef.current = toasts.push(`${completed}/${total} publiees — ${failed} echec(s)`, { variant: 'warning', title: 'Echecs partiels', durationMs: null, actionLabel: 'Voir les echecs', onAction: () => setDrawerOpen(true) })
-    } else if (phase === 'failed') {
-      lastToastedPhaseRef.current = signature
-      activeToastIdRef.current = toasts.push(`Aucune video n'a ete publiee — ${failed || total} echec(s)`, { variant: 'error', title: 'Echec du lot', durationMs: null, actionLabel: 'Voir les echecs', onAction: () => setDrawerOpen(true) })
-    } else if (phase === 'error') {
-      lastToastedPhaseRef.current = signature
-      activeToastIdRef.current = toasts.push(batch.errorMessage ?? 'Erreur inattendue lors du lot', { variant: 'error', title: 'Erreur batch publish', durationMs: null })
+    setIsDeleting(false)
+    setConfirmDeleteOpen(false)
+    selection.clear()
+    queryClient.invalidateQueries({ queryKey: ['content-ideas'] })
+    queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['video-ops-observability'] })
+    if (failures === 0) {
+      toasts.push(`${successes} vidéo${successes > 1 ? 's' : ''} supprimée${successes > 1 ? 's' : ''}`, { variant: 'success' })
+    } else if (successes === 0) {
+      toasts.push(`Échec de la suppression (${failures})`, { variant: 'error' })
+    } else {
+      toasts.push(`${successes} supprimée(s), ${failures} échec(s)`, { variant: 'warning' })
     }
-  }, [batch.phase, batch.batch, batch.errorMessage, toasts, queryClient])
-
-  useEffect(() => () => {
-    if (activeToastIdRef.current !== null) {
-      toasts.dismiss(activeToastIdRef.current)
-      activeToastIdRef.current = null
-    }
-  }, [toasts])
+  }
 
   /* ── Filter chip counts ──────────────────────────────────────────── */
   const counts = useMemo(() => {
@@ -381,17 +340,14 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       {!isLoading && !contentIdeasErrorMessage && filteredIdeas.length && listViewMode === 'grid' ? (
         <section className="journey-library-grid" aria-label="Liste des videos">
           {filteredIdeas.map((idea) => {
-            const eligibility = eligibilityByIdeaId.get(idea.id)
             const isSelected = selection.isSelected(idea.id)
-            const blockedByMax = !isSelected && selection.isAtMaxSize
-            const reason = blockedByMax ? `Maximum ${selection.maxSize} videos par lot` : (eligibility?.reason ?? null)
             return (
               <VideoCard
                 key={idea.id}
                 idea={idea}
-                selectable={Boolean(eligibility?.selectable) && !blockedByMax}
+                selectable={true}
                 selected={isSelected}
-                disabledReason={reason}
+                disabledReason={null}
                 onToggleSelection={selection.toggle}
                 onOpenDetail={handleOpenIdeaDetail}
               />
@@ -445,32 +401,18 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
         </div>
       ) : null}
 
-      <BatchSelectionBar
-        phase={batch.phase}
-        eligibleIdsOnPage={eligibleIdsOnPage}
-        tokenAccountReady={tokenAccountReady}
-        onPublishClick={handlePublishClick}
-        onShowProgress={showProgress}
-        inFlightCount={inFlightCount}
-        totalInFlight={totalInFlight}
+      <BulkDeleteSelectionBar
+        visibleIds={visibleIds}
+        isDeleting={isDeleting}
+        onDeleteClick={handleDeleteClick}
       />
 
-      <BatchProgressDrawer
-        open={drawerOpen}
-        phase={batch.phase}
-        batch={batch.batch}
-        errorMessage={batch.errorMessage}
-        onClose={() => setDrawerOpen(false)}
-        onRetryFailed={handleRetryFailed}
-        onDismiss={handleDismissBatch}
-      />
-
-      <BatchPublishConfirmModal
-        open={confirmOpen}
+      <BulkDeleteConfirmModal
+        open={confirmDeleteOpen}
         ideas={selectedIdeas}
-        tiktokAccountOpenId={tiktokAccountOpenId}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmPublish}
+        isDeleting={isDeleting}
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleConfirmDelete}
       />
     </>
   )

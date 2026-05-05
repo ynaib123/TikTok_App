@@ -239,7 +239,14 @@ export default function TikTokAccountsPage() {
     setSuccessMessage(null)
     setErrorMessage(null)
     try {
-      await save(providerKey, serviceForms[providerKey] || createEmptyServiceForm(null, providerKey))
+      const baseForm = serviceForms[providerKey] || createEmptyServiceForm(null, providerKey)
+      const providerDefaults = SERVICE_CONNECTION_FIELDS[providerKey]
+      const formWithDefaults = {
+        ...baseForm,
+        baseUrl: (baseForm.baseUrl || '').trim() || providerDefaults.defaultBaseUrl,
+        metadataJson: (baseForm.metadataJson || '').trim() || providerDefaults.metadataPlaceholder,
+      }
+      await save(providerKey, formWithDefaults)
       resetProviderForm(providerKey)
       setStepperStep(3) // jump to done step instead of closing
       showSuccess(`${SERVICE_CONNECTION_FIELDS[providerKey].title} validé et activé.`)
@@ -555,24 +562,26 @@ export default function TikTokAccountsPage() {
                         </div>
                       ) : null}
 
-                      {row.rateUsage ? (
-                        <div className="accounts-rate">
-                          <div className="accounts-rate-label">
-                            <span>Quota</span>
-                            <span>
-                              {row.rateUsage.used.toLocaleString()} / {row.rateUsage.limit.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="accounts-rate-bar">
-                            <div
-                              className="accounts-rate-bar-fill"
-                              style={{
-                                width: `${Math.min(100, Math.round((row.rateUsage.used / row.rateUsage.limit) * 100))}%`,
-                              }}
-                            />
-                          </div>
+                      <div className="accounts-rate">
+                        <div className="accounts-rate-label">
+                          <span>Quota restant</span>
+                          <span>
+                            {row.rateUsage && row.rateUsage.limit > 0
+                              ? `${Math.max(0, 100 - Math.round((row.rateUsage.used / row.rateUsage.limit) * 100))}%`
+                              : 'n/a'}
+                          </span>
                         </div>
-                      ) : null}
+                        <div className="accounts-rate-bar">
+                          <div
+                            className="accounts-rate-bar-fill"
+                            style={{
+                              width: row.rateUsage && row.rateUsage.limit > 0
+                                ? `${Math.max(0, 100 - Math.min(100, Math.round((row.rateUsage.used / row.rateUsage.limit) * 100)))}%`
+                                : '0%',
+                            }}
+                          />
+                        </div>
+                      </div>
 
                       <footer className="accounts-card-actions">
                         {row.isTikTok ? (
@@ -670,25 +679,28 @@ export default function TikTokAccountsPage() {
                           <td className={`accounts-tone-${expiry.tone}`}>{expiry.label}</td>
                           <td>{formatRelative(row.lastUsedAt)}</td>
                           <td>
-                            {row.rateUsage ? (
+                            {row.rateUsage && row.rateUsage.limit > 0 ? (
                               <div className="accounts-rate accounts-rate-inline">
                                 <div className="accounts-rate-bar">
                                   <div
                                     className="accounts-rate-bar-fill"
                                     style={{
-                                      width: `${Math.min(
-                                        100,
-                                        Math.round((row.rateUsage.used / row.rateUsage.limit) * 100),
+                                      width: `${Math.max(
+                                        0,
+                                        100 - Math.min(
+                                          100,
+                                          Math.round((row.rateUsage.used / row.rateUsage.limit) * 100),
+                                        ),
                                       )}%`,
                                     }}
                                   />
                                 </div>
                                 <span>
-                                  {Math.round((row.rateUsage.used / row.rateUsage.limit) * 100)}%
+                                  {Math.max(0, 100 - Math.round((row.rateUsage.used / row.rateUsage.limit) * 100))}% restant
                                 </span>
                               </div>
                             ) : (
-                              <span className="accounts-muted">—</span>
+                              <span className="accounts-muted">n/a</span>
                             )}
                           </td>
                           <td className="accounts-table-actions">
@@ -792,17 +804,6 @@ export default function TikTokAccountsPage() {
                       />
                     </label>
                     <label className="tiktok-step-field">
-                      <span>{activeProviderConfig.baseUrlLabel}</span>
-                      <input
-                        type="text"
-                        value={activeForm.baseUrl}
-                        onChange={(e) =>
-                          updateServiceForm(openModalProviderKey, 'baseUrl', e.target.value)
-                        }
-                        placeholder={activeProviderConfig.defaultBaseUrl}
-                      />
-                    </label>
-                    <label className="tiktok-step-field">
                       <span>{activeProviderConfig.identifierLabel}</span>
                       <input
                         type="text"
@@ -822,17 +823,6 @@ export default function TikTokAccountsPage() {
                           updateServiceForm(openModalProviderKey, 'secretValue', e.target.value)
                         }
                         placeholder="Coller le secret ici"
-                      />
-                    </label>
-                    <label className="tiktok-step-field accounts-service-form-wide">
-                      <span>Metadata JSON</span>
-                      <textarea
-                        rows={6}
-                        value={activeForm.metadataJson}
-                        onChange={(e) =>
-                          updateServiceForm(openModalProviderKey, 'metadataJson', e.target.value)
-                        }
-                        placeholder={activeProviderConfig.metadataPlaceholder}
                       />
                     </label>
                   </div>

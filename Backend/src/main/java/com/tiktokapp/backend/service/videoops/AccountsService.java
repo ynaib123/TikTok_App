@@ -3,6 +3,7 @@ package com.tiktokapp.backend.service.videoops;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
 import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
+import com.tiktokapp.backend.dto.videoops.RateUsageDto;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionRequest;
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
@@ -36,19 +37,22 @@ public class AccountsService {
     private final VideoOpsCryptoService cryptoService;
     private final VideoOpsService videoOpsService;
     private final ServiceConnectionGatewayService gatewayService;
+    private final ServiceQuotaProbe quotaProbe;
 
     public AccountsService(
             ServiceConnectionRepository serviceConnectionRepository,
             ContentIdeaGateway contentIdeaGateway,
             VideoOpsCryptoService cryptoService,
             VideoOpsService videoOpsService,
-            ServiceConnectionGatewayService gatewayService
+            ServiceConnectionGatewayService gatewayService,
+            ServiceQuotaProbe quotaProbe
     ) {
         this.serviceConnectionRepository = serviceConnectionRepository;
         this.contentIdeaGateway = contentIdeaGateway;
         this.cryptoService = cryptoService;
         this.videoOpsService = videoOpsService;
         this.gatewayService = gatewayService;
+        this.quotaProbe = quotaProbe;
     }
 
     public AccountsOverviewResponse fetchOverview() {
@@ -239,6 +243,18 @@ public class AccountsService {
     }
 
     private ServiceConnectionResponse toResponse(ServiceConnection connection) {
+        RateUsageDto rateUsage = null;
+        if (connection.isActive() && connection.getProviderKey() != null) {
+            try {
+                String secret = cryptoService.decryptIfNeeded(trimToNull(connection.getSecretValue()));
+                if (secret != null) {
+                    rateUsage = quotaProbe.probe(connection.getProviderKey(), connection.getBaseUrl(), secret).orElse(null);
+                }
+            } catch (Exception exception) {
+                logger.debug("quota probe skipped provider={} error={}", connection.getProviderKey(), exception.getMessage());
+            }
+        }
+
         return new ServiceConnectionResponse(
                 connection.getId(),
                 connection.getProviderKey() == null ? null : connection.getProviderKey().name(),
@@ -252,7 +268,10 @@ public class AccountsService {
                 connection.getLastValidationStatus() == null ? ServiceConnectionValidationStatus.UNKNOWN.name() : connection.getLastValidationStatus().name(),
                 trimToNull(connection.getLastValidationMessage()),
                 connection.getConnectedAt() == null ? null : connection.getConnectedAt().toString(),
-                connection.getLastValidatedAt() == null ? null : connection.getLastValidatedAt().toString()
+                connection.getLastValidatedAt() == null ? null : connection.getLastValidatedAt().toString(),
+                connection.getLastValidatedAt() == null ? null : connection.getLastValidatedAt().toString(),
+                null,
+                rateUsage
         );
     }
 

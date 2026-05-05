@@ -15,6 +15,9 @@ public class ServiceConnectionResponse {
     private final String validationMessage;
     private final String connectedAt;
     private final String lastValidatedAt;
+    private final String lastUsedAt;
+    private final String expiresAt;
+    private final RateUsageDto rateUsage;
 
     public ServiceConnectionResponse(
             Long id,
@@ -29,7 +32,10 @@ public class ServiceConnectionResponse {
             String validationStatus,
             String validationMessage,
             String connectedAt,
-            String lastValidatedAt
+            String lastValidatedAt,
+            String lastUsedAt,
+            String expiresAt,
+            RateUsageDto rateUsage
     ) {
         this.id = id;
         this.providerKey = providerKey;
@@ -44,6 +50,9 @@ public class ServiceConnectionResponse {
         this.validationMessage = validationMessage;
         this.connectedAt = connectedAt;
         this.lastValidatedAt = lastValidatedAt;
+        this.lastUsedAt = lastUsedAt;
+        this.expiresAt = expiresAt;
+        this.rateUsage = rateUsage;
     }
 
     public Long getId() {
@@ -96,5 +105,17 @@ public class ServiceConnectionResponse {
 
     public String getLastValidatedAt() {
         return lastValidatedAt;
+    }
+
+    public String getLastUsedAt() {
+        return lastUsedAt;
+    }
+
+    public String getExpiresAt() {
+        return expiresAt;
+    }
+
+    public RateUsageDto getRateUsage() {
+        return rateUsage;
     }
 }

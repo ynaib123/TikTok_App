@@ -335,6 +335,7 @@ export function usePublishStep({
   runAction,
   markWorkflowStarted,
   markWorkflowFinished,
+  navigate,
 }) {
   const handlePublishVideo = async () => runAction('publishVideo', async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
@@ -356,6 +357,9 @@ export function usePublishStep({
       message: 'Publication finale enregistree.',
     })
     showSuccess('Video publiee avec succes.')
+    if (typeof navigate === 'function') {
+      navigate(`/tiktok/idea/${idea.id}`)
+    }
   }).catch((error) => {
     showError(error, "La publication finale n'a pas abouti.")
   })

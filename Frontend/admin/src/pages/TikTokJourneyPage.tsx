@@ -362,6 +362,7 @@ export default function TikTokJourneyPage() {
     runAction,
     markWorkflowStarted: workflowMonitor.markWorkflowStarted,
     markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+    navigate,
   })
 
   const activeIdea = scriptedIdea || selectedGeneratedIdea

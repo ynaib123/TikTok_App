@@ -151,7 +151,7 @@ class VideoOpsSecurityIntegrationTest {
         when(accountsService.fetchOverview()).thenReturn(
                 new AccountsOverviewResponse(
                         List.of(new com.tiktokapp.backend.dto.videoops.TikTokAccountResponse(1L, "Demo", "open-id-demo", "video.publish", "production", "connected")),
-                        List.of(new ServiceConnectionResponse(10L, "GROQ", "Groq Prod", "https://api.groq.com", "team@groq.local", "{\"model\":\"llama\"}", true, "CONNECTED", true, "VALID", "Groq a repondu 200.", "2026-04-29T00:00:00Z", "2026-04-29T00:01:00Z")),
+                        List.of(new ServiceConnectionResponse(10L, "GROQ", "Groq Prod", "https://api.groq.com", "team@groq.local", "{\"model\":\"llama\"}", true, "CONNECTED", true, "VALID", "Groq a repondu 200.", "2026-04-29T00:00:00Z", "2026-04-29T00:01:00Z", "2026-04-29T00:01:00Z", null, null)),
                         new AccountsReadinessResponse(true, 1, List.of())
                 )
         );

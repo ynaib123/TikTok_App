@@ -212,6 +212,12 @@ public class VideoOpsController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/content-ideas/{contentIdeaId}")
+    public ResponseEntity<Void> deleteContentIdea(@PathVariable long contentIdeaId) {
+        videoOpsService.deleteContentIdea(contentIdeaId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/workflow-runs/{runId}")
     public ResponseEntity<VideoWorkflowRunDetailResponse> getWorkflowRun(
             @PathVariable long runId

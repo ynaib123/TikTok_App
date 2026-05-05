@@ -1,8 +1,8 @@
 import type { DerivedStatus } from '../../utils/accountsHelpers'
+import { ProviderLogo } from './ProviderLogo'
 
 export function ProviderGlyph({ providerKey }: { providerKey: string }) {
-  const letter = (providerKey || '?').charAt(0).toUpperCase()
-  return <div className={`accounts-glyph accounts-glyph-${providerKey.toLowerCase()}`}>{letter}</div>
+  return <ProviderLogo providerKey={providerKey} />
 }
 
 export function StatTile({

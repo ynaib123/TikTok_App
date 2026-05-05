@@ -230,6 +230,13 @@ export async function fetchVideoOpsHealth() {
   return apiGet('/video-ops/health')
 }
 
+export async function deleteContentIdea(contentIdeaId) {
+  if (!contentIdeaId) {
+    throw new Error('L identifiant de content_idea est obligatoire pour la suppression.')
+  }
+  return apiDelete(`/video-ops/content-ideas/${contentIdeaId}`)
+}
+
 export async function triggerMainContentPipeline(payload = {}) {
   return apiPost('/video-ops/workflows/main-pipeline', payload)
 }

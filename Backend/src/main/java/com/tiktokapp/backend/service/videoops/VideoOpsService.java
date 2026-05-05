@@ -351,6 +351,21 @@ public class VideoOpsService {
     }
 
     @Transactional
+    public void deleteContentIdea(long contentIdeaId) {
+        if (!contentIdeaRepository.existsById(contentIdeaId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Idée introuvable.");
+        }
+        // Order matters: child rows reference content_ideas via contentIdeaId.
+        eventRepository.deleteByContentIdeaId(contentIdeaId);
+        workflowRunRepository.deleteByContentIdeaId(contentIdeaId);
+        if (pipelineStateRepository.existsById(contentIdeaId)) {
+            pipelineStateRepository.deleteById(contentIdeaId);
+        }
+        contentIdeaRepository.deleteById(contentIdeaId);
+        logger.info("video_ops event=content_idea_deleted contentIdeaId={}", contentIdeaId);
+    }
+
+    @Transactional
     public VideoWorkflowActionResponse triggerMainPipeline(WorkflowTriggerRequest request, String requestedByEmail) {
         validateMainPipelineRequest(request);
         return triggerWorkflow(VideoWorkflowType.MAIN_PIPELINE, null, request, requestedByEmail, VideoOpsStateMachine.requestedStage(VideoWorkflowType.MAIN_PIPELINE));
