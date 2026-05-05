@@ -22,8 +22,8 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Run targeted backend tests
-        run: mvn "-Dtest=VideoOpsServiceTest,N8nWorkflowContractServiceTest,WorkflowCompletionStatusMapperTest,VideoOpsSecurityIntegrationTest" test
+      - name: Run backend tests
+        run: mvn -B test
 
   frontend:
     runs-on: ubuntu-latest
@@ -43,6 +43,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
 
       - name: Type-check
         run: npm run type-check

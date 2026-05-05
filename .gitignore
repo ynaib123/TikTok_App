@@ -20,6 +20,9 @@ n8n-local/database.sqlite-shm
 n8n-local/database.sqlite-wal
 n8n-local/crash.journal
 n8n-local/n8nEventLog*.log
+n8n-local/storage/
+n8n-local/database.sqlite.bak*
+n8n-local/backup-before-codex-import/
 Backend/target/
 Backend/*.log
 playwright-report
