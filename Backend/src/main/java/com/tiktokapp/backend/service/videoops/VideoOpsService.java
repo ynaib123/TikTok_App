@@ -73,6 +73,7 @@ public class VideoOpsService {
     private final VideoOpsRunPersistenceHelper runPersistenceHelper;
     private final N8nWorkflowContractService n8nWorkflowContractService;
     private final VideoOpsTrackingService trackingService;
+    private final WorkflowCallbackService workflowCallbackService;
 
     public VideoOpsService(
             ContentIdeaGateway contentIdeaGateway,
@@ -88,7 +89,8 @@ public class VideoOpsService {
             ObjectMapper objectMapper,
             VideoOpsRunPersistenceHelper runPersistenceHelper,
             N8nWorkflowContractService n8nWorkflowContractService,
-            VideoOpsTrackingService trackingService
+            VideoOpsTrackingService trackingService,
+            WorkflowCallbackService workflowCallbackService
     ) {
         this.contentIdeaGateway = contentIdeaGateway;
         this.contentIdeaRepository = contentIdeaRepository;
@@ -104,6 +106,7 @@ public class VideoOpsService {
         this.runPersistenceHelper = runPersistenceHelper;
         this.n8nWorkflowContractService = n8nWorkflowContractService;
         this.trackingService = trackingService;
+        this.workflowCallbackService = workflowCallbackService;
     }
 
     @Transactional(readOnly = true)
@@ -531,70 +534,12 @@ public class VideoOpsService {
         }
     }
 
-    @Transactional
     public VideoWorkflowRunDetailResponse completeWorkflowRun(long runId, VideoWorkflowRunCompletionRequest request) {
-        VideoWorkflowRun run = workflowRunRepository.findById(runId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
-
-        VideoWorkflowRunStatus nextStatus = WorkflowCompletionStatusMapper.toRunStatus(request.getStatus());
-
-        VideoWorkflowRunStatus currentStatus = run.getStatus();
-        if (currentStatus == VideoWorkflowRunStatus.SUCCEEDED || currentStatus == VideoWorkflowRunStatus.FAILED) {
-            trackingService.recordEvent(
-                    run.getContentIdeaId(),
-                    run,
-                    "INFO",
-                    "workflow_callback_ignored",
-                    "Callback ignore : run deja en etat terminal " + currentStatus + ".",
-                    payloadOf("incomingStatus", nextStatus.name())
-            );
-            logWorkflowInfo("workflow_callback_ignored", run, "Run deja " + currentStatus + ", callback " + nextStatus + " ignore.");
-            return fetchWorkflowRun(runId);
-        }
-
-        run.setStatus(nextStatus);
-        run.setCompletedAt(Instant.now());
-        if (request.getResponsePayload() != null && !request.getResponsePayload().isBlank()) {
-            run.setResponsePayload(trimToNull(request.getResponsePayload()));
-        }
-        if (nextStatus == VideoWorkflowRunStatus.FAILED) {
-            String errorMessage = trimToNull(request.getErrorMessage());
-            run.setErrorMessage(errorMessage == null ? "Workflow externe en echec." : errorMessage);
-            trackingService.syncPipelineState(run.getContentIdeaId(), VideoOpsStateMachine.failureStage(), run.getErrorMessage(), run);
-            trackingService.recordEvent(
-                    run.getContentIdeaId(),
-                    run,
-                    "ERROR",
-                    "workflow_callback_failed",
-                    request.getMessage() == null || request.getMessage().isBlank() ? "Workflow externe signale en echec." : request.getMessage(),
-                    payloadOf("error", run.getErrorMessage())
-            );
-            logWorkflowWarn("workflow_callback_failed", run, run.getErrorMessage());
-        } else {
-            run.setErrorMessage(null);
-            trackingService.syncPipelineState(
-                    run.getContentIdeaId(),
-                    VideoOpsStateMachine.successStage(run.getWorkflowType(), trackingService.currentStage(run.getContentIdeaId())),
-                    null,
-                    run
-            );
-            trackingService.recordEvent(
-                    run.getContentIdeaId(),
-                    run,
-                    "INFO",
-                    "workflow_callback_succeeded",
-                    request.getMessage() == null || request.getMessage().isBlank() ? "Workflow externe termine avec succes." : request.getMessage(),
-                    Map.of("runId", run.getId())
-            );
-            logWorkflowInfo("workflow_callback_succeeded", run, request.getMessage() == null ? "Workflow externe termine avec succes." : request.getMessage());
-        }
-        workflowRunRepository.save(run);
-
-        return fetchWorkflowRun(runId);
+        return workflowCallbackService.completeRun(runId, request);
     }
 
     public void validateWorkflowCallbackRequest(String method, String path, String body, String timestamp, String signature, String legacySecret) {
-        callbackAuthService.validateCallback(method, path, body, timestamp, signature, legacySecret);
+        workflowCallbackService.validateCallback(method, path, body, timestamp, signature, legacySecret);
     }
 
     private VideoWorkflowActionResponse triggerWorkflow(

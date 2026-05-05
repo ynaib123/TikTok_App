@@ -74,6 +74,9 @@ class VideoOpsServiceTest {
     @Mock
     private VideoOpsTrackingService trackingService;
 
+    @Mock
+    private WorkflowCallbackService workflowCallbackService;
+
     @Test
     void triggerMainPipelineSendsCategoryAndIdeaCountToN8n() {
         VideoOpsProperties properties = new VideoOpsProperties();
@@ -122,7 +125,8 @@ class VideoOpsServiceTest {
                 new ObjectMapper(),
                 runPersistenceHelper,
                 n8nWorkflowContractService,
-                trackingService
+                trackingService,
+                workflowCallbackService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -187,7 +191,8 @@ class VideoOpsServiceTest {
                 new ObjectMapper(),
                 runPersistenceHelper,
                 n8nWorkflowContractService,
-                trackingService
+                trackingService,
+                workflowCallbackService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -258,7 +263,8 @@ class VideoOpsServiceTest {
                 new ObjectMapper(),
                 runPersistenceHelper,
                 n8nWorkflowContractService,
-                trackingService
+                trackingService,
+                workflowCallbackService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -289,29 +295,14 @@ class VideoOpsServiceTest {
         when(workflowRunRepository.findById(77L)).thenReturn(Optional.of(existingRun));
         when(workflowRunRepository.save(any(VideoWorkflowRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        VideoOpsService service = new VideoOpsService(
-                contentIdeaGateway,
-                contentIdeaRepository,
-                n8nWorkflowGateway,
-                videoOpsInternalProxyService,
-                tikTokUploadService,
-                callbackAuthService,
-                pipelineStateRepository,
-                workflowRunRepository,
-                eventRepository,
-                properties,
-                new ObjectMapper(),
-                runPersistenceHelper,
-                n8nWorkflowContractService,
-                trackingService
-        );
+        WorkflowCallbackService callbackService = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
         request.setStatus("rendering_requested");
         request.setMessage("Render demande a Shotstack.");
         request.setResponsePayload("{\"contentIdeaId\":19,\"shotstackRenderId\":\"render-xyz\"}");
 
-        VideoWorkflowRunDetailResponse response = service.completeWorkflowRun(77L, request);
+        VideoWorkflowRunDetailResponse response = callbackService.completeRun(77L, request);
 
         assertEquals("SUCCEEDED", response.getStatus());
         verify(workflowRunRepository).save(any(VideoWorkflowRun.class));
@@ -333,31 +324,16 @@ class VideoOpsServiceTest {
         when(workflowRunRepository.findById(88L))
                 .thenReturn(Optional.of(existingRun));
 
-        VideoOpsService service = new VideoOpsService(
-                contentIdeaGateway,
-                contentIdeaRepository,
-                n8nWorkflowGateway,
-                videoOpsInternalProxyService,
-                tikTokUploadService,
-                callbackAuthService,
-                pipelineStateRepository,
-                workflowRunRepository,
-                eventRepository,
-                properties,
-                new ObjectMapper(),
-                runPersistenceHelper,
-                n8nWorkflowContractService,
-                trackingService
-        );
+        WorkflowCallbackService callbackService = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
         request.setStatus("FAILED");
         request.setErrorMessage("late failure");
 
-        VideoWorkflowRunDetailResponse response = service.completeWorkflowRun(88L, request);
+        VideoWorkflowRunDetailResponse response = callbackService.completeRun(88L, request);
 
         assertEquals("SUCCEEDED", response.getStatus());
-        verify(workflowRunRepository, times(2)).findById(88L);
+        verify(workflowRunRepository).findById(88L);
         verify(workflowRunRepository, never()).save(any(VideoWorkflowRun.class));
     }
 }
