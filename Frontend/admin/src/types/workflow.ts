@@ -1,3 +1,31 @@
+// Mirror backend enums (com.tiktokapp.backend.model.*). Keep in sync if a value is added/renamed.
+export type VideoWorkflowRunStatus = 'PENDING' | 'ACCEPTED' | 'SUCCEEDED' | 'FAILED';
+
+export type VideoWorkflowType =
+  | 'MAIN_PIPELINE'
+  | 'SCRIPT_GENERATION'
+  | 'CHECK_SHOTSTACK'
+  | 'RENDER_TEMPLATE_VIDEO'
+  | 'INIT_PUBLISH_TIKTOK'
+  | 'TIKTOK_UPLOAD'
+  | 'FINALIZE_PUBLISH';
+
+export type VideoPipelineStage =
+  | 'UNKNOWN'
+  | 'CREATION_REQUESTED'
+  | 'IDEA_CREATED'
+  | 'SCRIPT_REQUESTED'
+  | 'SCRIPT_READY'
+  | 'RENDERING_REQUESTED'
+  | 'RENDER_READY'
+  | 'UPLOAD_PREPARING'
+  | 'PUBLISH_INITIALIZED'
+  | 'UPLOAD_COMPLETED'
+  | 'PUBLISHED'
+  | 'FAILED';
+
+export const TERMINAL_RUN_STATUSES: ReadonlySet<VideoWorkflowRunStatus> = new Set(['SUCCEEDED', 'FAILED']);
+
 export interface ContentIdea {
   id: number;
   category: string | null;
@@ -18,8 +46,8 @@ export interface ContentIdea {
 export interface WorkflowRun {
   id: number;
   contentIdeaId: number | null;
-  workflowType: string;
-  status: string;
+  workflowType: VideoWorkflowType | string;
+  status: VideoWorkflowRunStatus | string;
   attemptNumber: number;
   errorMessage: string | null;
   responsePayload: string | null;
@@ -62,7 +90,7 @@ export interface ManualAction {
 export interface WorkflowStatusEntry {
   id?: string | number;
   runId?: number | null;
-  workflowType: string;
+  workflowType: VideoWorkflowType | string;
   contentIdeaId?: number | null;
   state?: 'pending' | 'succeeded' | 'failed';
   message?: string | null;
