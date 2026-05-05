@@ -30,5 +30,13 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+
+        // Fake but valid secrets so JwtService and friends can boot.
+        registry.add("app.security.admin-password", () -> "test-admin-password");
+        registry.add("app.security.jwt-secret", () -> "test-jwt-secret-very-long-string-32chars-min");
+        registry.add("app.video-ops.internal-api-secret", () -> "test-internal-secret");
+        registry.add("app.video-ops.workflow-callback-secret", () -> "test-callback-secret");
+        registry.add("app.video-ops.workflow-callback-hmac-secret", () -> "test-hmac-secret");
+        registry.add("app.video-ops.token-encryption-key", () -> "test-token-encryption-key-32bytes!");
     }
 }
