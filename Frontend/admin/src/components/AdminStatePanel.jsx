@@ -25,8 +25,8 @@ export default function AdminStatePanel({
       </div>
       <div className="admin-state-panel-copy">
         <p className="admin-state-panel-kicker">Espace admin</p>
-        <h2>{title || (isError ? 'Une action est requise' : 'Aucune donnee a afficher')}</h2>
-        <p>{message || (isError ? 'Un incident empeche le chargement de cette vue.' : 'Cette section reviendra ici des que des donnees seront disponibles.')}</p>
+        <h2>{title || (isError ? 'Une action est requise' : 'Aucune donnée à afficher')}</h2>
+        <p>{message || (isError ? 'Un incident empêche le chargement de cette vue.' : 'Cette section reviendra ici dès que des données seront disponibles.')}</p>
       </div>
       {action ? <div className="admin-state-panel-action">{action}</div> : null}
     </section>

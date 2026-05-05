@@ -25,6 +25,6 @@ test('normalizeUploadError explains invalid image file', () => {
 test('productImageUrlMessage explains invalid remote image URL', () => {
   assert.equal(
     productImageUrlMessage(),
-    "L'image doit etre une URL valide commencant par http:// ou https://."
+    "L'image doit être une URL valide commençant par http:// ou https://."
   )
 })

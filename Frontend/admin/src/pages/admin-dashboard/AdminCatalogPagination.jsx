@@ -147,6 +147,7 @@ export default function AdminCatalogPagination({
                 role="listbox"
                 aria-label={pageSizeAriaLabel}
                 ref={menuRef}
+                tabIndex={-1}
                 onKeyDown={handleMenuKeyDown}
               >
                 {pageSizeOptions.map((option) => (

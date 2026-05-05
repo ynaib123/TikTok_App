@@ -117,10 +117,10 @@ export function ProductFormFields({
             {!showPurchasePriceInput ? <div className="admin-product-stock-summary-item"><span>Prix d'achat</span><strong>{formatMoney(form.prixAchat || 0)}</strong></div> : null}
           </div>
           <div className="admin-product-tarification-inline">
-            {showPurchasePriceInput ? <label className={`admin-product-stock-adjust ${dirtyFields.prixAchat ? 'is-dirty' : ''}`}><span>Prix d'achat</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-purchase-price" name="productPurchasePrice" type="number" min="0" step="0.01" value={form.prixAchat} onChange={(event) => onFieldChange('prixAchat', event.target.value)} placeholder="Prix d'achat" /></div></div></label> : null}
+            {showPurchasePriceInput ? <label htmlFor="product-purchase-price" className={`admin-product-stock-adjust ${dirtyFields.prixAchat ? 'is-dirty' : ''}`}><span>Prix d'achat</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-purchase-price" name="productPurchasePrice" type="number" min="0" step="0.01" value={form.prixAchat} onChange={(event) => onFieldChange('prixAchat', event.target.value)} placeholder="Prix d'achat" /></div></div></label> : null}
             <div className="admin-product-stock-adjust"><span>Marge unitaire</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input type="text" value={formatMoney(marginValue)} readOnly aria-label="Marge unitaire" /></div></div></div>
-            <label className={`admin-product-stock-adjust ${dirtyFields.prix ? 'is-dirty' : ''}`}><span>Prix de vente</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-sale-price" name="productSalePrice" type="number" min="0.01" step="0.01" value={form.prix} onChange={(event) => onFieldChange('prix', event.target.value)} placeholder="Prix de vente" /></div></div></label>
-            <label className={`admin-product-stock-adjust ${dirtyFields.promotionPercent ? 'is-dirty' : ''}`}><span>Reduction promo (%)</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-promotion-percent" name="productPromotionPercent" type="number" min="0" max="100" step="0.01" value={form.promotionPercent} onChange={(event) => onFieldChange('promotionPercent', event.target.value)} placeholder="Laisser vide pour aucune promotion" /></div></div></label>
+            <label htmlFor="product-sale-price" className={`admin-product-stock-adjust ${dirtyFields.prix ? 'is-dirty' : ''}`}><span>Prix de vente</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-sale-price" name="productSalePrice" type="number" min="0.01" step="0.01" value={form.prix} onChange={(event) => onFieldChange('prix', event.target.value)} placeholder="Prix de vente" /></div></div></label>
+            <label htmlFor="product-promotion-percent" className={`admin-product-stock-adjust ${dirtyFields.promotionPercent ? 'is-dirty' : ''}`}><span>Réduction promo (%)</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-promotion-percent" name="productPromotionPercent" type="number" min="0" max="100" step="0.01" value={form.promotionPercent} onChange={(event) => onFieldChange('promotionPercent', event.target.value)} placeholder="Laisser vide pour aucune promotion" /></div></div></label>
           </div>
         </div>
 
@@ -132,7 +132,7 @@ export function ProductFormFields({
           <div className="admin-product-tarification-inline">
             <div className="admin-product-stock-adjust"><span>Cout stock</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input type="text" value={formatMoney(stockCostValue)} readOnly aria-label="Cout stock" /></div></div></div>
             <div className="admin-product-stock-adjust"><span>Valeur stock vente</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input type="text" value={formatMoney(stockSaleValue)} readOnly aria-label="Valeur stock vente" /></div></div></div>
-            <label className={`admin-product-stock-adjust ${dirtyFields.stock ? 'is-dirty' : ''}`}><span>Stock</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-stock" name="productStock" type="number" step="1" min="0" value={form.stock} onChange={(event) => onFieldChange('stock', event.target.value)} placeholder="Stock" /></div></div></label>
+            <label htmlFor="product-stock" className={`admin-product-stock-adjust ${dirtyFields.stock ? 'is-dirty' : ''}`}><span>Stock</span><div className="admin-product-stock-adjust-inline"><div className="admin-product-stock-adjust-row"><input id="product-stock" name="productStock" type="number" step="1" min="0" value={form.stock} onChange={(event) => onFieldChange('stock', event.target.value)} placeholder="Stock" /></div></div></label>
           </div>
         </div>
       </div>
@@ -180,22 +180,35 @@ export function ProductFormFields({
                     event.preventDefault()
                     handleToggleImageSelection(url)
                   }}>
-                    <label className="admin-product-select-checkbox admin-product-image-checkbox" aria-label={isChecked ? "Deselectionner l'image" : "Selectionner l'image"} onClick={(event) => event.stopPropagation()}>
+                    <label
+                      className="admin-product-select-checkbox admin-product-image-checkbox"
+                      aria-label={isChecked ? "Désélectionner l'image" : "Sélectionner l'image"}
+                    >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => handleToggleImageSelection(url)}
+                        onClick={(event) => event.stopPropagation()}
                       />
                       <span aria-hidden="true" />
                     </label>
                     <div
                       className="admin-product-image-card-media"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Aperçu visuel ${index + 1}`}
                       onClick={(event) => {
                         event.stopPropagation()
                         onSelectPreviewImage(url)
                       }}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return
+                        event.preventDefault()
+                        event.stopPropagation()
+                        onSelectPreviewImage(url)
+                      }}
                     >
-                      <img src={url} alt={`Image produit ${index + 1}`} />
+                      <img src={url} alt={`Produit ${index + 1}`} />
                     </div>
                     <div className="admin-product-image-card-body">
                       <div className="admin-product-image-card-head">

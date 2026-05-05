@@ -43,7 +43,10 @@ import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextServic
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
+import com.tiktokapp.backend.config.WorkflowContract;
 import com.tiktokapp.backend.service.AuditService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -75,6 +78,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/video-ops")
 public class VideoOpsController {
+
+    private static final Logger logger = LoggerFactory.getLogger(VideoOpsController.class);
 
     private final VideoOpsService videoOpsService;
     private final VideoOpsDataService videoOpsDataService;
@@ -473,6 +478,7 @@ public class VideoOpsController {
             @RequestHeader(name = "X-Video-Ops-Callback-Timestamp", required = false) String callbackTimestamp,
             @RequestHeader(name = "X-Video-Ops-Callback-Signature", required = false) String callbackSignature,
             @RequestHeader(name = "X-Video-Ops-Callback-Secret", required = false) String callbackSecret,
+            @RequestHeader(name = WorkflowContract.HEADER_CONTRACT_VERSION, required = false) String contractVersion,
             HttpServletRequest servletRequest
     ) {
         videoOpsService.validateWorkflowCallbackRequest(
@@ -483,6 +489,13 @@ public class VideoOpsController {
                 callbackSignature,
                 callbackSecret
         );
+        if (contractVersion != null && !contractVersion.isBlank()
+                && !WorkflowContract.CONTRACT_VERSION.equals(contractVersion.trim())) {
+            logger.warn("Workflow callback runId={} declares contractVersion={} but backend expects {}",
+                    runId, contractVersion, WorkflowContract.CONTRACT_VERSION);
+        }
+        logger.info("Workflow callback received runId={} contractVersion={}", runId,
+                (contractVersion == null || contractVersion.isBlank()) ? "<missing>" : contractVersion);
         VideoWorkflowRunCompletionRequest request = parseWorkflowCompletionRequest(rawBody);
         return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
     }

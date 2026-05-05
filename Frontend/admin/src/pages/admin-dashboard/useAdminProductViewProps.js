@@ -60,7 +60,73 @@ export function buildManagementSectionProps({
   toggleSelectedProductId,
   totalProductPages,
 }) {
+  // Grouped-by-domain view (Phase 1 of the prop-drilling refactor — see
+  // PROP_DOMAINS.md). Consumers should migrate from the flat fields below
+  // to these nested groups in a follow-up PR; the flat fields stay intact
+  // so existing tests and panels keep working.
+  const catalog = {
+    filter: {
+      productCategoryFilter,
+      productPublishStatusFilter,
+      productStockFilter,
+      productSearch,
+      selectedProductCategory,
+      selectedProductFilterSummary,
+      selectedProductPublishStatusFilter,
+      selectedProductStockFilter,
+    },
+    setFilter: {
+      setProductCategoryFilter,
+      setProductPublishStatusFilter,
+      setProductSearch,
+      setProductStockFilter,
+    },
+    sort: { productSort, selectedProductSort, setProductSort },
+    view: { productViewMode, selectedProductViewMode, setProductViewMode },
+    pagination: {
+      productPage,
+      setProductPage,
+      totalProductPages,
+      productsPerPage,
+      selectedProductsPerPage,
+      setProductsPerPage,
+      pendingProductsPerPageScrollRef,
+    },
+    menu: { openCatalogMenu, setOpenCatalogMenu },
+    options: { productCategoryOptions },
+    items: { paginatedProducts },
+    loading,
+  }
+
+  const selection = {
+    ids: pendingSelectedProductIds,
+    idSet: pendingSelectedProductIdSet,
+    filtered: { ids: filteredProductIds, count: filteredProductCount },
+    has: hasSelectedProducts,
+    toggle: toggleSelectedProductId,
+    clearAll: handleClearAllSelectedProducts,
+    selectAllFiltered: handleSelectAllFilteredProducts,
+  }
+
+  const modals = {
+    openCreate: handleOpenProductCreateWorkspace,
+    openImport: handleOpenProductImportModal,
+    openDelete: openDeleteProductsModal,
+    openDetails: handleOpenProductDetailsFromCatalog,
+  }
+
+  const mutations = {
+    bulkPublishStatus: handleBulkProductPublishStatus,
+    isUpdatingPublishStatus: isUpdatingProductPublishStatus,
+  }
+
   return {
+    // Domain-grouped (preferred for new code)
+    catalog,
+    selection,
+    modals,
+    mutations,
+    // Flat fields kept for backwards compatibility — see PROP_DOMAINS.md
     filteredProductCount,
     filteredProductIds,
     handleBulkProductPublishStatus,

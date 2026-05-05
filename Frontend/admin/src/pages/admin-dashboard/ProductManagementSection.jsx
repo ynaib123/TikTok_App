@@ -3,55 +3,78 @@ import { ProductCatalogPanel } from './ProductPanels'
 import { ProductManagementPagination, ProductManagementToolbar } from './ProductManagementPanels'
 
 function ProductManagementSectionComponent({
-  filteredProductCount,
-  handleBulkProductPublishStatus,
-  handleClearAllSelectedProducts,
-  handleOpenProductCreateWorkspace,
-  handleOpenProductImportModal,
-  handleSelectAllFilteredProducts,
-  hasSelectedProducts,
-  isUpdatingProductPublishStatus,
-  loading,
-  openCatalogMenu,
-  openDeleteProductsModal,
-  openProductDetails,
-  paginatedProducts,
-  pendingProductsPerPageScrollRef,
-  pendingSelectedProductIdSet,
-  pendingSelectedProductIds,
-  productCategoryFilter,
-  productCategoryOptions,
-  productPage,
-  productPublishStatusFilter,
-  productSearch,
-  productSort,
-  productStockFilter,
-  productViewMode,
-  productsPerPage,
-  selectedProductCategory,
-  selectedProductFilterSummary,
-  selectedProductPublishStatusFilter,
-  selectedProductSort,
-  selectedProductsPerPage,
-  selectedProductStockFilter,
-  selectedProductViewMode,
-  setOpenCatalogMenu,
-  setProductCategoryFilter,
-  setProductPage,
-  setProductPublishStatusFilter,
-  setProductSearch,
-  setProductSort,
-  setProductStockFilter,
-  setProductViewMode,
-  setProductsPerPage,
-  toggleSelectedProductId,
-  totalProductPages,
+  catalog,
   formatMoney,
   getProductImage,
   getPromotionPrice,
   hasActivePromotion,
-  filteredProductIds,
+  modals,
+  mutations,
+  selection,
 }) {
+  const {
+    filter,
+    setFilter,
+    sort,
+    view,
+    pagination,
+    menu,
+    options,
+    items,
+    loading,
+  } = catalog
+  const {
+    productCategoryFilter,
+    productPublishStatusFilter,
+    productSearch,
+    productStockFilter,
+    selectedProductCategory,
+    selectedProductFilterSummary,
+    selectedProductPublishStatusFilter,
+    selectedProductStockFilter,
+  } = filter
+  const {
+    setProductCategoryFilter,
+    setProductPublishStatusFilter,
+    setProductSearch,
+    setProductStockFilter,
+  } = setFilter
+  const { productSort, selectedProductSort, setProductSort } = sort
+  const { productViewMode, selectedProductViewMode, setProductViewMode } = view
+  const {
+    productPage,
+    productsPerPage,
+    pendingProductsPerPageScrollRef,
+    selectedProductsPerPage,
+    setProductPage,
+    setProductsPerPage,
+    totalProductPages,
+  } = pagination
+  const { openCatalogMenu, setOpenCatalogMenu } = menu
+  const { productCategoryOptions } = options
+  const { paginatedProducts } = items
+  const {
+    filtered,
+    has: hasSelectedProducts,
+    ids: pendingSelectedProductIds,
+    idSet: pendingSelectedProductIdSet,
+    toggle: toggleSelectedProductId,
+    clearAll: handleClearAllSelectedProducts,
+    selectAllFiltered: handleSelectAllFilteredProducts,
+  } = selection
+  const {
+    openCreate: handleOpenProductCreateWorkspace,
+    openImport: handleOpenProductImportModal,
+    openDelete: openDeleteProductsModal,
+    openDetails: openProductDetails,
+  } = modals
+  const {
+    bulkPublishStatus: handleBulkProductPublishStatus,
+    isUpdatingPublishStatus: isUpdatingProductPublishStatus,
+  } = mutations
+
+  const filteredProductIds = filtered.ids
+  const filteredProductCount = filtered.count
   const resolvedPaginatedProducts = Array.isArray(paginatedProducts) ? paginatedProducts : []
   const catalogTags = [
     productSearch

@@ -112,20 +112,21 @@ export default function AdminModal({
   const titleId = labelledById || `admin-modal-title-${title?.toLowerCase().replace(/\s+/g, '-') || 'dialog'}`
 
   return createPortal(
-    <div
-      className="admin-modal-overlay"
-      onClick={() => {
-        if (!closeOnOverlay) return
-        onClose?.()
-      }}
-    >
+    <div className="admin-modal-overlay">
+      {closeOnOverlay ? (
+        <button
+          type="button"
+          className="admin-modal-backdrop"
+          aria-label="Fermer la fenêtre"
+          onClick={() => onClose?.()}
+        />
+      ) : null}
       <div
         className={`admin-modal admin-modal-${size} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? `${titleId}-description` : undefined}
-        onClick={(event) => event.stopPropagation()}
         ref={modalRef}
         tabIndex={-1}
       >

@@ -187,7 +187,9 @@ export default function IdeaDetailPage() {
                       controls
                       playsInline
                       style={{ width: '100%', flex: 1, minHeight: 0, borderRadius: 10, background: '#000', objectFit: 'contain' }}
-                    />
+                    >
+                      <track kind="captions" />
+                    </video>
                   ) : (
                     <div
                       style={{

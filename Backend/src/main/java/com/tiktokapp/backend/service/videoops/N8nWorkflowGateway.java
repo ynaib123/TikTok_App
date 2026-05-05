@@ -2,6 +2,7 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tiktokapp.backend.config.WorkflowContract;
 import com.tiktokapp.backend.model.VideoWorkflowType;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -53,8 +54,9 @@ public class N8nWorkflowGateway {
             connection.setRequestProperty("Connection", "close");
             String traceId = MDC.get("traceId");
             if (traceId != null && !traceId.isBlank()) {
-                connection.setRequestProperty("X-Request-Id", traceId);
+                connection.setRequestProperty(WorkflowContract.HEADER_REQUEST_ID, traceId);
             }
+            connection.setRequestProperty(WorkflowContract.HEADER_CONTRACT_VERSION, WorkflowContract.CONTRACT_VERSION);
             try (OutputStream outputStream = connection.getOutputStream()) {
                 outputStream.write(requestBody);
                 outputStream.flush();

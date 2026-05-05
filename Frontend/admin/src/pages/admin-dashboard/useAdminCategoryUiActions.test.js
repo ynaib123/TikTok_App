@@ -5,7 +5,7 @@ import { buildCategoryMergePayload, buildOpenCategoryDeleteModalPayload } from '
 test('buildOpenCategoryDeleteModalPayload rejects empty selections', () => {
   const result = buildOpenCategoryDeleteModalPayload([])
 
-  assert.equal(result.error, 'Selectionnez au moins une categorie.')
+  assert.equal(result.error, 'Sélectionnez au moins une catégorie.')
   assert.deepEqual(result.nextState, { isOpen: false, categoryIds: [] })
 })
 
@@ -20,8 +20,8 @@ test('buildCategoryMergePayload rejects incomplete merge requests', () => {
   const missingSelection = buildCategoryMergePayload([4], 'Univers gaming')
   const missingLabel = buildCategoryMergePayload([4, 7], '   ')
 
-  assert.equal(missingSelection.error, 'Selectionnez au moins deux categories a fusionner.')
-  assert.equal(missingLabel.error, 'Saisissez un libelle de categorie.')
+  assert.equal(missingSelection.error, 'Sélectionnez au moins deux catégories à fusionner.')
+  assert.equal(missingLabel.error, 'Saisissez un libellé de catégorie.')
 })
 
 test('buildCategoryMergePayload normalizes selected category ids and label', () => {

@@ -51,7 +51,7 @@ test('getProductFormValidationMessage requires description, category and at leas
     categorieId: '',
     imageUrl: '',
     imageUrlsText: 'https://cdn/img-1.jpg',
-  }), 'La categorie est obligatoire.')
+  }), 'La catégorie est obligatoire.')
 
   assert.equal(getProductFormValidationMessage({
     nom: 'Produit test',
@@ -69,7 +69,7 @@ test('getProductFormValidationMessage requires description, category and at leas
 test('normalizeProductValidationError maps backend category and image validation errors', () => {
   assert.equal(
     normalizeProductValidationError('Validation failed for field=categorySelectionValid, propertyPath=categorySelectionValid', 'fallback'),
-    'Selectionnez une categorie valide.'
+    'Sélectionnez une catégorie valide.'
   )
 
   assert.equal(

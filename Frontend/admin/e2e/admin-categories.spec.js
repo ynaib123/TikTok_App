@@ -1,6 +1,10 @@
 import process from 'node:process'
 import { test, expect } from '@playwright/test'
 
+// Suite skipped: see admin-products.spec.js header. Categories belonged to the
+// retired products module.
+test.skip(true, 'Categories module retired — see admin-products.spec.js.')
+
 const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || 'admin@myshop.com'
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || '123456'
 

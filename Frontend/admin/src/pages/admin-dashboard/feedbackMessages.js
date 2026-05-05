@@ -8,54 +8,54 @@ export const PRODUCT_IMAGE_DIMENSION_RULE = {
 }
 
 export const ADMIN_ERROR_MESSAGES = {
-  loadOverview: 'Impossible de charger les donnees. Reessayez.',
+  loadOverview: 'Impossible de charger les données. Réessayez.',
   loadProducts: 'Impossible de charger les produits.',
   loadProduct: 'Impossible de charger le produit.',
   productNotFound: 'Produit introuvable.',
   saveProduct: "Impossible d'enregistrer le produit.",
-  createProduct: 'Impossible de creer le produit.',
-  createProducts: 'Impossible de creer les produits.',
-  deleteProducts: 'Impossible de supprimer les produits selectionnes.',
-  updateProductPublishStatus: "Impossible de modifier l'etat de mise en ligne des produits selectionnes.",
-  selectProduct: 'Selectionnez au moins un produit.',
-  completeRequiredProductFields: "Completez les champs obligatoires avant de continuer.",
-  categoryLabelRequired: 'Saisissez un libelle de categorie.',
-  categoryNameRequired: 'Saisissez un nom de categorie avant de l ajouter.',
-  selectCategory: 'Selectionnez au moins une categorie.',
-  selectCategoriesForMerge: 'Selectionnez au moins deux categories a fusionner.',
-  updateCategory: 'Impossible de modifier la categorie.',
-  createCategory: 'Impossible de creer la categorie.',
-  deleteCategory: 'Impossible de supprimer les categories selectionnees.',
-  mergeCategory: 'Impossible de fusionner les categories selectionnees.',
-  loadCategories: 'Impossible de charger les categories.',
+  createProduct: 'Impossible de créer le produit.',
+  createProducts: 'Impossible de créer les produits.',
+  deleteProducts: 'Impossible de supprimer les produits sélectionnés.',
+  updateProductPublishStatus: "Impossible de modifier l'état de mise en ligne des produits sélectionnés.",
+  selectProduct: 'Sélectionnez au moins un produit.',
+  completeRequiredProductFields: "Complétez les champs obligatoires avant de continuer.",
+  categoryLabelRequired: 'Saisissez un libellé de catégorie.',
+  categoryNameRequired: 'Saisissez un nom de catégorie avant de l’ajouter.',
+  selectCategory: 'Sélectionnez au moins une catégorie.',
+  selectCategoriesForMerge: 'Sélectionnez au moins deux catégories à fusionner.',
+  updateCategory: 'Impossible de modifier la catégorie.',
+  createCategory: 'Impossible de créer la catégorie.',
+  deleteCategory: 'Impossible de supprimer les catégories sélectionnées.',
+  mergeCategory: 'Impossible de fusionner les catégories sélectionnées.',
+  loadCategories: 'Impossible de charger les catégories.',
   loadClients: 'Impossible de charger les clients.',
   updateClientAccountStatus: 'Impossible de modifier le statut du compte.',
-  updateClientAccountStatuses: 'Impossible de modifier le statut des comptes selectionnes.',
+  updateClientAccountStatuses: 'Impossible de modifier le statut des comptes sélectionnés.',
   uploadImages: "Impossible d'envoyer les images.",
 }
 
 export const ADMIN_INFO_MESSAGES = {
-  productSaved: 'Produit enregistre avec succes.',
-  productCreated: 'Produit cree avec succes.',
-  productsCreated: 'Produits crees avec succes.',
-  productsDeleted: 'Produits supprimes avec succes.',
-  productsPublished: 'Produits mis en ligne avec succes.',
-  productsUnpublished: 'Produits retires de la mise en ligne avec succes.',
-  categoryCreated: 'Categorie creee avec succes.',
-  categoryUpdated: 'Categorie mise a jour avec succes.',
-  categoriesDeleted: 'Categories supprimees avec succes.',
-  categoriesMerged: 'Categories fusionnees avec succes.',
-  clientsActivated: 'Comptes clients reactives avec succes.',
-  clientsDeactivated: 'Comptes clients desactives avec succes.',
-  imageAdded: 'Image ajoutee avec succes.',
-  imagesAdded: 'Images ajoutees avec succes.',
-  draftsReset: 'Modifications reinitialisees.',
-  filtersReset: 'Filtres reinitialises.',
+  productSaved: 'Produit enregistré avec succès.',
+  productCreated: 'Produit créé avec succès.',
+  productsCreated: 'Produits créés avec succès.',
+  productsDeleted: 'Produits supprimés avec succès.',
+  productsPublished: 'Produits mis en ligne avec succès.',
+  productsUnpublished: 'Produits retirés de la mise en ligne avec succès.',
+  categoryCreated: 'Catégorie créée avec succès.',
+  categoryUpdated: 'Catégorie mise à jour avec succès.',
+  categoriesDeleted: 'Catégories supprimées avec succès.',
+  categoriesMerged: 'Catégories fusionnées avec succès.',
+  clientsActivated: 'Comptes clients réactivés avec succès.',
+  clientsDeactivated: 'Comptes clients désactivés avec succès.',
+  imageAdded: 'Image ajoutée avec succès.',
+  imagesAdded: 'Images ajoutées avec succès.',
+  draftsReset: 'Modifications réinitialisées.',
+  filtersReset: 'Filtres réinitialisés.',
 }
 
 export function productRequiredFieldsMessage(index = null) {
   if (Number.isFinite(index) && index > 0) {
-    return `Completez le nom, le prix d'achat, le prix de vente et le stock du produit ${index} avant de creer les brouillons.`
+    return `Complétez le nom, le prix d'achat, le prix de vente et le stock du produit ${index} avant de créer les brouillons.`
   }
 
   return ADMIN_ERROR_MESSAGES.completeRequiredProductFields
@@ -71,19 +71,19 @@ export function productImageDimensionMessage() {
 }
 
 export function productImageFileTypeMessage() {
-  return "Le fichier doit etre une image au format JPG, PNG, WEBP ou GIF."
+  return "Le fichier doit être une image au format JPG, PNG, WEBP ou GIF."
 }
 
 export function productImageInvalidFileMessage() {
-  return "Le fichier selectionne n'est pas une image valide."
+  return "Le fichier sélectionné n'est pas une image valide."
 }
 
 export function productImageUrlMessage() {
-  return "L'image doit etre une URL valide commencant par http:// ou https://."
+  return "L'image doit être une URL valide commençant par http:// ou https://."
 }
 
 export function partialImageUploadMessage(remainingSlots, limit) {
-  return `Seulement ${remainingSlots} image(s) ont ete ajoutees. Maximum ${limit} images par produit.`
+  return `Seulement ${remainingSlots} image(s) ont été ajoutées. Maximum ${limit} images par produit.`
 }
 
 export function normalizeProductValidationError(errorMessage, fallbackMessage) {
@@ -93,15 +93,15 @@ export function normalizeProductValidationError(errorMessage, fallbackMessage) {
   const normalizedMessage = message.toLowerCase()
 
   if (normalizedMessage.includes('propertypath=prixachat')) {
-    return "Le prix d'achat est obligatoire et doit etre positif."
+    return "Le prix d'achat est obligatoire et doit être positif."
   }
 
   if (normalizedMessage.includes('propertypath=prix')) {
-    return 'Le prix de vente est obligatoire et doit etre positif.'
+    return 'Le prix de vente est obligatoire et doit être positif.'
   }
 
   if (normalizedMessage.includes('propertypath=stock')) {
-    return 'Le stock est obligatoire et doit etre positif ou nul.'
+    return 'Le stock est obligatoire et doit être positif ou nul.'
   }
 
   if (normalizedMessage.includes('propertypath=nom')) {
@@ -117,7 +117,7 @@ export function normalizeProductValidationError(errorMessage, fallbackMessage) {
     || normalizedMessage.includes('propertypath=categorieid')
     || normalizedMessage.includes('propertypath=categoryselectionvalid')
   ) {
-    return 'Selectionnez une categorie valide.'
+    return 'Sélectionnez une catégorie valide.'
   }
 
   if (normalizedMessage.includes('propertypath=imageurls')) {
@@ -125,11 +125,11 @@ export function normalizeProductValidationError(errorMessage, fallbackMessage) {
   }
 
   if (normalizedMessage.includes('prix positif obligatoire')) {
-    return 'Le prix de vente est obligatoire et doit etre positif.'
+    return 'Le prix de vente est obligatoire et doit être positif.'
   }
 
   if (normalizedMessage.includes("prix d'achat")) {
-    return "Le prix d'achat est obligatoire et doit etre positif."
+    return "Le prix d'achat est obligatoire et doit être positif."
   }
 
   if (normalizedMessage.includes('description obligatoire')) {
@@ -137,7 +137,7 @@ export function normalizeProductValidationError(errorMessage, fallbackMessage) {
   }
 
   if (normalizedMessage.includes('categorie obligatoire')) {
-    return 'Selectionnez une categorie valide.'
+    return 'Sélectionnez une catégorie valide.'
   }
 
   if (
@@ -148,7 +148,7 @@ export function normalizeProductValidationError(errorMessage, fallbackMessage) {
   }
 
   if (normalizedMessage.includes('stock')) {
-    return 'Le stock est obligatoire et doit etre positif ou nul.'
+    return 'Le stock est obligatoire et doit être positif ou nul.'
   }
 
   return message || fallbackMessage
@@ -179,6 +179,7 @@ export function normalizeUploadError(errorMessage, fallbackMessage) {
   if (
     normalizedMessage.includes("format d'image non supporte")
     || normalizedMessage.includes('format d image non supporte')
+    || normalizedMessage.includes('format d’image non supporté')
     || normalizedMessage.includes('unsupported media type')
   ) {
     return productImageFileTypeMessage()
@@ -216,7 +217,7 @@ export function getProductFormValidationMessage({
   if (normalizeImageUrls(imageUrlsText).length === 0) missingFields.push('imageUrlsText')
 
   if (missingFields.length > 1) {
-    return 'Tous les champs doivent etre remplis.'
+    return 'Tous les champs doivent être remplis.'
   }
 
   if (missingFields.includes('nom')) return 'Le nom du produit est obligatoire.'
@@ -224,7 +225,7 @@ export function getProductFormValidationMessage({
   if (missingFields.includes('prixAchat')) return "Le prix d'achat est obligatoire."
   if (missingFields.includes('prix')) return 'Le prix de vente est obligatoire.'
   if (missingFields.includes('stock')) return 'Le stock est obligatoire.'
-  if (missingFields.includes('categorieId')) return 'La categorie est obligatoire.'
+  if (missingFields.includes('categorieId')) return 'La catégorie est obligatoire.'
   if (missingFields.includes('imageUrlsText')) return 'Ajoutez au moins une photo du produit.'
 
   if (normalizeImageUrls(imageUrlsText).length > MAX_PRODUCT_IMAGES) {
@@ -233,28 +234,28 @@ export function getProductFormValidationMessage({
 
   const purchasePrice = Number(prixAchat)
   if (!Number.isFinite(purchasePrice) || purchasePrice < 0) {
-    return "Le prix d'achat doit etre positif ou nul."
+    return "Le prix d'achat doit être positif ou nul."
   }
 
   const salePrice = Number(prix)
   if (!Number.isFinite(salePrice) || salePrice <= 0) {
-    return 'Le prix de vente doit etre positif.'
+    return 'Le prix de vente doit être positif.'
   }
 
   if (salePrice < purchasePrice) {
-    return "Le prix de vente doit etre superieur ou egal au prix d'achat."
+    return "Le prix de vente doit être supérieur ou égal au prix d'achat."
   }
 
   if (String(promotionPercent || '').trim() !== '') {
     const promotionValue = Number(promotionPercent)
     if (!Number.isFinite(promotionValue) || promotionValue < 0 || promotionValue > 100) {
-      return 'La reduction doit etre comprise entre 0 et 100 %.'
+      return 'La réduction doit être comprise entre 0 et 100 %.'
     }
   }
 
   const stockValue = Number(stock)
   if (!Number.isFinite(stockValue) || stockValue < 0) {
-    return 'Le stock doit etre positif ou nul.'
+    return 'Le stock doit être positif ou nul.'
   }
 
   return ''

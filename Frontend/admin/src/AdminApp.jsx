@@ -23,10 +23,10 @@ function AdminMobileBlockedPage() {
     <div className="admin-mobile-blocked-page">
       <div className="admin-mobile-blocked-box" role="alert" aria-live="assertive">
         <div className="admin-mobile-blocked-badge" aria-hidden="true">!</div>
-        <p className="admin-auth-card-kicker">Acces refuse</p>
+        <p className="admin-auth-card-kicker">Accès refusé</p>
         <p className="admin-mobile-blocked-title">Cette route admin est interdite sur mobile.</p>
         <p className="admin-mobile-blocked-copy">
-          Utilisez un ordinateur ou un ecran desktop pour acceder a l interface d administration.
+          Utilisez un ordinateur ou un écran desktop pour accéder à l’interface d’administration.
         </p>
       </div>
     </div>

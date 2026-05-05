@@ -231,7 +231,7 @@ export default function AdminLogin() {
           </form>
 
           <div className="admin-auth-demo-hint">
-            <p className="admin-auth-card-kicker">Acces demo</p>
+            <p className="admin-auth-card-kicker">Accès démo</p>
             <p>Renseigne les identifiants locaux via `VITE_MOCK_ADMIN_EMAIL` et `VITE_MOCK_ADMIN_PASSWORD` si tu actives `VITE_USE_MOCK_ADMIN_AUTH=true`.</p>
           </div>
         </section>

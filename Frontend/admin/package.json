@@ -12,7 +12,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,css,md}\"",
     "type-check": "tsc --noEmit",
     "preview": "vite preview",
-    "test": "node --experimental-specifier-resolution=node --test \"./src/**/*.test.js\"",
+    "test": "npm run test:unit && npm run test:vitest",
+    "test:unit": "node scripts/run-node-tests.mjs",
     "test:vitest": "vitest run",
     "test:e2e": "playwright test",
     "prepare": "cd ../.. && husky Frontend/admin/.husky"

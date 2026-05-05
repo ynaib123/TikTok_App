@@ -1,0 +1,14 @@
+FROM maven:3.9.9-eclipse-temurin-17
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends inotify-tools \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY pom.xml pom.xml
+RUN mvn -q -DskipTests dependency:go-offline
+
+EXPOSE 8080 8081
+
+CMD ["/bin/sh", "-lc", "mvn -q -DskipTests spring-boot:run & APP_PID=$!; while inotifywait -r -e modify,create,delete,move src pom.xml; do kill $APP_PID; wait $APP_PID || true; mvn -q -DskipTests spring-boot:run & APP_PID=$!; done"]

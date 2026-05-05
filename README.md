@@ -77,6 +77,23 @@ Puis ouvrir :
 - frontend admin : `http://localhost:5174`
 - n8n : `http://localhost:5678`
 
+Dans la stack Docker principale :
+
+- `frontend` tourne deja avec Vite dans le conteneur et recharge les changements via bind mount
+- `backend` tourne maintenant avec surveillance des fichiers Java / resources et redemarre automatiquement dans le conteneur
+
+Pour le mode dev Docker avec rechargement automatique, utilise plutot :
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Ce mode fait tourner :
+
+- `admin` avec Vite dans le conteneur et hot reload via bind mount
+- `backend` avec redemarrage automatique sur changement de fichiers `src/` ou `pom.xml`
+- `n8n` avec montage des workflows locaux
+
 ## Configuration backend video ops
 
 Variables backend recommandees pour un fonctionnement complet :

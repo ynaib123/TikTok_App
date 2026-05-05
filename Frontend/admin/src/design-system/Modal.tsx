@@ -35,16 +35,20 @@ export function Modal({
   const titleId = `modal-title-${title.replace(/\s+/g, '-').toLowerCase()}`
 
   return (
-    <div
-      className="journey-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onClick={closable ? onClose : undefined}
-    >
+    <div className="journey-modal-overlay">
+      {closable ? (
+        <button
+          type="button"
+          className="journey-modal-backdrop"
+          aria-label="Fermer la fenêtre"
+          onClick={onClose}
+        />
+      ) : null}
       <div
         className={`journey-modal-card ${sizeClass}`.trim()}
-        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <header className="journey-modal-head">
           <h3 id={titleId}>{title}</h3>

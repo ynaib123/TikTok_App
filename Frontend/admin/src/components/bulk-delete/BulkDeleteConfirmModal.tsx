@@ -20,14 +20,21 @@ export default function BulkDeleteConfirmModal({
   const remaining = ideas.length - previewCount
 
   return (
-    <div
-      className="journey-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="bulk-delete-confirm-title"
-      onClick={isDeleting ? undefined : onCancel}
-    >
-      <div className="journey-modal-card" onClick={(e) => e.stopPropagation()}>
+    <div className="journey-modal-overlay">
+      {!isDeleting ? (
+        <button
+          type="button"
+          className="journey-modal-backdrop"
+          aria-label="Fermer la fenêtre"
+          onClick={onCancel}
+        />
+      ) : null}
+      <div
+        className="journey-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bulk-delete-confirm-title"
+      >
         <header className="journey-modal-head">
           <h3 id="bulk-delete-confirm-title">
             Supprimer {ideas.length} vidéo{ideas.length > 1 ? 's' : ''} ?

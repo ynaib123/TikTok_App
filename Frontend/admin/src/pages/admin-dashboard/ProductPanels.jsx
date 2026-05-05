@@ -396,8 +396,7 @@ function ProductCatalogPanelComponent({
                   <td className="admin-product-details-cell admin-product-details-cell-select" onClick={(event) => event.stopPropagation()}>
                     <label
                       className="admin-product-select-checkbox"
-                      aria-label={`Selectionner ${product?.nom || `le produit ${product.id}`}`}
-                      onClick={(event) => event.stopPropagation()}
+                      aria-label={`Sélectionner ${product?.nom || `le produit ${product.id}`}`}
                     >
                       <input
                         type="checkbox"

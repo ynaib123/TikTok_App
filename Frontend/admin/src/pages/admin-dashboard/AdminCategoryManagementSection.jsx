@@ -256,7 +256,10 @@ export default function AdminCategoryManagementSection({
                       role="button"
                       tabIndex={0}
                     >
-                      <label className="admin-product-select-checkbox" aria-label={`Selectionner ${category.libelle}`} onClick={(event) => event.stopPropagation()}>
+                      <label
+                        className="admin-product-select-checkbox"
+                        aria-label={`Sélectionner ${category.libelle}`}
+                      >
                         <input
                           type="checkbox"
                           checked={isSelected}

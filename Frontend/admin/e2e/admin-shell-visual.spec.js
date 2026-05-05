@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test'
 
+// Suite skipped: targets the retired products module shell (/products,
+// product-edit, product-create). Re-enable if the products surface returns.
+test.skip(true, 'Products shell retired — see admin-products.spec.js.')
+
 const adminSessionPayload = {
   token: 'playwright-admin-token',
   expiresInSeconds: 60 * 60,

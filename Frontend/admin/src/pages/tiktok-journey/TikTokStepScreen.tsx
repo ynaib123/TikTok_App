@@ -153,13 +153,18 @@ function LeaveConfirmModal({ activeIdea, onClose, onLeaveWithoutSaving, onSaveAn
 }) {
   const ideaLabel = activeIdea?.id ? `#${activeIdea.id}` : null
   return (
-    <div className="journey-modal-overlay" onClick={onClose} role="presentation">
+    <div className="journey-modal-overlay">
+      <button
+        type="button"
+        className="journey-modal-backdrop"
+        aria-label="Fermer la fenêtre"
+        onClick={onClose}
+      />
       <div
         className="journey-modal-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="leave-confirm-title"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="journey-modal-head">
           <h3 id="leave-confirm-title">Quitter le parcours ?</h3>
@@ -202,7 +207,7 @@ function ProgressStepper({ steps, currentStepIndex, goToStep, onLibraryClick, Ba
       <button type="button" className="journey-wizard-head-back" onClick={onLibraryClick}>
         <BackArrow /> Quitter
       </button>
-      <ol className="journey-wizard-steps" role="list">
+      <ol className="journey-wizard-steps">
         {steps.map((step, index) => {
           const isCurrent = index === currentStepIndex
           const isDone    = index < currentStepIndex
@@ -378,7 +383,7 @@ function CreationStep(p: StepBodyProps) {
               onClick={() => void p.handleGenerateIdea()}
               disabled={p.isBusy || !p.isJourneyReady}
             >
-              {idea ? 'Regenerer' : 'Generer'}
+              {idea ? 'Régénérer' : 'Générer'}
             </button>
             <button
               type="button"
@@ -386,7 +391,7 @@ function CreationStep(p: StepBodyProps) {
               onClick={() => void p.handleValidateCreation()}
               disabled={p.isBusy || !idea || !p.isJourneyReady}
             >
-              Generer la video →
+              Générer la vidéo →
             </button>
           </div>
         </div>
@@ -403,11 +408,11 @@ function CreationStep(p: StepBodyProps) {
       </aside>
 
       <section className="journey-wizard-grid-main">
-        <span className="journey-wizard-card-label">Resultat</span>
+        <span className="journey-wizard-card-label">Résultat</span>
         {!p.isJourneyReady ? (
           <div className="journey-empty">
             <strong>Comptes incomplets</strong>
-            <p>Connecte TikTok, Groq, Shotstack et Pexels dans Accounts avant de generer.</p>
+            <p>Connecte TikTok, Groq, Shotstack et Pexels dans Accounts avant de générer.</p>
             <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
               Ouvrir Accounts
             </button>
@@ -416,8 +421,8 @@ function CreationStep(p: StepBodyProps) {
           <div className="journey-loading">
             <div className="journey-loading-spinner" />
             <div className="journey-loading-copy">
-              <strong>Generation en cours</strong>
-              <span>Idee + script en preparation…</span>
+              <strong>Génération en cours</strong>
+              <span>Idée + script en préparation…</span>
             </div>
           </div>
         ) : idea ? (
@@ -429,8 +434,8 @@ function CreationStep(p: StepBodyProps) {
           </div>
         ) : (
           <div className="journey-empty">
-            <strong>Aucune idee generee</strong>
-            <p>Choisis une categorie a gauche puis clique sur Generer.</p>
+            <strong>Aucune idée générée</strong>
+            <p>Choisis une catégorie à gauche puis clique sur Générer.</p>
           </div>
         )}
       </section>
@@ -553,16 +558,16 @@ function UploadStep(p: StepBodyProps) {
       </aside>
 
       <section className="journey-wizard-grid-main">
-        <span className="journey-wizard-card-label">Apercu</span>
+        <span className="journey-wizard-card-label">Aperçu</span>
         {previewUrl ? <p.VideoPreview url={previewUrl} /> : (
           <div className="journey-empty">
-            <strong>Aucune video disponible</strong>
-            <p>Reviens a l etape Video pour generer un rendu.</p>
+            <strong>Aucune vidéo disponible</strong>
+            <p>Reviens à l’étape Vidéo pour générer un rendu.</p>
           </div>
         )}
         <div className="journey-kv-grid">
           <KV label="Upload URL"      value={p.manualAction?.uploadUrl} mono />
-          <KV label="Resultat upload" value={p.uploadResult ? 'Upload termine.' : null} />
+          <KV label="Résultat upload" value={p.uploadResult ? 'Upload terminé.' : null} />
         </div>
       </section>
     </div>

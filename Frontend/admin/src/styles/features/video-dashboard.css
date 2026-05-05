@@ -1,0 +1,64 @@
+/*
+ * Video dashboard — extracted from features/video-ops.css.
+ * Used by VideoDashboardPage.tsx (the refactored health/observability view).
+ */
+
+.video-dashboard-section {
+  margin-top: 24px;
+}
+
+.video-dashboard-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.video-dashboard-card-body--tight {
+  gap: 8px;
+}
+
+.video-dashboard-card-title {
+  font-size: 1rem;
+}
+
+.video-dashboard-card-empty {
+  color: var(--admin-text-dim);
+}
+
+.video-dashboard-run-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--admin-surface-soft);
+  border: 1px solid var(--admin-border-soft);
+}
+
+.video-dashboard-failed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--admin-surface-soft);
+  border: 1px solid var(--admin-border-soft);
+}
+
+.video-dashboard-run-id {
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.video-dashboard-run-error {
+  color: var(--admin-text-dim);
+  font-size: 0.85rem;
+}
+
+.video-dashboard-failed-card {
+  grid-column: 1 / -1;
+}
+
+.video-dashboard-pill-status {
+  margin-left: 8px;
+}
