@@ -1,0 +1,23 @@
+# Phase 2.12 — prod profile.
+
+logging:
+  level:
+    com.tiktokapp.backend: INFO
+    org.springframework: WARN
+    org.hibernate.SQL: WARN
+
+app:
+  security:
+    secure-cookies: true
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+server:
+  forward-headers-strategy: framework

@@ -56,7 +56,8 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/pexels/videos/search",
                                 "/api/video-ops/internal/shotstack/render",
                                 "/api/video-ops/internal/shotstack/render/*",
-                                "/api/video-ops/accounts/**"
+                                "/api/video-ops/accounts/**",
+                                "/api/ai/agents/*/run"
                         )
                 )
                 .cors(Customizer.withDefaults())

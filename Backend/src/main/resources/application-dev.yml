@@ -1,0 +1,19 @@
+# Phase 2.12 — dev profile.
+# Activated with SPRING_PROFILES_ACTIVE=dev.
+
+logging:
+  level:
+    com.tiktokapp.backend: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+
+app:
+  security:
+    secure-cookies: false
+  alerting:
+    enabled: false
+
+management:
+  endpoint:
+    health:
+      show-details: always

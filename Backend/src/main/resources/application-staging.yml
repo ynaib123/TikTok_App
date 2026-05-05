@@ -1,0 +1,15 @@
+# Phase 2.12 — staging profile.
+
+logging:
+  level:
+    com.tiktokapp.backend: INFO
+    org.springframework: WARN
+
+app:
+  security:
+    secure-cookies: true
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
