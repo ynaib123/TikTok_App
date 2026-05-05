@@ -151,12 +151,9 @@ function LeaveConfirmModal({ activeIdea, onClose, onLeaveWithoutSaving, onSaveAn
   onLeaveWithoutSaving: () => void
   onSaveAndLeave: () => void
 }) {
+  const ideaLabel = activeIdea?.id ? `#${activeIdea.id}` : null
   return (
-    <div
-      className="journey-modal-overlay"
-      onClick={onClose}
-      role="presentation"
-    >
+    <div className="journey-modal-overlay" onClick={onClose} role="presentation">
       <div
         className="journey-modal-card"
         role="dialog"
@@ -169,17 +166,15 @@ function LeaveConfirmModal({ activeIdea, onClose, onLeaveWithoutSaving, onSaveAn
           <button type="button" className="journey-modal-close" onClick={onClose} aria-label="Fermer">×</button>
         </header>
         <div className="journey-modal-body">
-          <p>
-            Tu vas retourner à la bibliothèque. {activeIdea?.id ? (
-              <>L&apos;idée en cours (#{activeIdea.id}) est sauvegardée côté serveur — tu pourras la reprendre depuis la bibliothèque.</>
-            ) : (
-              <>Aucune idée n&apos;a encore été créée pour ce parcours.</>
-            )}
+          <p style={{ margin: 0 }}>
+            {ideaLabel
+              ? <>Tu peux sauvegarder l&apos;idée {ideaLabel} et reprendre plus tard depuis la bibliothèque, ou quitter sans sauvegarder.</>
+              : <>Aucune idée n&apos;a encore été créée. Quitter le parcours ne perdra rien.</>}
           </p>
         </div>
         <footer className="journey-modal-actions">
           <button type="button" className="journey-btn is-ghost" onClick={onClose}>
-            Continuer le parcours
+            Continuer
           </button>
           <button type="button" className="journey-btn is-secondary" onClick={onLeaveWithoutSaving}>
             Quitter sans sauvegarder
@@ -205,7 +200,7 @@ function ProgressStepper({ steps, currentStepIndex, goToStep, onLibraryClick, Ba
   return (
     <header className="journey-wizard-head" aria-label="Progression du parcours">
       <button type="button" className="journey-wizard-head-back" onClick={onLibraryClick}>
-        <BackArrow /> Bibliotheque
+        <BackArrow /> Quitter
       </button>
       <ol className="journey-wizard-steps" role="list">
         {steps.map((step, index) => {

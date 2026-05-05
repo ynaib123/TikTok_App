@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminToolbarMenuButton from '../admin-dashboard/AdminToolbarMenuButton'
 import VideoCard from '../../components/video-card/VideoCard'
@@ -77,6 +78,8 @@ export default function TikTokLibraryView(props: TikTokLibraryViewProps) {
 }
 
 function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
+  const navigate = useNavigate()
+  const handleOpenIdeaDetail = (id: number) => navigate(`/tiktok/idea/${id}`)
   const {
     FilterIcon, GridIcon, SearchIcon, SortIcon, TableIcon,
     catalogTags, contentIdeas, contentIdeasErrorMessage, filteredIdeas,
@@ -390,6 +393,7 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
                 selected={isSelected}
                 disabledReason={reason}
                 onToggleSelection={selection.toggle}
+                onOpenDetail={handleOpenIdeaDetail}
               />
             )
           })}

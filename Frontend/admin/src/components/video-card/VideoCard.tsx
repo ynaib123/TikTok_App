@@ -11,6 +11,7 @@ interface VideoCardProps {
   selected?: boolean
   disabledReason?: string | null
   onToggleSelection?: (id: number) => void
+  onOpenDetail?: (id: number) => void
 }
 
 export default function VideoCard({
@@ -19,6 +20,7 @@ export default function VideoCard({
   selected = false,
   disabledReason = null,
   onToggleSelection,
+  onOpenDetail,
 }: VideoCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const isPublished = String(idea.tiktokStatus ?? '').toLowerCase() === 'published'
@@ -68,7 +70,20 @@ export default function VideoCard({
           idea={idea}
           onPlay={() => setPreviewOpen(true)}
         />
-        <div className="tiktok-video-card-body">
+        <div
+          className={`tiktok-video-card-body ${onOpenDetail ? 'is-clickable' : ''}`}
+          role={onOpenDetail ? 'button' : undefined}
+          tabIndex={onOpenDetail ? 0 : -1}
+          onClick={() => onOpenDetail?.(idea.id)}
+          onKeyDown={(event) => {
+            if (!onOpenDetail) return
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onOpenDetail(idea.id)
+            }
+          }}
+          title={onOpenDetail ? 'Voir le détail' : undefined}
+        >
           <strong>{idea.topic ?? `Video #${idea.id}`}</strong>
           <p>{idea.caption ?? idea.script ?? 'Aucune description disponible.'}</p>
           <PipelineBadge idea={idea} />

@@ -21,39 +21,39 @@ export default function BatchPublishConfirmModal({
 
   return (
     <div
+      className="journey-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Confirmer la publication du lot"
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 70,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-      }}
+      aria-labelledby="batch-publish-confirm-title"
+      onClick={onCancel}
     >
-      <div style={{ background: '#fff', borderRadius: 8, maxWidth: 440, width: '100%', padding: 20 }}>
-        <h2 style={{ marginTop: 0 }}>Publier {ideas.length} video(s) sur TikTok ?</h2>
-        <p style={{ color: '#374151' }}>
-          Compte cible: <strong>{tiktokAccountOpenId ?? 'compte par defaut'}</strong>
-        </p>
-        <ul style={{ margin: '12px 0', paddingLeft: 18, color: '#374151' }}>
-          {ideas.slice(0, previewCount).map((idea) => (
-            <li key={idea.id}>
-              #{idea.id} — {idea.topic ?? 'Sans titre'}
-            </li>
-          ))}
-          {remaining > 0 ? <li>+{remaining} autre(s)</li> : null}
-        </ul>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button type="button" className="batch-selection-bar-btn" onClick={onCancel}>
+      <div className="journey-modal-card" onClick={(e) => e.stopPropagation()}>
+        <header className="journey-modal-head">
+          <h3 id="batch-publish-confirm-title">Publier {ideas.length} vidéo(s) sur TikTok ?</h3>
+          <button type="button" className="journey-modal-close" onClick={onCancel} aria-label="Fermer">×</button>
+        </header>
+        <div className="journey-modal-body">
+          <p style={{ marginTop: 0 }}>
+            Compte cible : <strong style={{ wordBreak: 'break-all' }}>{tiktokAccountOpenId ?? 'compte par défaut'}</strong>
+          </p>
+          <ul style={{ margin: '12px 0 0 0', paddingLeft: 18, lineHeight: 1.55 }}>
+            {ideas.slice(0, previewCount).map((idea) => (
+              <li key={idea.id}>
+                <span style={{ color: 'var(--admin-text)' }}>#{idea.id}</span>
+                {' '}— {idea.topic ?? 'Sans titre'}
+              </li>
+            ))}
+            {remaining > 0 ? <li style={{ color: 'var(--admin-text-dim)' }}>+{remaining} autre(s)</li> : null}
+          </ul>
+        </div>
+        <footer className="journey-modal-actions">
+          <button type="button" className="journey-btn is-ghost" onClick={onCancel}>
             Annuler
           </button>
-          <button
-            type="button"
-            className="batch-selection-bar-btn batch-selection-bar-cta"
-            onClick={onConfirm}
-          >
-            Publier {ideas.length} video(s)
+          <button type="button" className="journey-btn is-primary" onClick={onConfirm}>
+            Publier {ideas.length} vidéo(s)
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
