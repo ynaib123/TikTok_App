@@ -3,6 +3,12 @@ import { useLocation, useSearchParams, type Location } from 'react-router-dom'
 
 import AdminShell from '../components/AdminShell'
 import {
+  ProviderGlyph,
+  StatTile,
+  StatusPill,
+} from '../components/accounts/AccountsPresenters'
+import { getErrorMessage } from '../components/accounts/getErrorMessage'
+import {
   useAccountsFeedback,
   useAccountsForm,
   useServiceConnections,
@@ -31,57 +37,6 @@ type AccountsLocationState = {
 }
 
 type ActionStatus = 'saving' | 'disconnecting' | 'activating' | 'validating'
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback
-}
-
-/* ========================================================================
-   Provider glyph (replace with your icon set when ready)
-   ====================================================================== */
-
-function ProviderGlyph({ providerKey }: { providerKey: string }) {
-  const letter = (providerKey || '?').charAt(0).toUpperCase()
-  return <div className={`accounts-glyph accounts-glyph-${providerKey.toLowerCase()}`}>{letter}</div>
-}
-
-/* ========================================================================
-   Stat tile
-   ====================================================================== */
-
-function StatTile({
-  label,
-  value,
-  delta,
-  trend = null,
-}: {
-  label: string
-  value: string | number
-  delta?: string | null
-  trend?: 'up' | 'warn' | null
-}) {
-  const trendClass = trend === 'up' ? 'is-up' : trend === 'warn' ? 'is-warn' : ''
-  return (
-    <div className="journey-stat">
-      <span className="journey-stat-label">{label}</span>
-      <span className="journey-stat-value">{value}</span>
-      {delta ? <span className={`journey-stat-trend ${trendClass}`.trim()}>{delta}</span> : null}
-    </div>
-  )
-}
-
-/* ========================================================================
-   Status pill
-   ====================================================================== */
-
-function StatusPill({ status, label }: { status: DerivedStatus; label?: string }) {
-  const text = label || (status === 'healthy' ? 'Healthy' : status === 'warning' ? 'Warning' : 'Off')
-  return <span className={`accounts-status-pill is-${status}`}>{text}</span>
-}
-
-/* ========================================================================
-   Page
-   ====================================================================== */
 
 export default function TikTokAccountsPage() {
   const location = useLocation() as Location<AccountsLocationState>
