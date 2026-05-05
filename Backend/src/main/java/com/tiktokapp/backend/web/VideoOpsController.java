@@ -24,6 +24,8 @@ import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
 import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
+import com.tiktokapp.backend.dto.videoops.VideoOpsHealthResponse;
+import com.tiktokapp.backend.service.videoops.VideoOpsHealthService;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
 import com.tiktokapp.backend.dto.videoops.VideoUploadRequest;
@@ -83,6 +85,7 @@ public class VideoOpsController {
     private final VideoOpsInternalAuthService internalAuthService;
     private final SlackAlertService slackAlertService;
     private final BatchPublishService batchPublishService;
+    private final VideoOpsHealthService videoOpsHealthService;
     private final ObjectMapper objectMapper;
 
     public VideoOpsController(
@@ -96,6 +99,7 @@ public class VideoOpsController {
             VideoOpsInternalAuthService internalAuthService,
             SlackAlertService slackAlertService,
             BatchPublishService batchPublishService,
+            VideoOpsHealthService videoOpsHealthService,
             ObjectMapper objectMapper
     ) {
         this.videoOpsService = videoOpsService;
@@ -108,7 +112,15 @@ public class VideoOpsController {
         this.internalAuthService = internalAuthService;
         this.slackAlertService = slackAlertService;
         this.batchPublishService = batchPublishService;
+        this.videoOpsHealthService = videoOpsHealthService;
         this.objectMapper = objectMapper;
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<VideoOpsHealthResponse> getVideoOpsHealth() {
+        VideoOpsHealthResponse health = videoOpsHealthService.buildHealth();
+        HttpStatus status = "DOWN".equals(health.status()) ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.OK;
+        return ResponseEntity.status(status).body(health);
     }
 
     @GetMapping("/dashboard")
