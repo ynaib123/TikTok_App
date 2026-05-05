@@ -7,6 +7,8 @@ import {
   StatTile,
   StatusPill,
 } from '../components/accounts/AccountsPresenters'
+import { AccountsHeader } from '../components/accounts/AccountsHeader'
+import { AccountsToolbar } from '../components/accounts/AccountsToolbar'
 import { getErrorMessage } from '../components/accounts/getErrorMessage'
 import {
   useAccountsFeedback,
@@ -437,52 +439,14 @@ export default function TikTokAccountsPage() {
         ]}
       >
         <div className="video-ops-shell">
-          {/* ------------------------------------------------------- */}
-          {/* Heading                                                  */}
-          {/* ------------------------------------------------------- */}
-          <header className="journey-page-head">
-            <div className="journey-page-head-copy">
-              <h1>Tous tes comptes et services en un seul endroit</h1>
-              <p>Connecte, surveille et fais tourner TikTok et tes services automatises depuis une seule console.</p>
-            </div>
-            <div className="journey-page-head-actions">
-              <div className="accounts-connect-menu">
-                <button
-                  type="button"
-                  className="journey-btn is-primary"
-                  onClick={() => setConnectMenuOpen((v) => !v)}
-                  disabled={isConnectingTikTok}
-                >
-                  + Connecter un service
-                </button>
-                {connectMenuOpen ? (
-                  <div className="accounts-connect-menu-popover" role="menu">
-                    {availableProviders.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        className="accounts-connect-menu-item"
-                        onClick={() => {
-                          setConnectMenuOpen(false)
-                          if (p.key === 'TIKTOK') {
-                            void handleConnectTikTok()
-                          } else {
-                            startNewServiceProfile(p.key as ServiceProvider)
-                          }
-                        }}
-                      >
-                        <ProviderGlyph providerKey={p.key} />
-                        <span className="accounts-connect-menu-item-text">
-                          <strong>{p.title}</strong>
-                          <small>{p.kind}</small>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </header>
+          <AccountsHeader
+            availableProviders={availableProviders}
+            connectMenuOpen={connectMenuOpen}
+            setConnectMenuOpen={setConnectMenuOpen}
+            isConnectingTikTok={isConnectingTikTok}
+            onConnectTikTok={handleConnectTikTok}
+            onStartNewServiceProfile={startNewServiceProfile}
+          />
 
           {/* ------------------------------------------------------- */}
           {/* Stat tiles                                               */}
@@ -509,49 +473,14 @@ export default function TikTokAccountsPage() {
             />
           </section>
 
-          {/* ------------------------------------------------------- */}
-          {/* Toolbar                                                  */}
-          {/* ------------------------------------------------------- */}
-          <section className="accounts-toolbar">
-            <div className="accounts-toolbar-search">
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher un service ou un compte…"
-              />
-            </div>
-            <div className="accounts-toolbar-filters">
-              {(['all', 'healthy', 'warning', 'off'] as const).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  className={`accounts-filter-chip ${statusFilter === f ? 'is-active' : ''}`}
-                  onClick={() => setStatusFilter(f)}
-                >
-                  {f === 'all' ? 'Tous' : f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
-            </div>
-            <div className="accounts-toolbar-view">
-              <button
-                type="button"
-                className={`accounts-view-toggle ${viewMode === 'cards' ? 'is-active' : ''}`}
-                onClick={() => setViewMode('cards')}
-                aria-label="Vue cartes"
-              >
-                Cards
-              </button>
-              <button
-                type="button"
-                className={`accounts-view-toggle ${viewMode === 'table' ? 'is-active' : ''}`}
-                onClick={() => setViewMode('table')}
-                aria-label="Vue tableau"
-              >
-                Table
-              </button>
-            </div>
-          </section>
+          <AccountsToolbar
+            search={search}
+            onSearchChange={setSearch}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
 
           {/* ------------------------------------------------------- */}
           {/* Cards view                                               */}

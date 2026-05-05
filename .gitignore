@@ -24,6 +24,7 @@ n8n-local/storage/
 n8n-local/database.sqlite.bak*
 n8n-local/backup-before-codex-import/
 Backend/target/
+backups/
 Backend/*.log
 playwright-report
 test-results
