@@ -15,7 +15,7 @@
     "test": "node --experimental-specifier-resolution=node --test \"./src/**/*.test.js\"",
     "test:vitest": "vitest run",
     "test:e2e": "playwright test",
-    "prepare": "cd ../.. && husky install Frontend/admin/.husky"
+    "prepare": "cd ../.. && husky Frontend/admin/.husky"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",

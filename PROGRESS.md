@@ -67,16 +67,24 @@ Pas de push.
 ### Phase 3 — squelette infrastructure
 - 3.1 livré en mode skeleton : tout le scaffolding pour brancher des agents + 1 stub "ping". Le tool-use loop Claude API n'est pas implémenté (besoin de ta clé API).
 
-## Actions à faire au réveil
+## Vérifications faites en autopilot
 
-1. `cd Backend && mvn clean verify` → vérifier que tout compile + les nouveaux tests passent
-2. Lancer backend en profil dev → vérifier que les V3-V7 migrations s'appliquent sans erreur
-3. Vérifier `GET /swagger-ui.html` → doc API rendue
-4. Vérifier `GET /actuator/prometheus` → métriques exposées
-5. `cd Frontend/admin && npm install` (nouvelles deps : prettier, husky, lint-staged, eslint-plugin-jsx-a11y, eslint-config-prettier)
-6. Optionnel : `npm run prepare` pour activer husky
-7. Activer la branch protection sur GitHub (PR required + CI checks)
-8. Pour 3.1 finaliser : ajouter la dep Anthropic SDK (`org.anthropic:anthropic-java`) ou un client HTTP custom, fournir `ANTHROPIC_API_KEY` env, et remplacer `runAgentLoop` stub par le vrai tool-use loop
+✅ **Backend `mvn compile`** : BUILD SUCCESS, 146 fichiers compilent.
+✅ **Backend `mvn test`** (sans Testcontainers) : 13 tests passent, 0 erreur.
+✅ **Frontend `npm install`** : 158 nouvelles deps installées, 0 vulnerability.
+✅ **Frontend `tsc --noEmit`** : 0 erreur.
+✅ **Frontend `eslint src --quiet`** : 0 erreur (40 warnings a11y sur code legacy, à corriger en daylight pendant Phase 2.6).
+✅ **Frontend `npm run build`** : built in 7.71s, 158 modules transformés.
+✅ **Husky v9 syntax** : pre-commit hook migré vers la syntaxe moderne (sans `_/husky.sh`).
+
+## Actions qui restent côté toi (bloquantes — credentials/decisions)
+
+1. **Lancer backend en profil dev avec Postgres réel** → confirme que V3-V7 Flyway migrations s'appliquent (j'ai pas Postgres ici)
+2. **Tester `GET /swagger-ui.html`** quand tu lances le backend (login admin requis)
+3. **Tester `GET /actuator/prometheus`** (public, pas de login)
+4. **Activer la branch protection** sur GitHub (PR required + CI checks pass) — j'ai pas accès gh
+5. **Tests Testcontainers** : lance `mvn test` quand Docker tourne sur ta machine (j'ai pas Docker dispo ici, AuditServiceIntegrationTest a été écrit mais pas exécuté)
+6. **Pour 3.1 finaliser** : ajouter dep Anthropic SDK + `ANTHROPIC_API_KEY` env + remplacer le stub `runAgentLoop`
 
 ## Limites connues
 

@@ -12,7 +12,7 @@ export function AccountsCategoryTabs({
   countsByCategory: Partial<Record<ServiceCategory | 'all', number>>
 }) {
   return (
-    <section className="accounts-category-tabs" role="tablist" aria-label="Catégorie de service">
+    <div className="accounts-category-tabs" role="tablist" aria-label="Catégorie de service">
       {ORDER.map((category) => {
         const label = category === 'all' ? 'Tous' : SERVICE_CATEGORY_LABELS[category]
         const count = countsByCategory[category]
@@ -30,6 +30,6 @@ export function AccountsCategoryTabs({
           </button>
         )
       })}
-    </section>
+    </div>
   )
 }
