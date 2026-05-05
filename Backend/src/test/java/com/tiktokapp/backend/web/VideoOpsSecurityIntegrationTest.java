@@ -17,6 +17,7 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
+import com.tiktokapp.backend.service.videoops.VideoOpsDataService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import jakarta.servlet.http.Cookie;
@@ -42,6 +43,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -84,6 +86,9 @@ class VideoOpsSecurityIntegrationTest {
 
     @MockBean
     private VideoOpsInternalProxyService videoOpsInternalProxyService;
+
+    @MockBean
+    private VideoOpsDataService videoOpsDataService;
 
     private String accessToken;
     private Cookie csrfCookie;
@@ -193,6 +198,31 @@ class VideoOpsSecurityIntegrationTest {
         when(videoOpsInternalProxyService.proxyShotstackRenderStatus(eq("render-demo"))).thenReturn(
                 objectMapper.readTree("""
                         {"response":{"status":"done"}}
+                        """)
+        );
+        when(videoOpsDataService.createContentIdea(any())).thenReturn(
+                objectMapper.readTree("""
+                        {"id":42,"topic":"Created idea"}
+                        """)
+        );
+        when(videoOpsDataService.getContentIdea(eq(42L))).thenReturn(
+                objectMapper.readTree("""
+                        {"id":42,"topic":"Created idea"}
+                        """)
+        );
+        when(videoOpsDataService.patchContentIdea(eq(42L), any())).thenReturn(
+                objectMapper.readTree("""
+                        {"id":42,"topic":"Patched idea"}
+                        """)
+        );
+        when(videoOpsDataService.getTikTokAccountByOpenId(eq("open-id-demo"))).thenReturn(
+                objectMapper.readTree("""
+                        [{"id":5,"open_id":"open-id-demo"}]
+                        """)
+        );
+        when(videoOpsDataService.patchTikTokAccount(eq(5L), any())).thenReturn(
+                objectMapper.readTree("""
+                        [{"id":5,"open_id":"open-id-updated"}]
                         """)
         );
 
@@ -327,6 +357,66 @@ class VideoOpsSecurityIntegrationTest {
                         && request.getResponsePayload() != null
                         && request.getResponsePayload().contains("\"contentIdeaId\":42"))
         );
+    }
+
+    @Test
+    void acceptsWorkflowCompletionCallbackWithFormEncodedPayload() throws Exception {
+        mockMvc.perform(post("/api/video-ops/workflow-runs/99/complete")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .header("X-Video-Ops-Callback-Secret", "video-ops-callback-123")
+                        .content("status=FAILED&message=workflow+failed&errorMessage=boom"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(99));
+
+        verify(videoOpsService).completeWorkflowRun(
+                eq(99L),
+                argThat(request -> "FAILED".equals(request.getStatus())
+                        && "boom".equals(request.getErrorMessage()))
+        );
+    }
+
+    @Test
+    void acceptsInternalContentIdeaCrudRequestsWithInternalSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/content-ideas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"category":"Fitness","topic":"Created idea"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(42));
+
+        mockMvc.perform(get("/api/video-ops/internal/content-ideas/42")
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.topic").value("Created idea"));
+
+        mockMvc.perform(patch("/api/video-ops/internal/content-ideas/42")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"topic":"Patched idea"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.topic").value("Patched idea"));
+    }
+
+    @Test
+    void acceptsInternalTikTokAccountCrudRequestsWithInternalSecret() throws Exception {
+        mockMvc.perform(get("/api/video-ops/internal/tiktok-accounts")
+                        .param("openId", "open-id-demo")
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].open_id").value("open-id-demo"));
+
+        mockMvc.perform(patch("/api/video-ops/internal/tiktok-accounts/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
+                        .content("""
+                                {"open_id":"open-id-updated"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].open_id").value("open-id-updated"));
     }
 
     @Test

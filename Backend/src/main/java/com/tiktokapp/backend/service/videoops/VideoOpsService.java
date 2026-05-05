@@ -72,6 +72,7 @@ public class VideoOpsService {
     private final ObjectMapper objectMapper;
     private final VideoOpsRunPersistenceHelper runPersistenceHelper;
     private final N8nWorkflowContractService n8nWorkflowContractService;
+    private final VideoOpsTrackingService trackingService;
 
     public VideoOpsService(
             SupabaseVideoOpsGateway supabaseGateway,
@@ -86,7 +87,8 @@ public class VideoOpsService {
             VideoOpsProperties properties,
             ObjectMapper objectMapper,
             VideoOpsRunPersistenceHelper runPersistenceHelper,
-            N8nWorkflowContractService n8nWorkflowContractService
+            N8nWorkflowContractService n8nWorkflowContractService,
+            VideoOpsTrackingService trackingService
     ) {
         this.supabaseGateway = supabaseGateway;
         this.contentIdeaRepository = contentIdeaRepository;
@@ -101,6 +103,7 @@ public class VideoOpsService {
         this.objectMapper = objectMapper;
         this.runPersistenceHelper = runPersistenceHelper;
         this.n8nWorkflowContractService = n8nWorkflowContractService;
+        this.trackingService = trackingService;
     }
 
     @Transactional(readOnly = true)
@@ -198,10 +201,10 @@ public class VideoOpsService {
                 .map(this::toWorkflowRunDetail)
                 .toList();
         List<VideoPipelineEventResponse> recentErrors = eventRepository.findTop8BySeverityOrderByCreatedAtDesc("ERROR").stream()
-                .map(this::toEventResponse)
+                .map(trackingService::toEventResponse)
                 .toList();
         List<VideoPipelineEventResponse> recentEvents = eventRepository.findTop8ByOrderByCreatedAtDesc().stream()
-                .map(this::toEventResponse)
+                .map(trackingService::toEventResponse)
                 .toList();
         N8nWorkflowContractResponse n8nContract = n8nWorkflowContractService.describeContract();
         return new VideoObservabilityResponse(recentRuns, failedRuns, recentErrors, recentEvents, n8nContract);
@@ -380,16 +383,16 @@ public class VideoOpsService {
                 nextAttemptNumber(contentIdeaId, VideoWorkflowType.CHECK_SHOTSTACK)
         );
 
-        syncPipelineState(contentIdeaId, VideoOpsStateMachine.requestedStage(VideoWorkflowType.CHECK_SHOTSTACK), null, run);
-        recordEvent(contentIdeaId, run, "INFO", "shotstack_check_requested", "Verification Shotstack demandee.", payload);
+        trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.requestedStage(VideoWorkflowType.CHECK_SHOTSTACK), null, run);
+        trackingService.recordEvent(contentIdeaId, run, "INFO", "shotstack_check_requested", "Verification Shotstack demandee.", payload);
         logWorkflowInfo("shotstack_check_requested", run, "Verification Shotstack demandee.");
 
         String currentShotstackStatus = lower(text(idea, "shotstack_status", ""));
         String currentShotstackUrl = trimToNull(text(idea, "shotstack_url", ""));
         if ("done".equals(currentShotstackStatus) || currentShotstackUrl != null) {
             markRunSucceeded(run, "{\"skipped\":true,\"reason\":\"already_ready\"}");
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.CHECK_SHOTSTACK, currentStage(contentIdeaId)), null, run);
-            recordEvent(contentIdeaId, run, "INFO", "shotstack_check_skipped", "Render deja disponible.", Map.of("renderId", renderId));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.CHECK_SHOTSTACK, trackingService.currentStage(contentIdeaId)), null, run);
+            trackingService.recordEvent(contentIdeaId, run, "INFO", "shotstack_check_skipped", "Render deja disponible.", Map.of("renderId", renderId));
             logWorkflowInfo("shotstack_check_skipped", run, "Render deja disponible.");
             return new VideoWorkflowActionResponse(run.getId(), contentIdeaId, run.getWorkflowType().name(), run.getStatus().name(), "Render deja disponible.", false);
         }
@@ -406,8 +409,8 @@ public class VideoOpsService {
                     "pipeline_status", "render_ready"
             ));
             markRunSucceeded(run, json(Map.of("contentIdeaId", contentIdeaId, "shotstackStatus", "done", "shotstackUrl", shotstackUrl == null ? "" : shotstackUrl)));
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.CHECK_SHOTSTACK, currentStage(contentIdeaId)), null, run);
-            recordEvent(contentIdeaId, run, "INFO", "shotstack_check_succeeded", "Render Shotstack termine.", Map.of("renderId", renderId));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.CHECK_SHOTSTACK, trackingService.currentStage(contentIdeaId)), null, run);
+            trackingService.recordEvent(contentIdeaId, run, "INFO", "shotstack_check_succeeded", "Render Shotstack termine.", Map.of("renderId", renderId));
             logWorkflowInfo("shotstack_check_succeeded", run, "Render Shotstack termine.");
             return new VideoWorkflowActionResponse(run.getId(), contentIdeaId, run.getWorkflowType().name(), run.getStatus().name(), "Render Shotstack termine.", false);
         }
@@ -419,8 +422,8 @@ public class VideoOpsService {
                     "pipeline_status", "failed"
             ));
             markRunFailed(run, "Render Shotstack en echec.");
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), "Render Shotstack en echec.", run);
-            recordEvent(contentIdeaId, run, "ERROR", "shotstack_check_failed", "Render Shotstack en echec.", Map.of("renderId", renderId));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), "Render Shotstack en echec.", run);
+            trackingService.recordEvent(contentIdeaId, run, "ERROR", "shotstack_check_failed", "Render Shotstack en echec.", Map.of("renderId", renderId));
             logWorkflowWarn("shotstack_check_failed", run, "Render Shotstack en echec.");
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Render Shotstack en echec.");
         }
@@ -431,7 +434,7 @@ public class VideoOpsService {
                 "pipeline_status", "rendering_requested"
         ));
         markRunAccepted(run, json(Map.of("contentIdeaId", contentIdeaId, "shotstackStatus", providerStatus)));
-        recordEvent(contentIdeaId, run, "INFO", "shotstack_check_pending", "Render Shotstack toujours en cours.", Map.of("renderId", renderId, "shotstackStatus", providerStatus));
+        trackingService.recordEvent(contentIdeaId, run, "INFO", "shotstack_check_pending", "Render Shotstack toujours en cours.", Map.of("renderId", renderId, "shotstackStatus", providerStatus));
         logWorkflowInfo("shotstack_check_pending", run, "Render Shotstack toujours en cours.");
         return new VideoWorkflowActionResponse(run.getId(), contentIdeaId, run.getWorkflowType().name(), run.getStatus().name(), "Render Shotstack en cours.", false);
     }
@@ -472,8 +475,8 @@ public class VideoOpsService {
                 Map.of("contentIdeaId", contentIdeaId, "shotstackUrl", shotstackUrl, "uploadUrl", uploadUrl),
                 nextAttemptNumber(contentIdeaId, VideoWorkflowType.TIKTOK_UPLOAD)
         );
-        syncPipelineState(contentIdeaId, VideoOpsStateMachine.requestedStage(VideoWorkflowType.TIKTOK_UPLOAD), null, run);
-        recordEvent(contentIdeaId, run, "INFO", "upload_started", "Upload TikTok lance depuis le backend.", Map.of("runId", run.getId()));
+        trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.requestedStage(VideoWorkflowType.TIKTOK_UPLOAD), null, run);
+        trackingService.recordEvent(contentIdeaId, run, "INFO", "upload_started", "Upload TikTok lance depuis le backend.", Map.of("runId", run.getId()));
         logWorkflowInfo("upload_started", run, "Upload TikTok lance depuis le backend.");
 
         try {
@@ -484,14 +487,14 @@ public class VideoOpsService {
                     "uploaded_at", Instant.now().toString()
             ));
             markRunSucceeded(run, responseBody(response));
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.TIKTOK_UPLOAD, currentStage(contentIdeaId)), null, run);
-            recordEvent(contentIdeaId, run, "INFO", "upload_succeeded", "Upload TikTok termine.", Map.of("statusCode", response.getStatusCode()));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.TIKTOK_UPLOAD, trackingService.currentStage(contentIdeaId)), null, run);
+            trackingService.recordEvent(contentIdeaId, run, "INFO", "upload_succeeded", "Upload TikTok termine.", Map.of("statusCode", response.getStatusCode()));
             logWorkflowInfo("upload_succeeded", run, "Upload TikTok termine.");
             return response;
         } catch (RuntimeException exception) {
             markRunFailed(run, exception.getMessage());
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
-            recordEvent(contentIdeaId, run, "ERROR", "upload_failed", "Upload TikTok en echec.", payloadOf("error", exception.getMessage()));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
+            trackingService.recordEvent(contentIdeaId, run, "ERROR", "upload_failed", "Upload TikTok en echec.", payloadOf("error", exception.getMessage()));
             logWorkflowWarn("upload_failed", run, exception.getMessage());
             throw exception;
         }
@@ -515,14 +518,14 @@ public class VideoOpsService {
                     "published_at", Instant.now().toString()
             ));
             markRunSucceeded(run, "{\"result\":\"published\"}");
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.FINALIZE_PUBLISH, currentStage(contentIdeaId)), null, run);
-            recordEvent(contentIdeaId, run, "INFO", "publish_completed", "Publication finale marquee comme complete.", Map.of("contentIdeaId", contentIdeaId));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(VideoWorkflowType.FINALIZE_PUBLISH, trackingService.currentStage(contentIdeaId)), null, run);
+            trackingService.recordEvent(contentIdeaId, run, "INFO", "publish_completed", "Publication finale marquee comme complete.", Map.of("contentIdeaId", contentIdeaId));
             logWorkflowInfo("publish_completed", run, "Publication finale marquee comme complete.");
             return new VideoWorkflowActionResponse(run.getId(), contentIdeaId, run.getWorkflowType().name(), run.getStatus().name(), "Publication finale enregistree.", false);
         } catch (RuntimeException exception) {
             markRunFailed(run, exception.getMessage());
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
-            recordEvent(contentIdeaId, run, "ERROR", "publish_failed", "La finalisation de publication a echoue.", payloadOf("error", exception.getMessage()));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
+            trackingService.recordEvent(contentIdeaId, run, "ERROR", "publish_failed", "La finalisation de publication a echoue.", payloadOf("error", exception.getMessage()));
             logWorkflowWarn("publish_failed", run, exception.getMessage());
             throw exception;
         }
@@ -537,7 +540,7 @@ public class VideoOpsService {
 
         VideoWorkflowRunStatus currentStatus = run.getStatus();
         if (currentStatus == VideoWorkflowRunStatus.SUCCEEDED || currentStatus == VideoWorkflowRunStatus.FAILED) {
-            recordEvent(
+            trackingService.recordEvent(
                     run.getContentIdeaId(),
                     run,
                     "INFO",
@@ -557,8 +560,8 @@ public class VideoOpsService {
         if (nextStatus == VideoWorkflowRunStatus.FAILED) {
             String errorMessage = trimToNull(request.getErrorMessage());
             run.setErrorMessage(errorMessage == null ? "Workflow externe en echec." : errorMessage);
-            syncPipelineState(run.getContentIdeaId(), VideoOpsStateMachine.failureStage(), run.getErrorMessage(), run);
-            recordEvent(
+            trackingService.syncPipelineState(run.getContentIdeaId(), VideoOpsStateMachine.failureStage(), run.getErrorMessage(), run);
+            trackingService.recordEvent(
                     run.getContentIdeaId(),
                     run,
                     "ERROR",
@@ -569,13 +572,13 @@ public class VideoOpsService {
             logWorkflowWarn("workflow_callback_failed", run, run.getErrorMessage());
         } else {
             run.setErrorMessage(null);
-            syncPipelineState(
+            trackingService.syncPipelineState(
                     run.getContentIdeaId(),
-                    VideoOpsStateMachine.successStage(run.getWorkflowType(), currentStage(run.getContentIdeaId())),
+                    VideoOpsStateMachine.successStage(run.getWorkflowType(), trackingService.currentStage(run.getContentIdeaId())),
                     null,
                     run
             );
-            recordEvent(
+            trackingService.recordEvent(
                     run.getContentIdeaId(),
                     run,
                     "INFO",
@@ -604,7 +607,7 @@ public class VideoOpsService {
         boolean force = Boolean.TRUE.equals(request.getForce());
         VideoWorkflowRun existingRun = findReusableRun(contentIdeaId, workflowType, force).orElse(null);
         if (existingRun != null) {
-            recordEvent(contentIdeaId, existingRun, "INFO", "workflow_reused", "Requete idempotente reusee.", Map.of("runId", existingRun.getId()));
+            trackingService.recordEvent(contentIdeaId, existingRun, "INFO", "workflow_reused", "Requete idempotente reusee.", Map.of("runId", existingRun.getId()));
             logWorkflowInfo("workflow_reused", existingRun, "Requete idempotente reusee.");
             return new VideoWorkflowActionResponse(
                     existingRun.getId(),
@@ -670,8 +673,8 @@ public class VideoOpsService {
                 payload,
                 nextAttemptNumber(contentIdeaId, workflowType)
         );
-        syncPipelineState(contentIdeaId, nextStage, null, run);
-        recordEvent(contentIdeaId, run, "INFO", "workflow_requested", "Workflow " + workflowType + " demande.", payload);
+        trackingService.syncPipelineState(contentIdeaId, nextStage, null, run);
+        trackingService.recordEvent(contentIdeaId, run, "INFO", "workflow_requested", "Workflow " + workflowType + " demande.", payload);
         logWorkflowInfo("workflow_requested", run, "Workflow " + workflowType + " demande.");
 
         try {
@@ -692,8 +695,8 @@ public class VideoOpsService {
                 }
                 try {
                     markRunSucceeded(run, json(response));
-                    syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(workflowType, currentStage(contentIdeaId)), null, run);
-                    recordEvent(contentIdeaId, run, "INFO", "workflow_succeeded_inline", "Workflow " + workflowType + " termine inline par n8n.", Map.of("runId", run.getId()));
+                    trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.successStage(workflowType, trackingService.currentStage(contentIdeaId)), null, run);
+                    trackingService.recordEvent(contentIdeaId, run, "INFO", "workflow_succeeded_inline", "Workflow " + workflowType + " termine inline par n8n.", Map.of("runId", run.getId()));
                     logWorkflowInfo("workflow_succeeded_inline", run, "Workflow " + workflowType + " termine inline par n8n.");
                 } catch (ObjectOptimisticLockingFailureException raceEx) {
                     logWorkflowInfo("workflow_succeeded_inline_race", run, "Callback raced ahead during inline completion; treating as success.");
@@ -708,7 +711,7 @@ public class VideoOpsService {
                 );
             }
             markRunAccepted(run, json(response));
-            recordEvent(contentIdeaId, run, "INFO", "workflow_accepted", "Workflow " + workflowType + " accepte par n8n.", Map.of("runId", run.getId()));
+            trackingService.recordEvent(contentIdeaId, run, "INFO", "workflow_accepted", "Workflow " + workflowType + " accepte par n8n.", Map.of("runId", run.getId()));
             logWorkflowInfo("workflow_accepted", run, "Workflow " + workflowType + " accepte par n8n.");
             return new VideoWorkflowActionResponse(
                     run.getId(),
@@ -720,8 +723,8 @@ public class VideoOpsService {
             );
         } catch (RuntimeException exception) {
             markRunFailed(run, exception.getMessage());
-            syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
-            recordEvent(contentIdeaId, run, "ERROR", "workflow_failed", "Workflow " + workflowType + " en echec.", payloadOf("error", exception.getMessage()));
+            trackingService.syncPipelineState(contentIdeaId, VideoOpsStateMachine.failureStage(), exception.getMessage(), run);
+            trackingService.recordEvent(contentIdeaId, run, "ERROR", "workflow_failed", "Workflow " + workflowType + " en echec.", payloadOf("error", exception.getMessage()));
             logWorkflowWarn("workflow_failed", run, exception.getMessage());
             throw exception;
         }
@@ -835,52 +838,12 @@ public class VideoOpsService {
         workflowRunRepository.save(run);
     }
 
-    private void syncPipelineState(Long contentIdeaId, VideoPipelineStage stage, String lastError, VideoWorkflowRun run) {
-        if (contentIdeaId == null) {
-            return;
-        }
-
-        VideoPipelineState state = pipelineStateRepository.findById(contentIdeaId).orElseGet(() -> {
-            VideoPipelineState next = new VideoPipelineState();
-            next.setContentIdeaId(contentIdeaId);
-            return next;
-        });
-        VideoPipelineStage currentStage = state.getPipelineStage();
-        if (VideoOpsStateMachine.canTransition(currentStage, stage)) {
-            state.setPipelineStage(stage);
-        }
-        state.setLastWorkflowType(run.getWorkflowType());
-        state.setLastWorkflowRunId(run.getId());
-        state.setLastErrorMessage(trimToNull(lastError));
-        pipelineStateRepository.save(state);
-    }
-
-    private void recordEvent(Long contentIdeaId, VideoWorkflowRun run, String severity, String eventType, String message, Map<String, Object> payload) {
-        VideoPipelineEvent event = new VideoPipelineEvent();
-        event.setContentIdeaId(contentIdeaId);
-        event.setWorkflowRunId(run != null ? run.getId() : null);
-        event.setSeverity(severity);
-        event.setEventType(eventType);
-        event.setMessage(message);
-        event.setPayloadJson(json(payload));
-        eventRepository.save(event);
-    }
-
     private Map<String, Object> payloadWithRunMetadata(Map<String, Object> payload, VideoWorkflowRun run) {
         Map<String, Object> nextPayload = new LinkedHashMap<>(payload);
         nextPayload.put("workflowRunId", run.getId());
         nextPayload.put("attemptNumber", run.getAttemptNumber());
         nextPayload.put("idempotencyKey", run.getIdempotencyKey());
         return nextPayload;
-    }
-
-    private VideoPipelineStage currentStage(Long contentIdeaId) {
-        if (contentIdeaId == null) {
-            return VideoPipelineStage.UNKNOWN;
-        }
-        return pipelineStateRepository.findById(contentIdeaId)
-                .map(VideoPipelineState::getPipelineStage)
-                .orElse(VideoPipelineStage.UNKNOWN);
     }
 
     private void validateAllowedHost(String rawUrl, List<String> allowedHosts, String fieldName) {
@@ -975,17 +938,6 @@ public class VideoOpsService {
                 run.getResponsePayload(),
                 run.getCreatedAt() == null ? null : run.getCreatedAt().toString(),
                 run.getCompletedAt() == null ? null : run.getCompletedAt().toString()
-        );
-    }
-
-    private VideoPipelineEventResponse toEventResponse(VideoPipelineEvent event) {
-        return new VideoPipelineEventResponse(
-                event.getContentIdeaId(),
-                event.getWorkflowRunId(),
-                event.getSeverity(),
-                event.getEventType(),
-                event.getMessage(),
-                event.getCreatedAt() == null ? null : event.getCreatedAt().toString()
         );
     }
 

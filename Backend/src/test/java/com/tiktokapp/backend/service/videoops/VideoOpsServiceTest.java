@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +70,9 @@ class VideoOpsServiceTest {
 
     @Mock
     private N8nWorkflowContractService n8nWorkflowContractService;
+
+    @Mock
+    private VideoOpsTrackingService trackingService;
 
     @Test
     void triggerMainPipelineSendsCategoryAndIdeaCountToN8n() {
@@ -117,7 +121,8 @@ class VideoOpsServiceTest {
                 properties,
                 new ObjectMapper(),
                 runPersistenceHelper,
-                n8nWorkflowContractService
+                n8nWorkflowContractService,
+                trackingService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -181,7 +186,8 @@ class VideoOpsServiceTest {
                 properties,
                 new ObjectMapper(),
                 runPersistenceHelper,
-                n8nWorkflowContractService
+                n8nWorkflowContractService,
+                trackingService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -251,7 +257,8 @@ class VideoOpsServiceTest {
                 properties,
                 new ObjectMapper(),
                 runPersistenceHelper,
-                n8nWorkflowContractService
+                n8nWorkflowContractService,
+                trackingService
         );
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
@@ -295,7 +302,8 @@ class VideoOpsServiceTest {
                 properties,
                 new ObjectMapper(),
                 runPersistenceHelper,
-                n8nWorkflowContractService
+                n8nWorkflowContractService,
+                trackingService
         );
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
@@ -307,5 +315,49 @@ class VideoOpsServiceTest {
 
         assertEquals("SUCCEEDED", response.getStatus());
         verify(workflowRunRepository).save(any(VideoWorkflowRun.class));
+    }
+
+    @Test
+    void completeWorkflowRunIgnoresCallbackWhenRunIsAlreadyTerminal() {
+        VideoOpsProperties properties = new VideoOpsProperties();
+        properties.setIdempotencyWindowSeconds(120);
+
+        VideoWorkflowRun existingRun = new VideoWorkflowRun();
+        ReflectionTestUtils.setField(existingRun, "id", 88L);
+        ReflectionTestUtils.setField(existingRun, "createdAt", Instant.now());
+        existingRun.setContentIdeaId(21L);
+        existingRun.setWorkflowType(VideoWorkflowType.INIT_PUBLISH_TIKTOK);
+        existingRun.setStatus(VideoWorkflowRunStatus.SUCCEEDED);
+        existingRun.setAttemptNumber(1);
+
+        when(workflowRunRepository.findById(88L))
+                .thenReturn(Optional.of(existingRun));
+
+        VideoOpsService service = new VideoOpsService(
+                supabaseGateway,
+                contentIdeaRepository,
+                n8nWorkflowGateway,
+                videoOpsInternalProxyService,
+                tikTokUploadService,
+                callbackAuthService,
+                pipelineStateRepository,
+                workflowRunRepository,
+                eventRepository,
+                properties,
+                new ObjectMapper(),
+                runPersistenceHelper,
+                n8nWorkflowContractService,
+                trackingService
+        );
+
+        VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
+        request.setStatus("FAILED");
+        request.setErrorMessage("late failure");
+
+        VideoWorkflowRunDetailResponse response = service.completeWorkflowRun(88L, request);
+
+        assertEquals("SUCCEEDED", response.getStatus());
+        verify(workflowRunRepository, times(2)).findById(88L);
+        verify(workflowRunRepository, never()).save(any(VideoWorkflowRun.class));
     }
 }
