@@ -274,7 +274,6 @@ export default function TikTokJourneyPage() {
   })
 
   const { handleGenerateIdea } = useCreationStep({
-    displayedGeneratedIdeas,
     generationCategory,
     connectedTikTokAccount,
     fetchRecentContentIdeas,

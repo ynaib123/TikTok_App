@@ -5,7 +5,6 @@ import {
 } from './journeyHelpers.js'
 
 export function useCreationStep({
-  displayedGeneratedIdeas,
   generationCategory,
   connectedTikTokAccount,
   fetchRecentContentIdeas,
@@ -30,7 +29,6 @@ export function useCreationStep({
   const handleGenerateIdea = async () => runAction('generateIdea', async () => {
     const requestedCount = 1
     const requestedCategory = String(generationCategory || '').trim()
-    const shouldForceGeneration = displayedGeneratedIdeas.length > 0
 
     if (!requestedCategory) {
       throw new Error('Renseigne une categorie avant de lancer la generation.')
@@ -47,7 +45,7 @@ export function useCreationStep({
       ideaCount: 1,
       category: requestedCategory,
       tiktokAccountOpenId: String(connectedTikTokAccount?.openId || '').trim() || null,
-      force: shouldForceGeneration,
+      force: true,
     })
 
     markWorkflowStarted({
