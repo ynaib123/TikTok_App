@@ -22,6 +22,7 @@
  *   message: string,
  *   responsePayload?: unknown,
  *   traceId?: string | null,
+ *   idempotencyKey?: string | null,
  *   maxAttempts?: number
  * }} input
  */
@@ -34,6 +35,7 @@ async function callbackBackend(input) {
   const callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');
   const workflowRunId = Number(input.workflowRunId || 0);
   const traceId = String(input.traceId || '').trim();
+  const idempotencyKey = String(input.idempotencyKey || '').trim();
   const maxAttempts = Math.max(1, Math.min(5, Number(input.maxAttempts || 3)));
 
   if (!baseUrl) throw new Error('CALLBACK_MISSING_BASE_URL');
@@ -59,6 +61,12 @@ async function callbackBackend(input) {
   };
   if (traceId) {
     headers['X-Request-Id'] = traceId;
+  }
+  // Sprint fiabilite : echo de la cle d'idempotence recue dans le payload
+  // backend->n8n. Le backend rejette en 409 tout callback dont la cle ne
+  // matche pas le run actif (replay obsolete sur run remplace).
+  if (idempotencyKey) {
+    headers['X-Idempotency-Key'] = idempotencyKey;
   }
 
   let lastError = null;
@@ -96,9 +104,17 @@ async function callbackBackend(input) {
           callbackStatusCode: lastResponse.statusCode,
         };
       }
+      // 409 = idempotency mismatch (run remplace par le backend). Pas de retry,
+      // le replay est obsolete. On signale l'echec definitif sans backoff.
+      if (lastResponse.statusCode === 409) {
+        throw new Error('CALLBACK_OBSOLETE_REPLAY: HTTP 409 — idempotency mismatch');
+      }
       lastError = 'HTTP ' + lastResponse.statusCode;
     } catch (err) {
       lastError = (err && err.message) ? err.message : String(err);
+      if (lastError.startsWith('CALLBACK_OBSOLETE_REPLAY')) {
+        throw err;
+      }
     }
 
     if (attempt < maxAttempts) {

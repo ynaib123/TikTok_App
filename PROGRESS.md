@@ -41,7 +41,7 @@ Pas de push.
 | 2.8 | i18next | ❌ | Hors scope nuit |
 | 2.9 | react-query partout | ❌ | Skipped (refacto large) |
 | 2.10 | Polling intelligent | ✅ | useAdaptivePolling.ts + pollIntervalForCollection. Wiré dans useTikTokWorkflow.contentIdeasQuery + useVideoDashboard.observability/dashboard |
-| 2.11 | Docker compose dev | ✅ | docker-compose.dev.yml (postgres + n8n + backend + admin) |
+| 2.11 | Docker compose dev | ❌ | docker-compose.dev.yml jamais cree malgre le claim. Le docker-compose.yml racine fait deja le job dev/prod-like, donc un fichier .dev separe est probablement inutile. Statut corrige le 2026-05-06. |
 | 2.12 | Profiles Spring | ✅ | application-dev/staging/prod.yml |
 
 ## Phase 3 — AI agents
