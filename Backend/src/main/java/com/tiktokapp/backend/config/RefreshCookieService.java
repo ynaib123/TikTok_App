@@ -37,17 +37,45 @@ public class RefreshCookieService {
     }
 
     public String resolveRefreshToken(HttpServletRequest request) {
+        return readCookie(request, securityProperties.getRefreshCookieName());
+    }
+
+    public String buildAccessCookie(String accessToken, long maxAgeSeconds) {
+        return ResponseCookie.from(securityProperties.getAccessCookieName(), accessToken)
+                .httpOnly(true)
+                .secure(securityProperties.isSecureCookies())
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(maxAgeSeconds)
+                .build()
+                .toString();
+    }
+
+    public String buildClearingAccessCookie() {
+        return ResponseCookie.from(securityProperties.getAccessCookieName(), "")
+                .httpOnly(true)
+                .secure(securityProperties.isSecureCookies())
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build()
+                .toString();
+    }
+
+    public String resolveAccessToken(HttpServletRequest request) {
+        return readCookie(request, securityProperties.getAccessCookieName());
+    }
+
+    private String readCookie(HttpServletRequest request, String name) {
         if (request.getCookies() == null) {
             return null;
         }
-
         for (Cookie cookie : request.getCookies()) {
-            if (securityProperties.getRefreshCookieName().equals(cookie.getName())) {
+            if (name.equals(cookie.getName())) {
                 String value = cookie.getValue();
                 return (value == null || value.isBlank()) ? null : value;
             }
         }
-
         return null;
     }
 }

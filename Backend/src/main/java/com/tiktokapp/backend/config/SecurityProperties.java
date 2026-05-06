@@ -16,6 +16,7 @@ public class SecurityProperties {
     private long accessMinutes = 30;
     private long refreshDays = 14;
     private String refreshCookieName = "tiktok_app_admin_refresh";
+    private String accessCookieName = "tiktok_app_admin_access";
     private boolean secureCookies = false;
     private String frontendBaseUrl = "http://localhost:5174";
     private List<String> allowedOrigins = new ArrayList<>(List.of(
@@ -88,6 +89,14 @@ public class SecurityProperties {
 
     public void setRefreshCookieName(String refreshCookieName) {
         this.refreshCookieName = refreshCookieName;
+    }
+
+    public String getAccessCookieName() {
+        return accessCookieName;
+    }
+
+    public void setAccessCookieName(String accessCookieName) {
+        this.accessCookieName = accessCookieName;
     }
 
     public boolean isSecureCookies() {

@@ -21,9 +21,11 @@ import java.util.List;
 public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final RefreshCookieService refreshCookieService;
 
-    public AdminJwtAuthenticationFilter(JwtService jwtService) {
+    public AdminJwtAuthenticationFilter(JwtService jwtService, RefreshCookieService refreshCookieService) {
         this.jwtService = jwtService;
+        this.refreshCookieService = refreshCookieService;
     }
 
     @Override
@@ -32,14 +34,8 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = authorizationHeader.substring(7).trim();
-        if (token.isBlank()) {
+        String token = resolveAccessToken(request);
+        if (token == null || token.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -62,5 +58,22 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Lit l'access token : cookie HttpOnly d'abord (mode securise par defaut),
+     * fallback sur l'en-tete {@code Authorization: Bearer ...} pour compat tests
+     * et clients legacy.
+     */
+    private String resolveAccessToken(HttpServletRequest request) {
+        String cookieToken = refreshCookieService.resolveAccessToken(request);
+        if (cookieToken != null && !cookieToken.isBlank()) {
+            return cookieToken;
+        }
+        String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        return authorizationHeader.substring(7).trim();
     }
 }

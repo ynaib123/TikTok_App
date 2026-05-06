@@ -21,3 +21,11 @@ management:
 
 server:
   forward-headers-strategy: framework
+
+# Swagger / OpenAPI desactive en prod (information disclosure).
+# Re-active uniquement via override explicite si besoin.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

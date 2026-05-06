@@ -32,6 +32,7 @@ app:
     access-minutes: ${APP_ACCESS_MINUTES:30}
     refresh-days: ${APP_REFRESH_DAYS:14}
     refresh-cookie-name: ${APP_REFRESH_COOKIE_NAME:tiktok_app_admin_refresh}
+    access-cookie-name: ${APP_ACCESS_COOKIE_NAME:tiktok_app_admin_access}
     secure-cookies: ${APP_SECURE_COOKIES:false}
     frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5174}
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.11.100:5174}
@@ -57,6 +58,14 @@ app:
       render-template-video-path: ${APP_VIDEO_OPS_N8N_RENDER_PATH:/webhook/render-template-video}
       check-shotstack-path: ${APP_VIDEO_OPS_N8N_CHECK_PATH:/webhook/check-shotstack}
       init-publish-tik-tok-path: ${APP_VIDEO_OPS_N8N_INIT_PUBLISH_PATH:/webhook/init-publish-tiktok}
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    login:
+      capacity: ${APP_RATE_LIMIT_LOGIN_CAPACITY:10}
+      refill-seconds: ${APP_RATE_LIMIT_LOGIN_REFILL_SECONDS:60}
+    workflows:
+      capacity: ${APP_RATE_LIMIT_WORKFLOWS_CAPACITY:60}
+      refill-seconds: ${APP_RATE_LIMIT_WORKFLOWS_REFILL_SECONDS:60}
   alerting:
     enabled: ${APP_ALERTING_ENABLED:true}
     slack-webhook-url: ${APP_ALERTING_SLACK_WEBHOOK_URL:}

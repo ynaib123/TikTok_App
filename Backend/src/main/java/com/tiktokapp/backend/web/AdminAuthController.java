@@ -140,6 +140,7 @@ public class AdminAuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingCookie())
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingAccessCookie())
                 .body(Map.of("message", "Deconnecte"));
     }
 
@@ -148,14 +149,20 @@ public class AdminAuthController {
         RefreshTokenPayload refreshPayload = jwtService.generateAdminRefreshToken(admin, rememberMe);
         refreshTokenStore.store(refreshPayload.jti(), refreshPayload.token(), refreshPayload.expiresAt());
 
-        long maxAgeSeconds = Math.max(1, Duration.between(Instant.now(), refreshPayload.expiresAt()).getSeconds());
+        long refreshMaxAgeSeconds = Math.max(1, Duration.between(Instant.now(), refreshPayload.expiresAt()).getSeconds());
+        long accessTtlSeconds = jwtService.getAccessTokenTtlSeconds();
 
+        // Sprint securite : access token pose en cookie HttpOnly (defense XSS).
+        // On garde aussi le token dans le body pour les clients backend (tests, integrations
+        // futures, scripts) qui ne peuvent pas / ne veulent pas s'appuyer sur les cookies.
+        // Le frontend admin lui ne stocke plus le token, il s'appuie uniquement sur le cookie.
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildRefreshCookie(refreshPayload.token(), maxAgeSeconds))
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildRefreshCookie(refreshPayload.token(), refreshMaxAgeSeconds))
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildAccessCookie(accessToken, accessTtlSeconds))
                 .body(new AdminAuthResponse(
                         accessToken,
                         null,
-                        jwtService.getAccessTokenTtlSeconds(),
+                        accessTtlSeconds,
                         admin,
                         "ADMIN"
                 ));
@@ -164,6 +171,7 @@ public class AdminAuthController {
     private ResponseEntity<AdminAuthResponse> unauthorizedResponse() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingCookie())
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingAccessCookie())
                 .build();
     }
 
