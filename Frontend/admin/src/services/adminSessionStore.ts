@@ -1,13 +1,41 @@
-const listeners = new Set()
+export interface AdminSessionUser {
+  email?: string
+  nom?: string
+  [key: string]: unknown
+}
+
+export interface AdminSessionState {
+  token: string | null
+  expiresAt: number | null
+  role: string | null
+  user: AdminSessionUser | null
+}
+
+export interface SetAdminSessionInput {
+  expiresAt?: number | string | null
+  expiresInSeconds?: number | string | null
+  role?: string | null
+  token?: string | null
+  user?: AdminSessionUser | null
+}
+
+type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+type StorageListener = (session: AdminSessionState) => void
+
+const listeners = new Set<StorageListener>()
 
 const ADMIN_SESSION_STORAGE_KEY = 'tiktok_app_admin_session'
 const ADMIN_REMEMBER_ME_KEY = 'tiktok_app_admin_remember_me'
 
-let sessionState = readStoredSession()
+function emptySession(): AdminSessionState {
+  return { token: null, expiresAt: null, role: null, user: null }
+}
 
-function getStorageArea(name) {
+let sessionState: AdminSessionState = readStoredSession()
+
+function getStorageArea(name: 'localStorage' | 'sessionStorage'): StorageLike | null {
   if (typeof window === 'undefined') return null
-  const candidate = window[name]
+  const candidate = (window as unknown as Record<string, StorageLike | undefined>)[name]
   if (!candidate) return null
   const hasStorageApi = typeof candidate.getItem === 'function'
     && typeof candidate.setItem === 'function'
@@ -15,7 +43,7 @@ function getStorageArea(name) {
   return hasStorageApi ? candidate : null
 }
 
-function resolveStorage() {
+function resolveStorage(): StorageLike | null {
   const localStorageArea = getStorageArea('localStorage')
   const sessionStorageArea = getStorageArea('sessionStorage')
   if (!localStorageArea && !sessionStorageArea) return null
@@ -27,16 +55,11 @@ function resolveStorage() {
   return localStorageArea || sessionStorageArea
 }
 
-function readStoredSession() {
+function readStoredSession(): AdminSessionState {
   const localStorageArea = getStorageArea('localStorage')
   const sessionStorageArea = getStorageArea('sessionStorage')
   if (!localStorageArea && !sessionStorageArea) {
-    return {
-      token: null,
-      expiresAt: null,
-      role: null,
-      user: null,
-    }
+    return emptySession()
   }
 
   const fromLocal = localStorageArea?.getItem(ADMIN_SESSION_STORAGE_KEY)
@@ -44,33 +67,23 @@ function readStoredSession() {
   const raw = fromLocal || fromSession
 
   if (!raw) {
-    return {
-      token: null,
-      expiresAt: null,
-      role: null,
-      user: null,
-    }
+    return emptySession()
   }
 
   try {
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(raw) as Partial<AdminSessionState>
     return {
       token: parsed?.token || null,
-      expiresAt: parsed?.expiresAt || null,
+      expiresAt: parsed?.expiresAt ?? null,
       role: parsed?.role || null,
       user: parsed?.user || null,
     }
   } catch {
-    return {
-      token: null,
-      expiresAt: null,
-      role: null,
-      user: null,
-    }
+    return emptySession()
   }
 }
 
-function persistSession() {
+function persistSession(): void {
   const localStorageArea = getStorageArea('localStorage')
   const sessionStorageArea = getStorageArea('sessionStorage')
   if (!localStorageArea && !sessionStorageArea) return
@@ -86,7 +99,7 @@ function persistSession() {
   storage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(sessionState))
 }
 
-function emitChange() {
+function emitChange(): void {
   listeners.forEach((listener) => {
     try {
       listener(getAdminSession())
@@ -96,11 +109,11 @@ function emitChange() {
   })
 }
 
-export function getAdminSession() {
+export function getAdminSession(): AdminSessionState {
   return { ...sessionState }
 }
 
-export function getAdminAccessToken() {
+export function getAdminAccessToken(): string | null {
   return sessionState.token
 }
 
@@ -110,7 +123,7 @@ export function setAdminSession({
   role = null,
   token = null,
   user = null,
-} = {}) {
+}: SetAdminSessionInput = {}): AdminSessionState {
   const hasAbsoluteExpiry = expiresAt !== null && expiresAt !== undefined && expiresAt !== ''
   const hasRelativeExpiry = expiresInSeconds !== null && expiresInSeconds !== undefined && expiresInSeconds !== ''
   const numericExpiresAt = hasAbsoluteExpiry ? Number(expiresAt) : Number.NaN
@@ -130,18 +143,13 @@ export function setAdminSession({
   return getAdminSession()
 }
 
-export function clearAdminSession() {
-  sessionState = {
-    token: null,
-    expiresAt: null,
-    role: null,
-    user: null,
-  }
+export function clearAdminSession(): void {
+  sessionState = emptySession()
   persistSession()
   emitChange()
 }
 
-export function isAdminAccessTokenExpired(bufferMs = 0) {
+export function isAdminAccessTokenExpired(bufferMs: number = 0): boolean {
   if (!sessionState.token || !sessionState.expiresAt) {
     return true
   }
@@ -149,11 +157,13 @@ export function isAdminAccessTokenExpired(bufferMs = 0) {
   return Number(sessionState.expiresAt) <= (Date.now() + Number(bufferMs || 0))
 }
 
-export function subscribeAdminSession(listener) {
+export function subscribeAdminSession(listener: StorageListener): () => void {
   if (typeof listener !== 'function') {
     return () => {}
   }
 
   listeners.add(listener)
-  return () => listeners.delete(listener)
+  return () => {
+    listeners.delete(listener)
+  }
 }

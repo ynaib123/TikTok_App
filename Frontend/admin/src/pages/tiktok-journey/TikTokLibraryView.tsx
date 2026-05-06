@@ -2,7 +2,7 @@
  * TikTokLibraryView — Cards / Table hybrid view with bulk-delete selection.
  */
 
-import { useMemo, useState, type JSX } from 'react'
+import { useMemo, useState, type Dispatch, type JSX, type SetStateAction } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminToolbarMenuButton from '../../components/AdminToolbarMenuButton'
@@ -53,7 +53,7 @@ interface TikTokLibraryViewProps {
   setListSearch: (value: string) => void
   setListSort: (value: string) => void
   setListViewMode: (value: string) => void
-  setOpenListMenu: (value: string | null) => void
+  setOpenListMenu: Dispatch<SetStateAction<string | null>>
   startAddFlow: () => void
 }
 

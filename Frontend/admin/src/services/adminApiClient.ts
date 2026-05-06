@@ -2,29 +2,55 @@ import {
   clearAdminSession,
   getAdminAccessToken,
   isAdminAccessTokenExpired,
-} from './adminSessionStore.js'
-import { refreshAdminSession } from './adminAuthService.js'
-import { attachAdminCsrfHeader, clearAdminCsrfTokenCache } from './adminCsrfService.js'
+} from './adminSessionStore'
+import { refreshAdminSession } from './adminAuthService'
+import { attachAdminCsrfHeader, clearAdminCsrfTokenCache } from './adminCsrfService'
 import { beginAdminPerf, endAdminPerf } from './adminPerformance'
 
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string | undefined) || '/api'
 const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 5000
 
-export function buildAdminApiUrl(endpoint) {
+export interface AdminApiError extends Error {
+  status?: number
+  data?: unknown
+  traceId?: string | null
+}
+
+interface ParsedResponse {
+  ok: boolean
+  status: number
+  traceId?: string | null
+  data: unknown
+}
+
+export interface AdminRequestOptions {
+  skipAuth?: boolean
+  skipAuthRefresh?: boolean
+  retryOnUnauthorized?: boolean
+  retryOnForbiddenWithFreshCsrf?: boolean
+  suppressConsoleError?: boolean
+}
+
+interface PerformFetchOptions {
+  skipAuth?: boolean
+  suppressConsoleError?: boolean
+}
+
+export function buildAdminApiUrl(endpoint: string): string {
   return `${API_BASE_URL}${endpoint}`
 }
 
-function shouldBypassRefresh(endpoint = '') {
+function shouldBypassRefresh(endpoint: string = ''): boolean {
   return endpoint.endsWith('/admins/login')
     || endpoint.endsWith('/admins/refresh')
     || endpoint.endsWith('/admins/logout')
 }
 
-function shouldAttachCsrfHeader(method = 'GET') {
+function shouldAttachCsrfHeader(method: string = 'GET'): boolean {
   return !['GET', 'HEAD', 'OPTIONS'].includes(String(method || 'GET').toUpperCase())
 }
 
-async function createHeaders(options = {}, accessToken = null) {
+async function createHeaders(options: RequestInit = {}, accessToken: string | null = null): Promise<Headers> {
   const headers = new Headers(options.headers || {})
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
 
@@ -43,13 +69,13 @@ async function createHeaders(options = {}, accessToken = null) {
   return headers
 }
 
-async function parseResponse(response) {
+async function parseResponse(response: Response): Promise<ParsedResponse> {
   if (response.status === 204) {
     return { ok: true, status: response.status, data: null }
   }
 
   const responseText = await response.text()
-  let responseData = null
+  let responseData: unknown = null
 
   if (responseText) {
     try {
@@ -67,21 +93,26 @@ async function parseResponse(response) {
   }
 }
 
-function createHttpError(parsed) {
+function createHttpError(parsed: ParsedResponse): AdminApiError {
+  const data = parsed?.data as { message?: string; error?: string; details?: string } | null
   const message =
-    parsed?.data?.message
-    || parsed?.data?.error
-    || parsed?.data?.details
+    data?.message
+    || data?.error
+    || data?.details
     || `Erreur HTTP ${parsed?.status ?? 'inconnue'}`
 
-  const error = new Error(message)
+  const error = new Error(message) as AdminApiError
   error.status = parsed?.status ?? 500
   error.data = parsed?.data ?? null
   error.traceId = parsed?.traceId ?? null
   return error
 }
 
-async function performFetch(endpoint, options = {}, requestOptions = {}) {
+async function performFetch(
+  endpoint: string,
+  options: RequestInit = {},
+  requestOptions: PerformFetchOptions = {},
+): Promise<ParsedResponse> {
   const {
     skipAuth = false,
     suppressConsoleError = false,
@@ -109,8 +140,6 @@ async function performFetch(endpoint, options = {}, requestOptions = {}) {
   })
 
   if (!parsed.ok && !suppressConsoleError) {
-    // Backend en cours de demarrage (proxy 503) ou bad gateway (502) :
-    // un warn suffit, c'est un etat transitoire connu, pas un vrai bug app.
     if (parsed.status === 503 || parsed.status === 502) {
       console.warn('Admin API transient unavailability:', parsed.status, endpoint)
     } else {
@@ -121,7 +150,11 @@ async function performFetch(endpoint, options = {}, requestOptions = {}) {
   return parsed
 }
 
-export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
+export async function apiRequest<T = unknown>(
+  endpoint: string,
+  options: RequestInit = {},
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
   const {
     skipAuth = false,
     skipAuthRefresh = false,
@@ -177,11 +210,11 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
       clearAdminCsrfTokenCache()
     }
 
-    return parsed.data
+    return parsed.data as T
   } catch (error) {
     if (error instanceof TypeError && String(error.message || '').toLowerCase().includes('fetch')) {
       throw new Error(
-        `Impossible de contacter le serveur admin. Verifiez que le backend tourne et que VITE_API_BASE_URL pointe vers ${API_BASE_URL}.`
+        `Impossible de contacter le serveur admin. Verifiez que le backend tourne et que VITE_API_BASE_URL pointe vers ${API_BASE_URL}.`,
       )
     }
 
@@ -189,33 +222,57 @@ export async function apiRequest(endpoint, options = {}, requestOptions = {}) {
   }
 }
 
-export async function rawApiRequest(endpoint, options = {}, requestOptions = {}) {
-  return apiRequest(endpoint, options, requestOptions)
+export async function rawApiRequest<T = unknown>(
+  endpoint: string,
+  options: RequestInit = {},
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(endpoint, options, requestOptions)
 }
 
-export async function apiGet(endpoint, requestOptions = {}) {
-  return apiRequest(endpoint, { method: 'GET' }, requestOptions)
+export async function apiGet<T = unknown>(endpoint: string, requestOptions: AdminRequestOptions = {}): Promise<T> {
+  return apiRequest<T>(endpoint, { method: 'GET' }, requestOptions)
 }
 
-export async function apiPost(endpoint, data, requestOptions = {}) {
-  return apiRequest(endpoint, {
+export async function apiPost<T = unknown>(
+  endpoint: string,
+  data: unknown,
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(endpoint, {
     method: 'POST',
     body: JSON.stringify(data),
   }, requestOptions)
 }
 
-export async function apiPut(endpoint, data, requestOptions = {}) {
-  return apiRequest(endpoint, {
+export async function apiPut<T = unknown>(
+  endpoint: string,
+  data: unknown,
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(endpoint, {
     method: 'PUT',
     body: JSON.stringify(data),
   }, requestOptions)
 }
 
-export async function apiDelete(endpoint, requestOptions = {}) {
-  return apiRequest(endpoint, { method: 'DELETE' }, requestOptions)
+export async function apiDelete<T = unknown>(
+  endpoint: string,
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(endpoint, { method: 'DELETE' }, requestOptions)
 }
 
-export async function createAuthenticatedAdminRequest(endpoint, options = {}, requestOptions = {}) {
+export interface AuthenticatedAdminRequest {
+  url: string
+  options: RequestInit
+}
+
+export async function createAuthenticatedAdminRequest(
+  endpoint: string,
+  options: RequestInit = {},
+  requestOptions: AdminRequestOptions = {},
+): Promise<AuthenticatedAdminRequest> {
   const {
     skipAuth = false,
     skipAuthRefresh = false,

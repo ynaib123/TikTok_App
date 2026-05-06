@@ -3,12 +3,22 @@ import '../styles/components/feedback.css'
 
 const AUTO_DISMISS_MS = 3000
 
+export type AdminFeedbackBannerType = 'error' | 'success' | 'info'
+export type AdminFeedbackBannerPlacement = 'floating' | 'navbar'
+
+export interface AdminFeedbackBannerProps {
+  type?: AdminFeedbackBannerType
+  message?: string | null
+  onClose?: () => void
+  placement?: AdminFeedbackBannerPlacement
+}
+
 export default function AdminFeedbackBanner({
   type = 'error',
   message,
   onClose,
   placement = 'floating',
-}) {
+}: AdminFeedbackBannerProps) {
   const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {

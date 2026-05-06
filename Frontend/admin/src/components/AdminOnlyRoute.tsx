@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { isAdminRole } from '../utils/adminRoles'
 
-export default function AdminOnlyRoute({ children }) {
+interface AdminOnlyRouteProps {
+  children: ReactNode
+}
+
+export default function AdminOnlyRoute({ children }: AdminOnlyRouteProps) {
   const { isAuthenticated, loading, role } = useAdminAuth()
 
   if (loading) {
@@ -17,5 +22,5 @@ export default function AdminOnlyRoute({ children }) {
     return <Navigate to="/login" replace />
   }
 
-  return children
+  return <>{children}</>
 }

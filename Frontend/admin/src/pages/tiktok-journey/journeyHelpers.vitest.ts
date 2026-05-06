@@ -1,7 +1,6 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { test, expect } from 'vitest'
 
-import { raceWorkflowRunAndDatabaseUpdate } from './journeyHelpers.js'
+import { raceWorkflowRunAndDatabaseUpdate } from './journeyHelpers'
 
 test('raceWorkflowRunAndDatabaseUpdate prefers the database update when it completes before the callback', async () => {
   const result = await raceWorkflowRunAndDatabaseUpdate({
@@ -15,7 +14,7 @@ test('raceWorkflowRunAndDatabaseUpdate prefers the database update when it compl
     },
   })
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     type: 'database',
     value: { uploadUrl: 'https://open-upload.tiktokapis.com/demo' },
   })

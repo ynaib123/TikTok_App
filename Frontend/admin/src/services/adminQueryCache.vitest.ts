@@ -1,12 +1,11 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { test, expect } from 'vitest'
 import {
   clearAdminQueryCache,
   fetchAdminQuery,
   getAdminQueryData,
   invalidateAdminQueries,
   setAdminQueryData,
-} from './adminQueryCache.js'
+} from './adminQueryCache'
 
 test('shared admin query cache reuses cached values across calls', async () => {
   clearAdminQueryCache()
@@ -30,10 +29,10 @@ test('shared admin query cache reuses cached values across calls', async () => {
     staleTime: 10_000,
   })
 
-  assert.deepEqual(first, { clients: 12 })
-  assert.deepEqual(second, { clients: 12 })
-  assert.deepEqual(getAdminQueryData(['admin-overview']), { clients: 12 })
-  assert.equal(fetchCount, 1)
+  expect(first).toEqual({ clients: 12 })
+  expect(second).toEqual({ clients: 12 })
+  expect(getAdminQueryData(['admin-overview'])).toEqual({ clients: 12 })
+  expect(fetchCount).toBe(1)
 
   invalidateAdminQueries((key) => key.includes('"admin-overview"'))
 
@@ -46,9 +45,9 @@ test('shared admin query cache reuses cached values across calls', async () => {
     staleTime: 10_000,
   })
 
-  assert.deepEqual(getAdminQueryData(['admin-overview']), { clients: 24 })
-  assert.deepEqual(third, { clients: 24 })
-  assert.equal(fetchCount, 2)
+  expect(getAdminQueryData(['admin-overview'])).toEqual({ clients: 24 })
+  expect(third).toEqual({ clients: 24 })
+  expect(fetchCount).toBe(2)
 })
 
 test('shared admin query cache deduplicates concurrent requests and supports manual writes', async () => {
@@ -75,12 +74,12 @@ test('shared admin query cache deduplicates concurrent requests and supports man
     }),
   ])
 
-  assert.deepEqual(first, { items: [1, 2] })
-  assert.deepEqual(second, { items: [1, 2] })
-  assert.equal(fetchCount, 1)
+  expect(first).toEqual({ items: [1, 2] })
+  expect(second).toEqual({ items: [1, 2] })
+  expect(fetchCount).toBe(1)
 
   setAdminQueryData(['admin-clients', 'page=1'], { items: [7] })
-  assert.deepEqual(getAdminQueryData(['admin-clients', 'page=1']), { items: [7] })
+  expect(getAdminQueryData(['admin-clients', 'page=1'])).toEqual({ items: [7] })
 
   clearAdminQueryCache()
 })

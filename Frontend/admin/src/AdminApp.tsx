@@ -34,8 +34,8 @@ function AdminMobileBlockedPage() {
   )
 }
 
-function useIsAdminMobileBlocked() {
-  const [isBlocked, setIsBlocked] = useState(() => {
+function useIsAdminMobileBlocked(): boolean {
+  const [isBlocked, setIsBlocked] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia(ADMIN_DESKTOP_ONLY_MEDIA_QUERY).matches
   })
@@ -44,7 +44,7 @@ function useIsAdminMobileBlocked() {
     if (typeof window === 'undefined') return undefined
 
     const mediaQuery = window.matchMedia(ADMIN_DESKTOP_ONLY_MEDIA_QUERY)
-    const updateBlockedState = (event) => {
+    const updateBlockedState = (event: MediaQueryListEvent) => {
       setIsBlocked(event.matches)
     }
 

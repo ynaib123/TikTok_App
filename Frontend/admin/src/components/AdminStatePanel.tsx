@@ -1,4 +1,17 @@
+import type { ReactNode } from 'react'
 import AdminRouteFallback from './AdminRouteFallback'
+
+type AdminStatePanelTone = 'neutral' | 'positive' | 'warning' | 'critical'
+type AdminStatePanelVariant = 'empty' | 'error' | 'loading'
+
+interface AdminStatePanelProps {
+  action?: ReactNode
+  compact?: boolean
+  message?: string
+  title?: string
+  tone?: AdminStatePanelTone
+  variant?: AdminStatePanelVariant
+}
 
 export default function AdminStatePanel({
   action,
@@ -7,7 +20,7 @@ export default function AdminStatePanel({
   title,
   tone = 'neutral',
   variant = 'empty',
-}) {
+}: AdminStatePanelProps) {
   if (variant === 'loading') {
     return <AdminRouteFallback compact={compact} message={message || 'Chargement...'} />
   }

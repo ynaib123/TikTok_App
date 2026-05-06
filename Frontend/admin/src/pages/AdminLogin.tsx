@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
@@ -14,11 +14,17 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const ADMIN_LOGIN_FALLBACK_MIN_DURATION_MS = 400
 const ADMIN_LOGOUT_FALLBACK_STORAGE_KEY = 'admin-logout-fallback-until'
 
+interface MinimumDurationProgressInput {
+  actualProgress: number | null | undefined
+  startedAt: number
+  minDurationMs?: number
+}
+
 function resolveMinimumDurationProgress({
   actualProgress,
   startedAt,
   minDurationMs = ADMIN_LOGIN_FALLBACK_MIN_DURATION_MS,
-}) {
+}: MinimumDurationProgressInput): number {
   const normalizedActual = Math.max(0, Math.min(100, Number(actualProgress || 0)))
   if (!startedAt) return normalizedActual
 
@@ -40,11 +46,11 @@ export default function AdminLogin() {
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(() => getAdminRememberPreference())
+  const [rememberMe, setRememberMe] = useState<boolean>(() => getAdminRememberPreference())
   const [isLoading, setIsLoading] = useState(false)
-  const [loginProgressValue, setLoginProgressValue] = useState(null)
+  const [loginProgressValue, setLoginProgressValue] = useState<number | null>(null)
   const [loginStartedAt, setLoginStartedAt] = useState(0)
-  const [logoutFallbackUntil, setLogoutFallbackUntil] = useState(() => {
+  const [logoutFallbackUntil, setLogoutFallbackUntil] = useState<number>(() => {
     if (typeof window === 'undefined') return 0
     return Number(window.sessionStorage.getItem(ADMIN_LOGOUT_FALLBACK_STORAGE_KEY) || 0)
   })
@@ -91,7 +97,7 @@ export default function AdminLogin() {
     return () => window.clearInterval(intervalId)
   }, [loginProgressValue, logoutFallbackUntil])
 
-  const canSubmit = useMemo(() => email.trim() && motDePasse.trim().length >= 6, [email, motDePasse])
+  const canSubmit = useMemo(() => Boolean(email.trim() && motDePasse.trim().length >= 6), [email, motDePasse])
 
   if (loginProgressValue == null && !loading && isAuthenticated && role === 'ADMIN') {
     return <Navigate to="/dashboard" replace />
@@ -121,7 +127,7 @@ export default function AdminLogin() {
     )
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
 

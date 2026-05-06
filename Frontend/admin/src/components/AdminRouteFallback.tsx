@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import '../styles/layout/loading.css'
 
+interface AdminRouteFallbackProps {
+  compact?: boolean
+  message?: string
+  progressValue?: number | null
+}
+
 export default function AdminRouteFallback({
   compact = false,
   message = "Chargement de l'espace admin...",
   progressValue = null,
-}) {
+}: AdminRouteFallbackProps) {
   const [progress, setProgress] = useState(0)
   const hasExternalProgress = Number.isFinite(Number(progressValue))
   const displayedProgress = hasExternalProgress
@@ -19,7 +25,7 @@ export default function AdminRouteFallback({
     let startTime = 0
     const duration = 2800
 
-    const animate = (timestamp) => {
+    const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp
       const elapsed = Math.min(timestamp - startTime, duration)
       const ratio = elapsed / duration

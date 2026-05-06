@@ -1,4 +1,21 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react'
+
+type MenuRenderProps = { closeMenu: () => void; isOpen: boolean }
+
+interface AdminToolbarMenuButtonProps {
+  ariaLabel?: string
+  children?: ReactNode | ((props: MenuRenderProps) => ReactNode)
+  icon?: ReactNode
+  menuAriaLabel?: string
+  menuClassName?: string
+  menuId: string
+  menuRole?: 'listbox' | 'menu'
+  openCatalogMenu: string | null
+  setOpenCatalogMenu?: Dispatch<SetStateAction<string | null>>
+  title?: string
+  triggerClassName?: string
+  triggerRole?: string
+}
 
 export default function AdminToolbarMenuButton({
   ariaLabel,
@@ -13,8 +30,8 @@ export default function AdminToolbarMenuButton({
   title,
   triggerClassName = '',
   triggerRole = 'button',
-}) {
-  const menuRef = useRef(null)
+}: AdminToolbarMenuButtonProps) {
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const isOpen = openCatalogMenu === menuId
   const resolvedTriggerClassName = [
     'admin-product-toolbar-trigger',
@@ -50,7 +67,7 @@ export default function AdminToolbarMenuButton({
     return () => window.cancelAnimationFrame(frame)
   }, [isOpen])
 
-  const handleTriggerKeyDown = (event) => {
+  const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       if (!isOpen) {
@@ -59,12 +76,12 @@ export default function AdminToolbarMenuButton({
     }
   }
 
-  const handleMenuKeyDown = (event) => {
+  const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const menuElement = menuRef.current
     if (!(menuElement instanceof HTMLElement)) return
 
     const items = Array.from(menuElement.querySelectorAll('button:not([disabled])'))
-      .filter((item) => item instanceof HTMLElement)
+      .filter((item): item is HTMLElement => item instanceof HTMLElement)
 
     if (items.length === 0) return
 

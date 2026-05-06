@@ -9,6 +9,11 @@ export default defineConfig({
       '@shared': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  define: {
+    'import.meta.env.VITE_USE_MOCK_ADMIN_AUTH': JSON.stringify('false'),
+    'import.meta.env.VITE_MOCK_ADMIN_EMAIL': JSON.stringify(''),
+    'import.meta.env.VITE_MOCK_ADMIN_PASSWORD': JSON.stringify(''),
+  },
   test: {
     environment: 'happy-dom',
     globals: true,

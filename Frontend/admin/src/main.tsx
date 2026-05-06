@@ -5,12 +5,17 @@ import AdminQueryProvider from './components/AdminQueryProvider'
 import './styles/admin.css'
 import AdminApp from './AdminApp'
 
-createRoot(document.getElementById('root')).render(
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  throw new Error('Admin root element not found in document.')
+}
+
+createRoot(rootElement).render(
   <BrowserRouter>
     <AdminQueryProvider>
       <AdminAuthProvider>
         <AdminApp />
       </AdminAuthProvider>
     </AdminQueryProvider>
-  </BrowserRouter>
+  </BrowserRouter>,
 )

@@ -1,11 +1,10 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { test, expect } from 'vitest'
 import {
   clearAdminSession,
   getAdminSession,
   isAdminAccessTokenExpired,
   setAdminSession,
-} from './adminSessionStore.js'
+} from './adminSessionStore'
 
 test('setAdminSession derives an absolute expiry from expiresInSeconds', () => {
   clearAdminSession()
@@ -18,11 +17,11 @@ test('setAdminSession derives an absolute expiry from expiresInSeconds', () => {
     user: { email: 'admin@example.com' },
   })
 
-  assert.equal(session.token, 'access-token')
-  assert.equal(session.role, 'ADMIN')
-  assert.ok(Number.isFinite(session.expiresAt))
-  assert.ok(session.expiresAt >= before + 1799000)
-  assert.equal(isAdminAccessTokenExpired(), false)
+  expect(session.token).toBe('access-token')
+  expect(session.role).toBe('ADMIN')
+  expect(Number.isFinite(session.expiresAt)).toBe(true)
+  expect((session.expiresAt ?? 0) >= before + 1799000).toBe(true)
+  expect(isAdminAccessTokenExpired()).toBe(false)
 
   clearAdminSession()
 })
@@ -39,8 +38,8 @@ test('setAdminSession preserves an explicit absolute expiry when provided', () =
     user: { email: 'admin@example.com' },
   })
 
-  assert.equal(session.expiresAt, absoluteExpiry)
-  assert.deepEqual(getAdminSession().user, { email: 'admin@example.com' })
+  expect(session.expiresAt).toBe(absoluteExpiry)
+  expect(getAdminSession().user).toEqual({ email: 'admin@example.com' })
 
   clearAdminSession()
 })

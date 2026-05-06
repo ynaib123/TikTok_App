@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { ADMIN_NAV_ITEMS } from './adminNavItems'
-import AdminFeedbackBanner from './AdminFeedbackBanner'
+import AdminFeedbackBanner, { type AdminFeedbackBannerType } from './AdminFeedbackBanner'
 import AdminRouteFallback from './AdminRouteFallback'
 import { prefetchAdminRoute } from '../services/adminPrefetch'
 import '../styles/layout/shell.css'
@@ -13,29 +13,40 @@ const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
 const ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS = 400
 const ADMIN_LOGOUT_FALLBACK_STORAGE_KEY = 'admin-logout-fallback-until'
 
-/**
- * @typedef {Object} AdminShellFeedbackItem
- * @property {'error' | 'success' | 'info'} type
- * @property {string | null | undefined} message
- */
+export interface AdminShellFeedbackItem {
+  type: AdminFeedbackBannerType
+  message?: string | null
+  onClose?: () => void
+}
 
-/**
- * @typedef {Object} AdminShellProps
- * @property {string | undefined} [activeNavId]
- * @property {import('react').ReactNode} children
- * @property {string} [blockingMessage]
- * @property {number | null} [blockingProgress]
- * @property {AdminShellFeedbackItem[]} [feedbackItems]
- * @property {boolean} [isBlocking]
- * @property {(() => void | Promise<void>) | undefined} [onBeforeNavigate]
- * @property {(() => void | Promise<void>) | undefined} [onBeforeLogout]
- */
+export interface AdminShellProps {
+  activeNavId?: string
+  children: ReactNode
+  blockingMessage?: string
+  blockingProgress?: number | null
+  feedbackItems?: AdminShellFeedbackItem[]
+  isBlocking?: boolean
+  onBeforeNavigate?: (path: string) => void | boolean | Promise<void | boolean>
+  onBeforeLogout?: () => void | boolean | Promise<void | boolean>
+}
+
+interface BlockingFallbackSnapshot {
+  message: string
+  progress: number | null
+  startedAt: number
+}
+
+interface MinimumDurationProgressInput {
+  actualProgress: number | null | undefined
+  startedAt: number
+  minDurationMs?: number
+}
 
 function resolveMinimumDurationProgress({
   actualProgress,
   startedAt,
   minDurationMs = ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS,
-}) {
+}: MinimumDurationProgressInput): number {
   const normalizedActual = Math.max(0, Math.min(100, Number(actualProgress || 0)))
   if (!startedAt) return normalizedActual
 
@@ -113,7 +124,7 @@ function LogoutIcon() {
   )
 }
 
-const ADMIN_NAV_ICONS = {
+const ADMIN_NAV_ICONS: Record<string, ComponentType> = {
   dashboard: DashboardIcon,
   tiktok: TikTokIcon,
   'content-pipeline': PipelineIcon,
@@ -121,14 +132,13 @@ const ADMIN_NAV_ICONS = {
   'manual-actions': ActionsIcon,
 }
 
-function formatAdminRoleLabel(role) {
+function formatAdminRoleLabel(role: string | null | undefined): string {
   const normalizedRole = String(role || 'ADMIN').trim().toUpperCase()
   if (normalizedRole === 'SUPER_ADMIN') return 'Super Admin'
   if (normalizedRole === 'ADMIN') return 'Admin'
   return normalizedRole.replaceAll('_', ' ') || 'Admin'
 }
 
-/** @param {AdminShellProps} props */
 export default function AdminShell({
   activeNavId,
   children,
@@ -138,29 +148,30 @@ export default function AdminShell({
   isBlocking = false,
   onBeforeNavigate,
   onBeforeLogout,
-}) {
+}: AdminShellProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const location = useLocation()
   const { logout, user } = useAdminAuth()
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
   })
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
-  const [logoutProgressValue, setLogoutProgressValue] = useState(null)
+  const [logoutProgressValue, setLogoutProgressValue] = useState<number | null>(null)
   const [showBlockingFallback, setShowBlockingFallback] = useState(false)
-  const [blockingFallbackSnapshot, setBlockingFallbackSnapshot] = useState({
+  const [blockingFallbackSnapshot, setBlockingFallbackSnapshot] = useState<BlockingFallbackSnapshot>({
     message: blockingMessage,
     progress: blockingProgress,
     startedAt: 0,
   })
   const [logoutStartedAt, setLogoutStartedAt] = useState(0)
-  const profileMenuRef = useRef(null)
-  const profileMenuButtonRef = useRef(null)
+  const profileMenuRef = useRef<HTMLDivElement | null>(null)
+  const profileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const blockingFallbackShownAtRef = useRef(0)
   const [, forceProgressTick] = useState(0)
-  const adminRoleLabel = useMemo(() => formatAdminRoleLabel(user?.role), [user?.role])
+  const userWithRole = user as (typeof user & { role?: string | null }) | null
+  const adminRoleLabel = useMemo(() => formatAdminRoleLabel(userWithRole?.role), [userWithRole?.role])
   const visibleFeedbackItems = useMemo(
     () => feedbackItems.filter((item) => Boolean(item?.message)),
     [feedbackItems],
@@ -191,8 +202,8 @@ export default function AdminShell({
   useEffect(() => {
     if (!isProfileMenuOpen) return undefined
 
-    const handleDocumentClick = (event) => {
-      if (profileMenuRef.current?.contains(event.target)) return
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (profileMenuRef.current?.contains(event.target as Node)) return
       setIsProfileMenuOpen(false)
     }
 
@@ -203,7 +214,7 @@ export default function AdminShell({
   useEffect(() => {
     if (!isProfileMenuOpen) return undefined
 
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setIsProfileMenuOpen(false)
       profileMenuButtonRef.current?.focus()
@@ -265,7 +276,7 @@ export default function AdminShell({
     return () => window.clearInterval(intervalId)
   }, [logoutProgressValue, showBlockingFallback])
 
-  const handleNavigate = async (path) => {
+  const handleNavigate = async (path: string): Promise<void> => {
     if (typeof onBeforeNavigate === 'function') {
       const shouldContinue = await onBeforeNavigate(path)
       if (shouldContinue === false) return
@@ -274,11 +285,11 @@ export default function AdminShell({
     navigate(path)
   }
 
-  const handlePrefetch = (path) => {
+  const handlePrefetch = (path: string): void => {
     void prefetchAdminRoute(path, queryClient)
   }
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     if (typeof onBeforeLogout === 'function') {
       const shouldContinue = await onBeforeLogout()
       if (shouldContinue === false) return

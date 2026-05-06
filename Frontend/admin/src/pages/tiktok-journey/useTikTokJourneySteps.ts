@@ -1,8 +1,58 @@
+import type { Dispatch, SetStateAction } from 'react'
 import {
-  MAX_IDEA_BATCH_SIZE,
   isRenderReady,
   mergeIdeasById,
-} from './journeyHelpers.js'
+} from './journeyHelpers'
+import type { ContentIdea, ContentIdeaStatus, ManualAction, TikTokAccount, WorkflowRun } from '../../types'
+
+type RunAction = <T>(name: string, fn: () => Promise<T>) => Promise<T>
+type ShowSuccess = (message: string) => void
+type ShowError = (error: unknown, fallback?: string) => void
+
+export interface ManualActionState {
+  shotstackUrl?: string | null
+  uploadUrl?: string | null
+  [key: string]: unknown
+}
+
+interface WorkflowResponseLike {
+  runId?: number | string | null
+  workflowType?: string | null
+}
+
+interface MarkWorkflowInput {
+  runId?: number | string | null
+  workflowType?: string
+  contentIdeaId?: number | null
+  message?: string | null
+  state?: string
+  completedAt?: string | null
+}
+
+type SetState<T> = Dispatch<SetStateAction<T>>
+
+export interface UseCreationStepOptions {
+  generationCategory: string | null | undefined
+  connectedTikTokAccount: TikTokAccount | null
+  fetchRecentContentIdeas: () => Promise<ContentIdea[]>
+  triggerMainContentPipeline: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
+  refreshPipelineData: () => Promise<unknown>
+  resetGeneratedIdeasState: () => void
+  setGeneratedIdeas: SetState<ContentIdea[]>
+  setSelectedGeneratedIdeaId: (id: number | null) => void
+  setScriptedIdea: SetState<ContentIdea | null>
+  setManualAction: SetState<ManualActionState | null>
+  setUploadResult: (value: unknown) => void
+  setLastGenerationBaselineId: (id: number) => void
+  setLastGenerationExpectedCount: (count: number) => void
+  waitForNewIdeas: (baselineMaxId: number, expectedCount: number, requestedCategory: string) => Promise<ContentIdea[]>
+  waitForScriptGeneration: (ideaId: number | string, baselineIdea: ContentIdea | null) => Promise<ContentIdea>
+  showSuccess: ShowSuccess
+  showError: ShowError
+  runAction: RunAction
+  markWorkflowStarted: (input: MarkWorkflowInput) => void
+  markWorkflowFinished: (input: MarkWorkflowInput) => void
+}
 
 export function useCreationStep({
   generationCategory,
@@ -25,7 +75,7 @@ export function useCreationStep({
   runAction,
   markWorkflowStarted,
   markWorkflowFinished,
-}) {
+}: UseCreationStepOptions) {
   const handleGenerateIdea = async () => runAction('generateIdea', async () => {
     const requestedCount = 1
     const requestedCategory = String(generationCategory || '').trim()
@@ -58,16 +108,11 @@ export function useCreationStep({
       const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
       const idea = nextIdeas[0]
       setGeneratedIdeas(nextIdeas)
-      setSelectedGeneratedIdeaId(idea?.id || null)
+      setSelectedGeneratedIdeaId(idea?.id ? Number(idea.id) : null)
       setManualAction(null)
       setUploadResult(null)
 
-      // Fused workflow PATCHes script content directly on the idea row.
-      // Poll the idea content (not pipelineStage) so we don't depend on
-      // the backend state-machine being up to date. Pass baseline=null so
-      // we return as soon as the row has script content, even if waitForNewIdeas
-      // already saw it (race when the workflow finishes faster than the poll loop).
-      const scriptedIdea = await waitForScriptGeneration(idea.id, null)
+      const scriptedIdea = await waitForScriptGeneration(Number(idea.id), null)
 
       setScriptedIdea(scriptedIdea)
       setGeneratedIdeas(() => [scriptedIdea])
@@ -75,7 +120,7 @@ export function useCreationStep({
       markWorkflowFinished({
         runId: workflowResponse?.runId || null,
         workflowType: workflowResponse?.workflowType || 'MAIN_PIPELINE',
-        contentIdeaId: idea.id,
+        contentIdeaId: Number(idea.id),
         state: 'succeeded',
         message: 'Idee et script generes.',
       })
@@ -85,15 +130,36 @@ export function useCreationStep({
         runId: workflowResponse?.runId || null,
         workflowType: workflowResponse?.workflowType || 'MAIN_PIPELINE',
         state: 'failed',
-        message: error?.message || "La generation n'a pas abouti.",
+        message: (error as Error)?.message || "La generation n'a pas abouti.",
       })
       throw error
     }
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     showError(error, "La generation n'a pas abouti.")
   })
 
   return { handleGenerateIdea }
+}
+
+export interface UseRenderStepOptions {
+  scriptedIdea: ContentIdea | null
+  selectedGeneratedIdea: ContentIdea | null
+  goToStep: (step: string) => void
+  triggerCheckShotstackWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
+  triggerRenderTemplateWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
+  fetchContentIdeaById: (ideaId: number | string) => Promise<ContentIdea | null>
+  waitForWorkflowRunCompletion: (runId: number | string | null | undefined, timeoutMs?: number) => Promise<WorkflowRun | null>
+  waitForContentIdeaStatus: (ideaId: number | string, predicate: (s: ContentIdeaStatus | null) => boolean, timeoutMs?: number) => Promise<ContentIdeaStatus | null>
+  waitForRenderedVideo: (ideaId: number | string, checkRenderStatus?: (() => Promise<unknown>) | null) => Promise<ContentIdea>
+  refreshPipelineData: () => Promise<unknown>
+  setScriptedIdea: SetState<ContentIdea | null>
+  setGeneratedIdeas: SetState<ContentIdea[]>
+  setManualAction: SetState<ManualActionState | null>
+  showSuccess: ShowSuccess
+  showError: ShowError
+  runAction: RunAction
+  markWorkflowStarted: (input: MarkWorkflowInput) => void
+  markWorkflowFinished: (input: MarkWorkflowInput) => void
 }
 
 export function useRenderStep({
@@ -115,7 +181,7 @@ export function useRenderStep({
   runAction,
   markWorkflowStarted,
   markWorkflowFinished,
-}) {
+}: UseRenderStepOptions) {
   const handleValidateScript = async () => runAction('renderVideo', async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
@@ -134,23 +200,23 @@ export function useRenderStep({
     markWorkflowStarted({
       runId: workflowRun?.runId,
       workflowType: workflowRun?.workflowType || 'RENDER_TEMPLATE_VIDEO',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       message: 'Rendu video en cours.',
     })
     showSuccess('Generation video lancee. La video apparaitra ici des qu elle sera prete.')
 
     const completedRun = await waitForWorkflowRunCompletion(workflowRun?.runId, 12 * 1000)
-    let renderedIdea = null
+    let renderedIdea: ContentIdea | null = null
 
     if (completedRun && String(completedRun.status || '').toUpperCase() === 'SUCCEEDED') {
-      const status = await waitForContentIdeaStatus(idea.id, (candidate) => candidate?.pipelineStage === 'RENDER_READY', 20_000)
+      const status = await waitForContentIdeaStatus(Number(idea.id), (candidate) => candidate?.pipelineStage === 'RENDER_READY', 20_000)
       if (status?.pipelineStage === 'RENDER_READY') {
-        renderedIdea = await fetchContentIdeaById(idea.id)
+        renderedIdea = await fetchContentIdeaById(Number(idea.id))
       }
     }
 
     if (!renderedIdea || !isRenderReady(renderedIdea)) {
-      renderedIdea = await waitForRenderedVideo(idea.id, async () => {
+      renderedIdea = await waitForRenderedVideo(Number(idea.id), async () => {
         await triggerCheckShotstackWorkflow({
           source: 'backoffice-tiktok-step-render-status-check',
           contentIdeaId: idea.id,
@@ -159,30 +225,31 @@ export function useRenderStep({
       })
     }
 
-    setScriptedIdea(renderedIdea)
-    setGeneratedIdeas((currentIdeas) => mergeIdeasById(currentIdeas, [renderedIdea]))
+    const finalIdea = renderedIdea
+    setScriptedIdea(finalIdea)
+    setGeneratedIdeas((currentIdeas) => mergeIdeasById(currentIdeas, [finalIdea]))
     setManualAction((currentAction) => ({
-      id: renderedIdea.id,
-      topic: renderedIdea.topic,
-      shotstackUrl: renderedIdea.shotstackUrl || currentAction?.shotstackUrl || '',
+      id: Number(finalIdea.id),
+      topic: finalIdea.topic ?? null,
+      shotstackUrl: finalIdea.shotstackUrl || currentAction?.shotstackUrl || '',
       uploadUrl: currentAction?.uploadUrl || '',
       workflowStatus: currentAction?.workflowStatus || 'render_ready',
-      tiktokStatus: renderedIdea.tiktokStatus || currentAction?.tiktokStatus || '',
-      finalVideoStatus: renderedIdea.finalVideoStatus || currentAction?.finalVideoStatus || '',
-      shotstackStatus: renderedIdea.shotstackStatus || currentAction?.shotstackStatus || '',
-      pipelineStatus: renderedIdea.pipelineStatus || currentAction?.pipelineStatus || '',
-      lastError: renderedIdea.lastError || currentAction?.lastError || null,
+      tiktokStatus: finalIdea.tiktokStatus || currentAction?.tiktokStatus || '',
+      finalVideoStatus: finalIdea.finalVideoStatus || currentAction?.finalVideoStatus || '',
+      shotstackStatus: finalIdea.shotstackStatus || currentAction?.shotstackStatus || '',
+      pipelineStatus: finalIdea.pipelineStatus || currentAction?.pipelineStatus || '',
+      lastError: finalIdea.lastError || currentAction?.lastError || null,
     }))
     await refreshPipelineData()
     markWorkflowFinished({
       runId: workflowRun?.runId,
       workflowType: workflowRun?.workflowType || 'RENDER_TEMPLATE_VIDEO',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       state: 'succeeded',
       message: 'Video prete pour revue et upload.',
     })
     showSuccess('Video prete. Verifie le template avant de passer a l upload.')
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     showError(error, "L'initialisation publish n'a pas abouti.")
   })
 
@@ -190,6 +257,28 @@ export function useRenderStep({
     handleValidateScript,
     handleRetryInitPublish: handleValidateScript,
   }
+}
+
+export interface UseUploadStepOptions {
+  scriptedIdea: ContentIdea | null
+  selectedGeneratedIdea: ContentIdea | null
+  manualAction: ManualActionState | null
+  triggerPublishTikTokWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
+  uploadTikTokMedia: (input: { id: number | string; shotstackUrl: string; uploadUrl: string; force?: boolean }) => Promise<unknown>
+  fetchContentIdeaById: (ideaId: number | string) => Promise<ContentIdea | null>
+  fetchManualActions: () => Promise<ManualAction[]>
+  raceWorkflowRunAndUploadPreparation: (runId: number | string | null | undefined, ideaId: number | string) => Promise<ManualActionState>
+  refreshPipelineData: () => Promise<unknown>
+  setManualAction: SetState<ManualActionState | null>
+  setScriptedIdea: SetState<ContentIdea | null>
+  setGeneratedIdeas: SetState<ContentIdea[]>
+  setUploadResult: (value: unknown) => void
+  showSuccess: ShowSuccess
+  showError: ShowError
+  runAction: RunAction
+  markWorkflowStarted: (input: MarkWorkflowInput) => void
+  markWorkflowFinished: (input: MarkWorkflowInput) => void
+  isUploadCompleted: (idea: ContentIdea | null | undefined) => boolean
 }
 
 export function useUploadStep({
@@ -212,7 +301,7 @@ export function useUploadStep({
   markWorkflowStarted,
   markWorkflowFinished,
   isUploadCompleted,
-}) {
+}: UseUploadStepOptions) {
   const handlePrepareUpload = async () => runAction('prepareUpload', async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
@@ -227,11 +316,11 @@ export function useUploadStep({
     markWorkflowStarted({
       runId: workflowRun?.runId,
       workflowType: workflowRun?.workflowType || 'INIT_PUBLISH_TIKTOK',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       message: 'Preparation de l upload TikTok en cours.',
     })
 
-    const nextManualAction = await raceWorkflowRunAndUploadPreparation(workflowRun?.runId, idea.id)
+    const nextManualAction = await raceWorkflowRunAndUploadPreparation(workflowRun?.runId, Number(idea.id))
 
     setManualAction((currentAction) => ({
       ...currentAction,
@@ -241,12 +330,12 @@ export function useUploadStep({
     markWorkflowFinished({
       runId: workflowRun?.runId,
       workflowType: workflowRun?.workflowType || 'INIT_PUBLISH_TIKTOK',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       state: 'succeeded',
       message: 'Upload URL TikTok disponible.',
     })
     showSuccess('Upload URL disponible. Tu peux lancer l upload.')
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     showError(error, "La preparation de l'upload n'a pas abouti.")
   })
 
@@ -258,7 +347,7 @@ export function useUploadStep({
 
     markWorkflowStarted({
       workflowType: 'TIKTOK_UPLOAD',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       message: 'Upload TikTok en cours.',
     })
 
@@ -272,17 +361,16 @@ export function useUploadStep({
       await refreshPipelineData()
       markWorkflowFinished({
         workflowType: 'TIKTOK_UPLOAD',
-        contentIdeaId: idea.id,
+        contentIdeaId: Number(idea.id),
         state: 'succeeded',
         message: 'Upload TikTok termine.',
       })
       showSuccess('Upload termine. Tu peux passer a la publication finale.')
     } catch (error) {
-      const [ideas, manualActions] = await Promise.all([
-        fetchContentIdeaById(idea.id),
+      const [refreshedIdea, manualActions] = await Promise.all([
+        fetchContentIdeaById(Number(idea.id)),
         fetchManualActions(),
       ])
-      const refreshedIdea = ideas || null
       const refreshedAction = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
 
       if (refreshedIdea && isUploadCompleted(refreshedIdea)) {
@@ -299,7 +387,7 @@ export function useUploadStep({
         await refreshPipelineData()
         markWorkflowFinished({
           workflowType: 'TIKTOK_UPLOAD',
-          contentIdeaId: idea.id,
+          contentIdeaId: Number(idea.id),
           state: 'succeeded',
           message: 'Upload termine cote serveur avant le callback.',
         })
@@ -309,13 +397,13 @@ export function useUploadStep({
 
       markWorkflowFinished({
         workflowType: 'TIKTOK_UPLOAD',
-        contentIdeaId: idea.id,
+        contentIdeaId: Number(idea.id),
         state: 'failed',
-        message: error?.message || "L'upload TikTok n'a pas abouti.",
+        message: (error as Error)?.message || "L'upload TikTok n'a pas abouti.",
       })
       throw error
     }
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     showError(error, "L'upload TikTok n'a pas abouti.")
   })
 
@@ -323,6 +411,19 @@ export function useUploadStep({
     handlePrepareUpload,
     handleUploadVideo,
   }
+}
+
+export interface UsePublishStepOptions {
+  scriptedIdea: ContentIdea | null
+  selectedGeneratedIdea: ContentIdea | null
+  markPublishComplete: (ideaId: number | string) => Promise<unknown>
+  refreshPipelineData: () => Promise<unknown>
+  showSuccess: ShowSuccess
+  showError: ShowError
+  runAction: RunAction
+  markWorkflowStarted: (input: MarkWorkflowInput) => void
+  markWorkflowFinished: (input: MarkWorkflowInput) => void
+  navigate?: ((path: string) => void) | null
 }
 
 export function usePublishStep({
@@ -336,7 +437,7 @@ export function usePublishStep({
   markWorkflowStarted,
   markWorkflowFinished,
   navigate,
-}) {
+}: UsePublishStepOptions) {
   const handlePublishVideo = async () => runAction('publishVideo', async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
@@ -345,14 +446,14 @@ export function usePublishStep({
 
     markWorkflowStarted({
       workflowType: 'FINALIZE_PUBLISH',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       message: 'Finalisation de la publication en cours.',
     })
     await markPublishComplete(idea.id)
     await refreshPipelineData()
     markWorkflowFinished({
       workflowType: 'FINALIZE_PUBLISH',
-      contentIdeaId: idea.id,
+      contentIdeaId: Number(idea.id),
       state: 'succeeded',
       message: 'Publication finale enregistree.',
     })
@@ -360,7 +461,7 @@ export function usePublishStep({
     if (typeof navigate === 'function') {
       navigate(`/tiktok/idea/${idea.id}`)
     }
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     showError(error, "La publication finale n'a pas abouti.")
   })
 

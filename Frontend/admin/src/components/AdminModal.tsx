@@ -1,9 +1,27 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-function getModalRoot() {
+function getModalRoot(): HTMLElement | null {
   if (typeof document === 'undefined') return null
   return document.body
+}
+
+type AdminModalSize = 'sm' | 'md' | 'lg' | 'xl'
+
+interface AdminModalProps {
+  isOpen: boolean
+  onClose?: () => void
+  title?: string
+  kicker?: string
+  description?: string
+  children?: ReactNode
+  footer?: ReactNode
+  size?: AdminModalSize
+  closeOnOverlay?: boolean
+  closeOnEscape?: boolean
+  showCloseButton?: boolean
+  labelledById?: string
+  className?: string
 }
 
 export default function AdminModal({
@@ -20,9 +38,9 @@ export default function AdminModal({
   showCloseButton = true,
   labelledById,
   className = '',
-}) {
-  const modalRef = useRef(null)
-  const lastFocusedElementRef = useRef(null)
+}: AdminModalProps) {
+  const modalRef = useRef<HTMLDivElement | null>(null)
+  const lastFocusedElementRef = useRef<Element | null>(null)
 
   useEffect(() => {
     if (!isOpen || typeof document === 'undefined') return undefined
@@ -47,7 +65,7 @@ export default function AdminModal({
       if (!(modalElement instanceof HTMLElement)) return
 
       const focusableElements = modalElement.querySelectorAll(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
       )
       const firstFocusable = focusableElements[0]
 
@@ -65,7 +83,7 @@ export default function AdminModal({
   useEffect(() => {
     if (!isOpen || !closeOnEscape || typeof window === 'undefined') return undefined
 
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
         onClose?.()
@@ -78,8 +96,8 @@ export default function AdminModal({
       if (!(modalElement instanceof HTMLElement)) return
 
       const focusableElements = Array.from(modalElement.querySelectorAll(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )).filter((element) => element instanceof HTMLElement)
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element): element is HTMLElement => element instanceof HTMLElement)
 
       if (focusableElements.length === 0) {
         event.preventDefault()

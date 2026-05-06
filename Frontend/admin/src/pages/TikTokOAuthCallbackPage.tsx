@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { completeTikTokAuthorization } from '../services/tiktokOAuthApi'
 
+interface TikTokOAuthResponse {
+  message?: string
+  redirectPath?: string
+  displayName?: string
+}
+
 export default function TikTokOAuthCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -21,7 +27,6 @@ export default function TikTokOAuthCallbackPage() {
         return
       }
 
-      // Server-side OAuth completion: backend redirected here with ?tiktokSuccess=1
       const tiktokSuccess = searchParams.get('tiktokSuccess')
       if (tiktokSuccess === '1') {
         if (!isActive) return
@@ -33,7 +38,6 @@ export default function TikTokOAuthCallbackPage() {
         return
       }
 
-      // Legacy client-side flow: code + state passed directly to this page
       const code = searchParams.get('code')
       const state = searchParams.get('state')
 
@@ -44,7 +48,7 @@ export default function TikTokOAuthCallbackPage() {
       }
 
       try {
-        const response = await completeTikTokAuthorization({ code, state })
+        const response = await completeTikTokAuthorization({ code, state }) as TikTokOAuthResponse | null
         if (!isActive) return
 
         setMessage(response?.message || 'Compte TikTok connecte.')
@@ -59,7 +63,7 @@ export default function TikTokOAuthCallbackPage() {
         }), 800)
       } catch (error) {
         if (!isActive) return
-        setErrorMessage(error?.message || 'Impossible de terminer la connexion TikTok.')
+        setErrorMessage((error as Error)?.message || 'Impossible de terminer la connexion TikTok.')
       }
     }
 

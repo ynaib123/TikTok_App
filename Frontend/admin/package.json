@@ -12,8 +12,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,css,md}\"",
     "type-check": "tsc --noEmit",
     "preview": "vite preview",
-    "test": "npm run test:unit && npm run test:vitest",
-    "test:unit": "node scripts/run-node-tests.mjs",
+    "test": "vitest run",
     "test:vitest": "vitest run",
     "test:e2e": "playwright test",
     "prepare": "cd ../.. && husky Frontend/admin/.husky"

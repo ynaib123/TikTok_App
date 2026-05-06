@@ -7,7 +7,50 @@ import '../styles/features/journey.css'
 import '../styles/features/accounts.css'
 import '../styles/features/idea-detail.css'
 
-function pillClassFor(stage) {
+interface IdeaDetail {
+  id?: number
+  topic?: string | null
+  caption?: string | null
+  keyword?: string | null
+  script?: string | null
+  scripts?: string | null
+  category?: string | null
+  targetAccount?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+  duration?: string | number | null
+  format?: string | null
+  renderId?: string | null
+  shotstackUrl?: string | null
+  uploadUrl?: string | null
+  tiktokStatus?: string | null
+  pipelineStatus?: string | null
+  logs?: PipelineLog[]
+  pipelineSteps?: PipelineStep[]
+}
+
+interface PipelineLog {
+  level?: string
+  time?: string
+  tag?: string
+  message?: string
+}
+
+interface PipelineStep {
+  title?: string
+  name?: string
+  detail?: string
+  when?: string
+  status?: string
+}
+
+interface StatusInfo {
+  pipelineStage?: string
+  logs?: PipelineLog[]
+  pipelineSteps?: PipelineStep[]
+}
+
+function pillClassFor(stage: string | null | undefined): string {
   const s = String(stage || '').toUpperCase()
   if (s === 'PUBLISHED' || s === 'UPLOAD_COMPLETED') return 'is-published'
   if (s === 'RENDER_READY' || s === 'PUBLISH_INITIALIZED') return 'is-ready'
@@ -16,12 +59,17 @@ function pillClassFor(stage) {
   return 'is-draft'
 }
 
-function nextStepFor(idea, statusInfo) {
+interface NextStep {
+  stepId: string
+  label: string
+}
+
+function nextStepFor(idea: IdeaDetail | null, statusInfo: StatusInfo | null): NextStep | null {
   const stage = String(statusInfo?.pipelineStage || '').toUpperCase()
   const tiktokStatus = String(idea?.tiktokStatus || '').toLowerCase()
   if (tiktokStatus === 'published') return null
-  if (idea?.uploadUrl && idea?.shotstackUrl) return { stepId: 'upload', label: 'Continuer vers l\'upload' }
-  if (idea?.shotstackUrl) return { stepId: 'upload', label: 'Préparer l\'upload TikTok' }
+  if (idea?.uploadUrl && idea?.shotstackUrl) return { stepId: 'upload', label: "Continuer vers l'upload" }
+  if (idea?.shotstackUrl) return { stepId: 'upload', label: "Préparer l'upload TikTok" }
   if (stage === 'SCRIPT_READY' || idea?.script || idea?.scripts) return { stepId: 'init-publish', label: 'Générer la vidéo' }
   if (stage === 'IDEA_CREATED' || idea?.topic) return { stepId: 'init-publish', label: 'Continuer (générer la vidéo)' }
   return { stepId: 'creation', label: 'Reprendre dans le parcours' }
@@ -32,18 +80,20 @@ const TABS = [
   { id: 'caption',  label: 'Caption' },
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'logs',     label: 'Logs' },
-]
+] as const
+
+type TabId = typeof TABS[number]['id']
 
 export default function IdeaDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const ideaId = Number(id)
   const ideaIdInvalid = !ideaId
-  const [idea, setIdea] = useState(null)
-  const [statusInfo, setStatusInfo] = useState(null)
+  const [idea, setIdea] = useState<IdeaDetail | null>(null)
+  const [statusInfo, setStatusInfo] = useState<StatusInfo | null>(null)
   const [loading, setLoading] = useState(!ideaIdInvalid)
-  const [error, setError] = useState(ideaIdInvalid ? 'Identifiant invalide.' : null)
-  const [tab, setTab] = useState('overview')
+  const [error, setError] = useState<string | null>(ideaIdInvalid ? 'Identifiant invalide.' : null)
+  const [tab, setTab] = useState<TabId>('overview')
 
   useEffect(() => {
     if (ideaIdInvalid) return undefined
@@ -55,8 +105,8 @@ export default function IdeaDetailPage() {
           fetchContentIdeaStatus(ideaId).catch(() => null),
         ])
         if (cancelled) return
-        setIdea(ideaResult)
-        setStatusInfo(statusResult)
+        setIdea(ideaResult as IdeaDetail | null)
+        setStatusInfo(statusResult as StatusInfo | null)
       } catch (caught) {
         if (cancelled) return
         setError(caught instanceof Error ? caught.message : String(caught))
@@ -73,15 +123,14 @@ export default function IdeaDetailPage() {
   const caption = idea?.caption || ''
   const captionLen = caption.length
   const hashtags = (caption.match(/#[\p{L}0-9_]+/gu) || [])
-  const logs = statusInfo?.logs || idea?.logs || []
-  const steps = statusInfo?.pipelineSteps || idea?.pipelineSteps || []
+  const logs: PipelineLog[] = statusInfo?.logs || idea?.logs || []
+  const steps: PipelineStep[] = statusInfo?.pipelineSteps || idea?.pipelineSteps || []
 
   return (
     <div className="admin-page video-ops-page">
       <AdminShell activeNavId="tiktok" feedbackItems={[{ type: 'error', message: error }]}>
         <div className="idea-detail-page">
 
-          {/* Breadcrumb */}
           <nav className="idea-crumb" aria-label="Fil d'ariane">
             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tiktok') }}>Parcours TikTok</a>
             <span className="idea-crumb-sep">/</span>
@@ -90,7 +139,6 @@ export default function IdeaDetailPage() {
             <span>#{ideaId || '—'}</span>
           </nav>
 
-          {/* Header */}
           <header className="idea-head">
             <div className="idea-head-left">
               <span className="idea-id-mono">idea_{ideaId}</span>
@@ -112,16 +160,14 @@ export default function IdeaDetailPage() {
             </div>
           </header>
 
-          {/* Tabs */}
           <nav className="idea-tabs" role="tablist">
-            {TABS.map(t => (
+            {TABS.map((t) => (
               <button key={t.id} role="tab" aria-selected={tab === t.id}
                 className={`idea-tab ${tab === t.id ? 'is-active' : ''}`}
                 onClick={() => setTab(t.id)}>{t.label}</button>
             ))}
           </nav>
 
-          {/* Meta strip */}
           <div className="idea-meta-strip">
             <div className="idea-meta-cell"><div className="idea-meta-label">Durée</div><div className="idea-meta-val">{idea?.duration || '—'}</div></div>
             <div className="idea-meta-cell"><div className="idea-meta-label">Format</div><div className="idea-meta-val">{idea?.format || '9:16 · 1080p'}</div></div>

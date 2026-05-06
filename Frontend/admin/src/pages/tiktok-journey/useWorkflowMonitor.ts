@@ -8,7 +8,31 @@ import {
   mergeIdeasById,
   raceWorkflowRunAndDatabaseUpdate,
   sleep,
-} from './journeyHelpers.js'
+  type WorkflowStatusSnapshot,
+  type WorkflowStatusUpdate,
+} from './journeyHelpers'
+import type { ContentIdea, ContentIdeaStatus, ManualAction, WorkflowRun } from '../../types'
+import type { ManualActionState } from './useTikTokJourneySteps'
+
+export interface UseWorkflowMonitorOptions {
+  fetchContentIdeaById: (ideaId: number | string) => Promise<ContentIdea | null>
+  fetchManualActions: () => Promise<ManualAction[]>
+  fetchContentIdeaStatus: (ideaId: number | string) => Promise<ContentIdeaStatus | null>
+  fetchRecentContentIdeas: () => Promise<ContentIdea[]>
+  fetchWorkflowRun: (runId: number | string) => Promise<WorkflowRun | null>
+}
+
+interface MarkWorkflowStartedInput {
+  runId?: number | string | null
+  workflowType?: string
+  contentIdeaId?: number | null
+  message?: string | null
+}
+
+interface MarkWorkflowFinishedInput extends MarkWorkflowStartedInput {
+  state?: string
+  completedAt?: string | null
+}
 
 export function useWorkflowMonitor({
   fetchContentIdeaById,
@@ -16,8 +40,8 @@ export function useWorkflowMonitor({
   fetchContentIdeaStatus,
   fetchRecentContentIdeas,
   fetchWorkflowRun,
-}) {
-  const [workflowStatus, setWorkflowStatus] = useState(null)
+}: UseWorkflowMonitorOptions) {
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatusSnapshot | null>(null)
 
   useEffect(() => {
     if (!workflowStatus?.state || workflowStatus.state === 'idle') return undefined
@@ -32,7 +56,7 @@ export function useWorkflowMonitor({
     return () => window.clearTimeout(timeoutId)
   }, [workflowStatus])
 
-  const markWorkflowStarted = ({ runId, workflowType, contentIdeaId, message }) => {
+  const markWorkflowStarted = ({ runId, workflowType, contentIdeaId, message }: MarkWorkflowStartedInput) => {
     const now = new Date().toISOString()
     setWorkflowStatus((current) => buildWorkflowStatusUpdate(current, {
       runId,
@@ -44,10 +68,10 @@ export function useWorkflowMonitor({
       completedAt: null,
       durationMs: null,
       lastUpdatedAt: now,
-    }))
+    } as WorkflowStatusUpdate))
   }
 
-  const markWorkflowFinished = ({ runId, workflowType, contentIdeaId, state, message, completedAt }) => {
+  const markWorkflowFinished = ({ runId, workflowType, contentIdeaId, state, message, completedAt }: MarkWorkflowFinishedInput) => {
     const completedTime = completedAt || new Date().toISOString()
     setWorkflowStatus((current) => {
       const nextStartedAt = current?.startedAt || completedTime
@@ -61,15 +85,18 @@ export function useWorkflowMonitor({
         completedAt: completedTime,
         durationMs,
         lastUpdatedAt: completedTime,
-      })
+      } as WorkflowStatusUpdate)
     })
   }
 
-  const waitForWorkflowRunCompletion = async (runId, timeoutMs = 60_000) => {
+  const waitForWorkflowRunCompletion = async (
+    runId: number | string | null | undefined,
+    timeoutMs: number = 60_000,
+  ): Promise<WorkflowRun | null> => {
     if (!runId) return null
 
     const timeoutAt = Date.now() + timeoutMs
-    let lastRun = null
+    let lastRun: WorkflowRun | null = null
 
     while (Date.now() < timeoutAt) {
       const run = await fetchWorkflowRun(runId)
@@ -78,11 +105,11 @@ export function useWorkflowMonitor({
       if (String(run?.status || '').toUpperCase() === 'FAILED') {
         markWorkflowFinished({
           runId,
-          workflowType: run?.workflowType,
-          contentIdeaId: run?.contentIdeaId,
+          workflowType: run?.workflowType ?? undefined,
+          contentIdeaId: run?.contentIdeaId ?? null,
           state: 'failed',
           message: run?.errorMessage || `Le workflow ${run?.workflowType || runId} a echoue.`,
-          completedAt: run?.completedAt,
+          completedAt: run?.completedAt ?? null,
         })
         throw new Error(run?.errorMessage || `Le workflow ${run?.workflowType || runId} a echoue.`)
       }
@@ -90,11 +117,11 @@ export function useWorkflowMonitor({
       if (isWorkflowRunTerminal(run)) {
         markWorkflowFinished({
           runId,
-          workflowType: run?.workflowType,
-          contentIdeaId: run?.contentIdeaId,
+          workflowType: run?.workflowType ?? undefined,
+          contentIdeaId: run?.contentIdeaId ?? null,
           state: 'succeeded',
           message: 'Workflow termine avec succes.',
-          completedAt: run?.completedAt,
+          completedAt: run?.completedAt ?? null,
         })
         return run
       }
@@ -105,9 +132,13 @@ export function useWorkflowMonitor({
     return lastRun
   }
 
-  const waitForContentIdeaStatus = async (contentIdeaId, predicate, timeoutMs = 45_000) => {
+  const waitForContentIdeaStatus = async (
+    contentIdeaId: number | string,
+    predicate: (status: ContentIdeaStatus | null) => boolean,
+    timeoutMs: number = 45_000,
+  ): Promise<ContentIdeaStatus | null> => {
     const timeoutAt = Date.now() + timeoutMs
-    let lastStatus = null
+    let lastStatus: ContentIdeaStatus | null = null
 
     while (Date.now() < timeoutAt) {
       const status = await fetchContentIdeaStatus(contentIdeaId)
@@ -121,9 +152,13 @@ export function useWorkflowMonitor({
     return lastStatus
   }
 
-  const waitForNewIdeas = async (baselineMaxId, expectedCount, requestedCategory) => {
+  const waitForNewIdeas = async (
+    baselineMaxId: number,
+    expectedCount: number,
+    requestedCategory: string | null | undefined,
+  ): Promise<ContentIdea[]> => {
     const timeoutAt = Date.now() + 90_000
-    let bestMatch = []
+    let bestMatch: ContentIdea[] = []
 
     while (Date.now() < timeoutAt) {
       const ideas = await fetchRecentContentIdeas()
@@ -149,7 +184,10 @@ export function useWorkflowMonitor({
     throw new Error("Les nouvelles idees n'ont pas ete trouvees dans content_ideas.")
   }
 
-  const waitForScriptGeneration = async (ideaId, baselineIdea = null) => {
+  const waitForScriptGeneration = async (
+    ideaId: number | string,
+    baselineIdea: ContentIdea | null = null,
+  ): Promise<ContentIdea> => {
     const timeoutAt = Date.now() + 120_000
     const baselineScript = String(baselineIdea?.script || '').trim()
     const baselineCaption = String(baselineIdea?.caption || '').trim()
@@ -177,7 +215,10 @@ export function useWorkflowMonitor({
     throw new Error("La generation du script n'a pas fini dans le temps attendu.")
   }
 
-  const waitForRenderedVideo = async (ideaId, checkRenderStatus = null) => {
+  const waitForRenderedVideo = async (
+    ideaId: number | string,
+    checkRenderStatus: (() => Promise<unknown>) | null = null,
+  ): Promise<ContentIdea> => {
     const timeoutAt = Date.now() + 180_000
 
     while (Date.now() < timeoutAt) {
@@ -206,15 +247,17 @@ export function useWorkflowMonitor({
     throw new Error("La generation de la video n'a pas fini dans le temps attendu.")
   }
 
-  const waitForUploadPreparation = async (ideaId) => {
+  const waitForUploadPreparation = async (ideaId: number | string): Promise<ManualActionState> => {
     const timeoutAt = Date.now() + 90_000
 
     while (Date.now() < timeoutAt) {
       const status = await fetchContentIdeaStatus(ideaId)
       if (status?.uploadUrl) {
         const manualActions = await fetchManualActions()
-        return manualActions.find((item) => Number(item.id) === Number(ideaId)) || {
-          id: ideaId,
+        const found = manualActions.find((item) => Number(item.id) === Number(ideaId))
+        if (found) return found as unknown as ManualActionState
+        return {
+          id: Number(ideaId),
           uploadUrl: status.uploadUrl,
           shotstackUrl: status.shotstackUrl,
           pipelineStatus: String(status.pipelineStage || '').toLowerCase(),
@@ -222,7 +265,7 @@ export function useWorkflowMonitor({
           finalVideoStatus: status.finalVideoStatus,
           shotstackStatus: status.shotstackStatus,
           lastError: status.lastErrorMessage,
-        }
+        } as ManualActionState
       }
       await sleep(1500)
     }
@@ -230,7 +273,10 @@ export function useWorkflowMonitor({
     throw new Error("L'upload URL TikTok n'a pas ete generee.")
   }
 
-  const raceWorkflowRunAndUploadPreparation = async (runId, ideaId) => {
+  const raceWorkflowRunAndUploadPreparation = async (
+    runId: number | string | null | undefined,
+    ideaId: number | string,
+  ): Promise<ManualActionState> => {
     const settled = await raceWorkflowRunAndDatabaseUpdate({
       waitForWorkflowRun: () => waitForWorkflowRunCompletion(runId, 60_000),
       waitForDatabaseUpdate: () => waitForUploadPreparation(ideaId),
@@ -245,7 +291,7 @@ export function useWorkflowMonitor({
       const manualActions = await fetchManualActions()
       const action = manualActions.find((item) => Number(item.id) === Number(ideaId)) || null
       if (action?.uploadUrl) {
-        return action
+        return action as unknown as ManualActionState
       }
     }
 

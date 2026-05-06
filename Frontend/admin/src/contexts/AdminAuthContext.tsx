@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   getAdminRememberPreference,
   loginAdmin,
@@ -10,14 +10,31 @@ import {
   getAdminSession,
   isAdminAccessTokenExpired,
   subscribeAdminSession,
+  type AdminSessionState,
+  type AdminSessionUser,
 } from '../services/adminSessionStore'
 import { isAdminRole } from '../utils/adminRoles'
 
-const AdminAuthContext = createContext()
+interface AdminAuthContextValue {
+  error: string | null
+  isAuthenticated: boolean
+  loading: boolean
+  login: (email: string, motDePasse: string, rememberMe?: boolean) => Promise<string | null>
+  logout: () => Promise<void>
+  role: string | null
+  setError: (message: string | null) => void
+  user: AdminSessionUser | null
+}
 
-export function AdminAuthProvider({ children }) {
-  const [session, setSession] = useState(() => getAdminSession())
-  const [error, setError] = useState(null)
+const AdminAuthContext = createContext<AdminAuthContextValue | undefined>(undefined)
+
+interface AdminAuthProviderProps {
+  children: ReactNode
+}
+
+export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
+  const [session, setSession] = useState<AdminSessionState>(() => getAdminSession())
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -64,20 +81,24 @@ export function AdminAuthProvider({ children }) {
     }
   }, [])
 
-  const login = useCallback(async (email, motDePasse, rememberMe = getAdminRememberPreference()) => {
+  const login = useCallback(async (
+    email: string,
+    motDePasse: string,
+    rememberMe: boolean = getAdminRememberPreference(),
+  ): Promise<string | null> => {
     setError(null)
     try {
       const nextSession = await loginAdmin(email, motDePasse, rememberMe)
       setSession(nextSession)
       return nextSession.role
     } catch (err) {
-      const errorMessage = err.message || 'Erreur de connexion administrateur'
+      const errorMessage = (err as Error)?.message || 'Erreur de connexion administrateur'
       setError(errorMessage)
       return null
     }
   }, [])
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (): Promise<void> => {
     setError(null)
     try {
       await logoutAdminSession()
@@ -86,7 +107,7 @@ export function AdminAuthProvider({ children }) {
     }
   }, [])
 
-  const value = useMemo(() => ({
+  const value = useMemo<AdminAuthContextValue>(() => ({
     error,
     isAuthenticated: Boolean(session.token && session.user && isAdminRole(session.role)),
     loading,
@@ -108,7 +129,7 @@ export function AdminAuthProvider({ children }) {
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>
 }
 
-export function useAdminAuth() {
+export function useAdminAuth(): AdminAuthContextValue {
   const context = useContext(AdminAuthContext)
   if (!context) {
     throw new Error('useAdminAuth must be used within AdminAuthProvider')

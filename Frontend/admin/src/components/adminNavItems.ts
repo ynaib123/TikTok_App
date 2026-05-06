@@ -1,4 +1,11 @@
-export const ADMIN_NAV_ITEMS = [
+export interface AdminNavItem {
+  id: string
+  label: string
+  path: string
+  tone?: string
+}
+
+export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { id: 'dashboard', label: 'Dashboard', path: '/dashboard' },
   { id: 'tiktok', label: 'TikTok', path: '/tiktok' },
   { id: 'accounts', label: 'Accounts', path: '/accounts' },
@@ -6,7 +13,12 @@ export const ADMIN_NAV_ITEMS = [
 
 export const MAX_PRODUCT_IMAGES = 4
 
-export const PRODUCT_SORT_OPTIONS = [
+export interface SelectOption<T = string> {
+  value: T
+  label: string
+}
+
+export const PRODUCT_SORT_OPTIONS: SelectOption[] = [
   { value: 'recent', label: 'Plus recents' },
   { value: 'name_asc', label: 'Nom A-Z' },
   { value: 'name_desc', label: 'Nom Z-A' },
@@ -20,25 +32,25 @@ export const PRODUCT_SORT_OPTIONS = [
   { value: 'status_offline', label: 'Hors ligne' },
 ]
 
-export const PRODUCT_PAGE_SIZE_OPTIONS = [
+export const PRODUCT_PAGE_SIZE_OPTIONS: SelectOption<number>[] = [
   { value: 50, label: '50' },
   { value: 100, label: '100' },
   { value: 200, label: '200' },
 ]
 
-export const PRODUCT_VIEW_MODE_OPTIONS = [
+export const PRODUCT_VIEW_MODE_OPTIONS: SelectOption[] = [
   { value: 'grid', label: 'Grille' },
   { value: 'table', label: 'Tableau' },
 ]
 
-export const PRODUCT_STOCK_FILTER_OPTIONS = [
+export const PRODUCT_STOCK_FILTER_OPTIONS: SelectOption[] = [
   { value: 'all', label: 'Tous les stocks' },
   { value: 'ok', label: 'Stock OK' },
   { value: 'low', label: 'Stock faible' },
   { value: 'out', label: 'Rupture' },
 ]
 
-export const PRODUCT_PUBLISH_STATUS_FILTER_OPTIONS = [
+export const PRODUCT_PUBLISH_STATUS_FILTER_OPTIONS: SelectOption[] = [
   { value: 'all', label: 'Tous les statuts' },
   { value: 'online', label: 'En ligne' },
   { value: 'offline', label: 'Hors ligne' },
@@ -49,7 +61,7 @@ export const PRODUCT_MANAGEMENT_SUBSECTION_IDS = [
   'edit-products',
   'bulk-edit-products',
   'bulk-add-products',
-]
+] as const
 
 export const EMPTY_CATEGORY_FORM = {
   libelle: '',
@@ -62,13 +74,13 @@ export const EMPTY_CATEGORY_MERGE_FORM = {
 export const CATEGORY_SELECTION_STORAGE_KEY = 'admin_category_selection'
 export const CATEGORY_SELECTION_LABELS_STORAGE_KEY = 'admin_category_selection_labels'
 
-export const CATEGORY_SORT_OPTIONS = [
+export const CATEGORY_SORT_OPTIONS: SelectOption[] = [
   { value: 'recent', label: 'Plus recentes' },
   { value: 'name_asc', label: 'Nom A-Z' },
   { value: 'name_desc', label: 'Nom Z-A' },
 ]
 
-export const CATEGORY_PAGE_SIZE_OPTIONS = [
+export const CATEGORY_PAGE_SIZE_OPTIONS: SelectOption<number>[] = [
   { value: 12, label: '12' },
   { value: 24, label: '24' },
   { value: 48, label: '48' },
@@ -76,7 +88,21 @@ export const CATEGORY_PAGE_SIZE_OPTIONS = [
 
 export const PRODUCT_SELECTION_STORAGE_KEY = 'admin_product_selection'
 
-export const EMPTY_PRODUCT_FORM = {
+export interface ProductFormState {
+  nom: string
+  description: string
+  imageUrl: string
+  imageUrlsText: string
+  prixAchat: string
+  prix: string
+  promotionActive: boolean
+  promotionPercent: string
+  stock: string
+  rating: string
+  categorieId: string
+}
+
+export const EMPTY_PRODUCT_FORM: ProductFormState = {
   nom: '',
   description: '',
   imageUrl: '',
@@ -90,14 +116,21 @@ export const EMPTY_PRODUCT_FORM = {
   categorieId: '',
 }
 
-export const EMPTY_PRODUCT_FORM_SNAPSHOT = { ...EMPTY_PRODUCT_FORM }
+export const EMPTY_PRODUCT_FORM_SNAPSHOT: ProductFormState = { ...EMPTY_PRODUCT_FORM }
 export const EMPTY_PRODUCT_FORM_SNAPSHOT_JSON = JSON.stringify(EMPTY_PRODUCT_FORM_SNAPSHOT)
 
-function createDraftId() {
+export interface ProductDraft {
+  id: string
+  form: ProductFormState
+  persistedProductId: number | null
+  selectedPreviewImage: string
+}
+
+function createDraftId(): string {
   return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function createProductDraft() {
+export function createProductDraft(): ProductDraft {
   return {
     id: createDraftId(),
     form: { ...EMPTY_PRODUCT_FORM },
@@ -106,12 +139,16 @@ export function createProductDraft() {
   }
 }
 
-export function isCreateDraftSaved(draft, savedCreateDraftIds = []) {
-  return Boolean(draft?.id) && savedCreateDraftIds.includes(draft.id)
+export function isCreateDraftSaved(draft: { id?: string } | null | undefined, savedCreateDraftIds: string[] = []): boolean {
+  return Boolean(draft?.id) && savedCreateDraftIds.includes(draft!.id!)
 }
 
-export function findFirstPendingCreateDraftId(createDrafts = [], savedCreateDraftIds = []) {
-  const pendingDraft = (Array.isArray(createDrafts) ? createDrafts : []).find((draft) => (
+export function findFirstPendingCreateDraftId(
+  createDrafts: ProductDraft[] = [],
+  savedCreateDraftIds: string[] = [],
+): string | null {
+  const drafts = Array.isArray(createDrafts) ? createDrafts : []
+  const pendingDraft = drafts.find((draft) => (
     draft?.id
     && !draft.persistedProductId
     && !isCreateDraftSaved(draft, savedCreateDraftIds)

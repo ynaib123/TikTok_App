@@ -1,20 +1,32 @@
-import { clearAdminSession, setAdminSession } from './adminSessionStore.js'
-import { clearAdminQueryCache } from './adminQueryCache.js'
-import { clearAdminCsrfTokenCache, fetchAdminCsrfToken } from './adminCsrfService.js'
+import { clearAdminSession, setAdminSession, type AdminSessionState, type AdminSessionUser } from './adminSessionStore'
+import { clearAdminQueryCache } from './adminQueryCache'
+import { clearAdminCsrfTokenCache, fetchAdminCsrfToken } from './adminCsrfService'
 
 const ADMIN_REMEMBER_ME_KEY = 'tiktok_app_admin_remember_me'
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
-const USE_MOCK_ADMIN_AUTH = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH === 'true'
-const MOCK_ADMIN_EMAIL = import.meta.env?.VITE_MOCK_ADMIN_EMAIL || ''
-const MOCK_ADMIN_PASSWORD = import.meta.env?.VITE_MOCK_ADMIN_PASSWORD || ''
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string | undefined) || '/api'
+const USE_MOCK_ADMIN_AUTH = (import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH as string | undefined) === 'true'
+const MOCK_ADMIN_EMAIL = (import.meta.env?.VITE_MOCK_ADMIN_EMAIL as string | undefined) || ''
+const MOCK_ADMIN_PASSWORD = (import.meta.env?.VITE_MOCK_ADMIN_PASSWORD as string | undefined) || ''
 
-let refreshAdminSessionPromise = null
+interface AdminAuthResponse {
+  token?: string
+  expiresInSeconds?: number
+  role?: string
+  admin?: AdminSessionUser | null
+}
 
-function buildUrl(endpoint) {
+interface AdminHttpError extends Error {
+  status?: number
+  data?: unknown
+}
+
+let refreshAdminSessionPromise: Promise<AdminSessionState> | null = null
+
+function buildUrl(endpoint: string): string {
   return `${API_BASE_URL}${endpoint}`
 }
 
-function applyAdminAuthResponse(responseData) {
+function applyAdminAuthResponse(responseData: AdminAuthResponse | null | undefined): AdminSessionState {
   return setAdminSession({
     token: responseData?.token ?? 'local-admin-token',
     expiresInSeconds: responseData?.expiresInSeconds ?? 60 * 60 * 12,
@@ -23,7 +35,7 @@ function applyAdminAuthResponse(responseData) {
   })
 }
 
-function parseJsonSafely(text) {
+function parseJsonSafely(text: string | null | undefined): unknown {
   if (!text) return null
   try {
     return JSON.parse(text)
@@ -32,13 +44,20 @@ function parseJsonSafely(text) {
   }
 }
 
-async function requestWithOptionalCsrf(endpoint, {
+interface RequestOptions {
+  method?: string
+  body?: unknown
+  includeCsrf?: boolean
+  retryOnForbiddenWithFreshCsrf?: boolean
+}
+
+async function requestWithOptionalCsrf(endpoint: string, {
   method = 'GET',
   body = null,
   includeCsrf = false,
   retryOnForbiddenWithFreshCsrf = false,
-} = {}) {
-  const sendRequest = async ({ forceCsrfRefresh = false } = {}) => {
+}: RequestOptions = {}): Promise<unknown> {
+  const sendRequest = async ({ forceCsrfRefresh = false }: { forceCsrfRefresh?: boolean } = {}): Promise<unknown> => {
     const headers = new Headers()
     if (body !== null) {
       headers.set('Content-Type', 'application/json')
@@ -57,14 +76,14 @@ async function requestWithOptionalCsrf(endpoint, {
     })
 
     const responseText = await response.text()
-    const responseData = parseJsonSafely(responseText)
+    const responseData = parseJsonSafely(responseText) as { message?: string; error?: string } | null
 
     if (!response.ok) {
       const error = new Error(
         responseData?.message
         || responseData?.error
-        || `Erreur HTTP ${response.status}`
-      )
+        || `Erreur HTTP ${response.status}`,
+      ) as AdminHttpError
       error.status = response.status
       error.data = responseData
       throw error
@@ -76,10 +95,11 @@ async function requestWithOptionalCsrf(endpoint, {
   try {
     return await sendRequest()
   } catch (error) {
+    const httpError = error as AdminHttpError
     if (
       retryOnForbiddenWithFreshCsrf
       && includeCsrf
-      && error?.status === 403
+      && httpError?.status === 403
     ) {
       clearAdminCsrfTokenCache()
       return sendRequest({ forceCsrfRefresh: true })
@@ -89,7 +109,11 @@ async function requestWithOptionalCsrf(endpoint, {
   }
 }
 
-async function loginAdminWithMock(email, motDePasse, rememberMe = true) {
+async function loginAdminWithMock(
+  email: string,
+  motDePasse: string,
+  rememberMe: boolean = true,
+): Promise<AdminSessionState> {
   if (!MOCK_ADMIN_EMAIL || !MOCK_ADMIN_PASSWORD) {
     throw new Error('Mock admin auth active, mais VITE_MOCK_ADMIN_EMAIL / VITE_MOCK_ADMIN_PASSWORD ne sont pas configures.')
   }
@@ -101,7 +125,7 @@ async function loginAdminWithMock(email, motDePasse, rememberMe = true) {
     throw new Error('Identifiants invalides pour le mode demo local.')
   }
 
-  const responseData = {
+  const responseData: AdminAuthResponse = {
     token: 'local-admin-token',
     expiresInSeconds: 60 * 60 * 12,
     role: 'ADMIN',
@@ -116,7 +140,7 @@ async function loginAdminWithMock(email, motDePasse, rememberMe = true) {
   return applyAdminAuthResponse(responseData)
 }
 
-export function getAdminRememberPreference() {
+export function getAdminRememberPreference(): boolean {
   if (typeof window === 'undefined' || !window.localStorage) return true
   const storedValue = window.localStorage.getItem(ADMIN_REMEMBER_ME_KEY)
   if (storedValue === 'false') return false
@@ -124,12 +148,16 @@ export function getAdminRememberPreference() {
   return true
 }
 
-export function setAdminRememberPreference(rememberMe) {
+export function setAdminRememberPreference(rememberMe: boolean): void {
   if (typeof window === 'undefined' || !window.localStorage) return
   window.localStorage.setItem(ADMIN_REMEMBER_ME_KEY, rememberMe ? 'true' : 'false')
 }
 
-export async function loginAdmin(email, motDePasse, rememberMe = true) {
+export async function loginAdmin(
+  email: string,
+  motDePasse: string,
+  rememberMe: boolean = true,
+): Promise<AdminSessionState> {
   if (USE_MOCK_ADMIN_AUTH) {
     return loginAdminWithMock(email, motDePasse, rememberMe)
   }
@@ -143,12 +171,12 @@ export async function loginAdmin(email, motDePasse, rememberMe = true) {
     body: { email, motDePasse, rememberMe },
     includeCsrf: true,
     retryOnForbiddenWithFreshCsrf: true,
-  })
+  }) as AdminAuthResponse | null
 
   return applyAdminAuthResponse(responseData)
 }
 
-export async function refreshAdminSession() {
+export async function refreshAdminSession(): Promise<AdminSessionState> {
   if (USE_MOCK_ADMIN_AUTH) {
     clearAdminQueryCache()
     clearAdminSession()
@@ -156,20 +184,21 @@ export async function refreshAdminSession() {
   }
 
   if (!refreshAdminSessionPromise) {
-    refreshAdminSessionPromise = (async () => {
+    refreshAdminSessionPromise = (async (): Promise<AdminSessionState> => {
       try {
         clearAdminCsrfTokenCache()
         const responseData = await requestWithOptionalCsrf('/admins/refresh', {
           method: 'POST',
           body: {},
           includeCsrf: true,
-        })
+        }) as AdminAuthResponse | null
         clearAdminQueryCache()
         return applyAdminAuthResponse(responseData)
       } catch (error) {
         clearAdminQueryCache()
         clearAdminSession()
-        if (Number(error?.status) === 401 || Number(error?.status) === 403) {
+        const httpError = error as AdminHttpError
+        if (Number(httpError?.status) === 401 || Number(httpError?.status) === 403) {
           throw new Error('Aucune session admin persistante')
         }
         throw error
@@ -182,7 +211,7 @@ export async function refreshAdminSession() {
   return refreshAdminSessionPromise
 }
 
-export async function logoutAdminSession() {
+export async function logoutAdminSession(): Promise<void> {
   clearAdminQueryCache()
 
   if (USE_MOCK_ADMIN_AUTH) {

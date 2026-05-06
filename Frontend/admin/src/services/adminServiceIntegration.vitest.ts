@@ -1,52 +1,62 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { afterEach, expect, test } from 'vitest'
 import {
   apiGet,
-} from './adminApiClient.js'
+} from './adminApiClient'
 import {
   getAdminRememberPreference,
   loginAdmin,
   logoutAdminSession,
   refreshAdminSession,
-} from './adminAuthService.js'
+} from './adminAuthService'
 import {
   clearAdminSession,
   getAdminAccessToken,
   getAdminSession,
   setAdminSession,
-} from './adminSessionStore.js'
-import { clearAdminQueryCache, setAdminQueryData, getAdminQueryData } from './adminQueryCache.js'
-import { clearAdminCsrfTokenCache } from './adminCsrfService.js'
+} from './adminSessionStore'
+import { clearAdminQueryCache, setAdminQueryData, getAdminQueryData } from './adminQueryCache'
+import { clearAdminCsrfTokenCache } from './adminCsrfService'
 
 const originalFetch = globalThis.fetch
-const originalWindow = globalThis.window
+const originalWindow = (globalThis as unknown as { window?: unknown }).window
 
-function createMockResponse({ ok = true, status = 200, data = null, headers = {} } = {}) {
+interface MockResponseInput {
+  ok?: boolean
+  status?: number
+  data?: unknown
+  headers?: Record<string, string>
+}
+
+function createMockResponse({ ok = true, status = 200, data = null, headers = {} }: MockResponseInput = {}): unknown {
   return {
     ok,
     status,
     headers: {
-      get(name) {
+      get(name: string): string | null {
         return headers[name] ?? headers[String(name).toLowerCase()] ?? null
       },
     },
-    async text() {
+    async text(): Promise<string> {
       if (data === null || data === undefined) return ''
       return typeof data === 'string' ? data : JSON.stringify(data)
     },
   }
 }
 
-function createLocalStorage() {
-  const store = new Map()
+function createLocalStorage(): Storage {
+  const store = new Map<string, string>()
   return {
-    getItem(key) {
-      return store.has(key) ? store.get(key) : null
+    get length() { return store.size },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null
     },
-    setItem(key, value) {
+    getItem(key: string) {
+      return store.has(key) ? store.get(key) ?? null : null
+    },
+    setItem(key: string, value: string) {
       store.set(key, String(value))
     },
-    removeItem(key) {
+    removeItem(key: string) {
       store.delete(key)
     },
     clear() {
@@ -55,42 +65,41 @@ function createLocalStorage() {
   }
 }
 
-function installWindow() {
-  globalThis.window = {
-    localStorage: createLocalStorage(),
-  }
-  return globalThis.window
+function installWindow(): { localStorage: Storage } {
+  const win = { localStorage: createLocalStorage() }
+  ;(globalThis as unknown as { window: typeof win }).window = win
+  return win
 }
 
-function installDocument(cookie = 'XSRF-TOKEN=test-csrf-token') {
+function installDocument(cookie: string = 'XSRF-TOKEN=test-csrf-token'): void {
   Object.defineProperty(globalThis, 'document', {
     configurable: true,
-    value: {
-      cookie,
-    },
+    value: { cookie },
   })
 }
 
-function queueFetchResponses(...responses) {
-  const calls = []
-  globalThis.fetch = async (url, options = {}) => {
+type FetchHandler = unknown | ((url: string, options: RequestInit) => Promise<unknown>)
+
+function queueFetchResponses(...responses: FetchHandler[]): Array<{ url: string; options: RequestInit }> {
+  const calls: Array<{ url: string; options: RequestInit }> = []
+  ;(globalThis as unknown as { fetch: typeof fetch }).fetch = (async (url: string, options: RequestInit = {}) => {
     calls.push({ url, options })
     const next = responses.shift()
     if (typeof next === 'function') {
-      return next(url, options)
+      return (next as (u: string, o: RequestInit) => Promise<unknown>)(url, options)
     }
     return next
-  }
+  }) as unknown as typeof fetch
   return calls
 }
 
-test.afterEach(() => {
+afterEach(() => {
   clearAdminSession()
   clearAdminQueryCache()
   clearAdminCsrfTokenCache()
-  globalThis.fetch = originalFetch
-  globalThis.window = originalWindow
-  delete globalThis.document
+  ;(globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch
+  ;(globalThis as unknown as { window?: unknown }).window = originalWindow
+  delete (globalThis as unknown as { document?: unknown }).document
 })
 
 test('loginAdmin persists remember preference and hydrates admin session', async () => {
@@ -110,26 +119,26 @@ test('loginAdmin persists remember preference and hydrates admin session', async
         role: 'SUPER_ADMIN',
         admin: { email: 'admin@myshop.com' },
       },
-    })
+    }),
   )
 
   setAdminQueryData(['products'], { stale: true })
 
   const session = await loginAdmin('admin@myshop.com', 'secret', false)
 
-  assert.equal(getAdminRememberPreference(), false)
-  assert.equal(session.token, 'login-token')
-  assert.equal(session.role, 'SUPER_ADMIN')
-  assert.deepEqual(getAdminSession().user, { email: 'admin@myshop.com' })
-  assert.equal(getAdminQueryData(['products']), undefined)
+  expect(getAdminRememberPreference()).toBe(false)
+  expect(session.token).toBe('login-token')
+  expect(session.role).toBe('SUPER_ADMIN')
+  expect(getAdminSession().user).toEqual({ email: 'admin@myshop.com' })
+  expect(getAdminQueryData(['products'])).toBeUndefined()
 })
 
 test('loginAdmin uses the freshly issued csrf token instead of a stale cookie token', async () => {
   installWindow()
   installDocument('XSRF-TOKEN=stale-csrf-token')
 
-  const calls = []
-  globalThis.fetch = async (url, options = {}) => {
+  const calls: Array<{ url: string; options: RequestInit }> = []
+  ;(globalThis as unknown as { fetch: typeof fetch }).fetch = (async (url: string, options: RequestInit = {}) => {
     calls.push({ url, options })
 
     if (calls.length === 1) {
@@ -148,7 +157,7 @@ test('loginAdmin uses the freshly issued csrf token instead of a stale cookie to
       })
     }
 
-    assert.equal(options.headers.get('X-XSRF-TOKEN'), 'csrf-body-token')
+    expect((options.headers as Headers).get('X-XSRF-TOKEN')).toBe('csrf-body-token')
     return createMockResponse({
       data: {
         token: 'login-token',
@@ -157,13 +166,13 @@ test('loginAdmin uses the freshly issued csrf token instead of a stale cookie to
         admin: { email: 'admin@myshop.com' },
       },
     })
-  }
+  }) as unknown as typeof fetch
 
   const session = await loginAdmin('admin@myshop.com', 'secret', true)
 
-  assert.equal(calls[0].url, '/api/admins/csrf-token')
-  assert.equal(calls[1].url, '/api/admins/login')
-  assert.equal(session.token, 'login-token')
+  expect(calls[0].url).toBe('/api/admins/csrf-token')
+  expect(calls[1].url).toBe('/api/admins/login')
+  expect(session.token).toBe('login-token')
 })
 
 test('refreshAdminSession deduplicates concurrent refresh requests', async () => {
@@ -182,7 +191,7 @@ test('refreshAdminSession deduplicates concurrent refresh requests', async () =>
         expiresInSeconds: 900,
         admin: { email: 'admin@myshop.com' },
       },
-    })
+    }),
   )
 
   const [first, second] = await Promise.all([
@@ -190,12 +199,12 @@ test('refreshAdminSession deduplicates concurrent refresh requests', async () =>
     refreshAdminSession(),
   ])
 
-  assert.equal(calls.length, 2)
-  assert.equal(first.token, 'refreshed-token')
-  assert.equal(second.token, 'refreshed-token')
-  assert.equal(getAdminAccessToken(), 'refreshed-token')
-  assert.equal(calls[0].url, '/api/admins/csrf-token')
-  assert.equal(calls[1].url, '/api/admins/refresh')
+  expect(calls).toHaveLength(2)
+  expect(first.token).toBe('refreshed-token')
+  expect(second.token).toBe('refreshed-token')
+  expect(getAdminAccessToken()).toBe('refreshed-token')
+  expect(calls[0].url).toBe('/api/admins/csrf-token')
+  expect(calls[1].url).toBe('/api/admins/refresh')
 })
 
 test('apiGet refreshes an expired admin session before requesting protected data', async () => {
@@ -225,17 +234,17 @@ test('apiGet refreshes an expired admin session before requesting protected data
       data: {
         items: [{ id: 1, nom: 'Produit test' }],
       },
-    })
+    }),
   )
 
   const response = await apiGet('/produits')
 
-  assert.equal(calls.length, 3)
-  assert.equal(calls[0].url, '/api/admins/csrf-token')
-  assert.equal(calls[1].url, '/api/admins/refresh')
-  assert.equal(calls[2].url, '/api/produits')
-  assert.equal(calls[2].options.headers.get('Authorization'), 'Bearer fresh-token')
-  assert.deepEqual(response, { items: [{ id: 1, nom: 'Produit test' }] })
+  expect(calls).toHaveLength(3)
+  expect(calls[0].url).toBe('/api/admins/csrf-token')
+  expect(calls[1].url).toBe('/api/admins/refresh')
+  expect(calls[2].url).toBe('/api/produits')
+  expect((calls[2].options.headers as Headers).get('Authorization')).toBe('Bearer fresh-token')
+  expect(response).toEqual({ items: [{ id: 1, nom: 'Produit test' }] })
 })
 
 test('apiGet clears the admin session when a protected request stays unauthorized after refresh', async () => {
@@ -270,15 +279,12 @@ test('apiGet clears the admin session when a protected request stays unauthorize
       ok: false,
       status: 401,
       data: { message: 'Unauthorized again' },
-    })
+    }),
   )
 
-  await assert.rejects(
-    () => apiGet('/produits', { suppressConsoleError: true }),
-    /Unauthorized again/
-  )
+  await expect(apiGet('/produits', { suppressConsoleError: true })).rejects.toThrow(/Unauthorized again/)
 
-  assert.equal(getAdminAccessToken(), null)
+  expect(getAdminAccessToken()).toBeNull()
 })
 
 test('apiGet exposes a friendly error when the admin backend is unreachable', async () => {
@@ -290,22 +296,19 @@ test('apiGet exposes a friendly error when the admin backend is unreachable', as
     role: 'ADMIN',
   })
 
-  globalThis.fetch = async () => {
+  ;(globalThis as unknown as { fetch: typeof fetch }).fetch = (async () => {
     throw new TypeError('fetch failed')
-  }
+  }) as unknown as typeof fetch
 
-  await assert.rejects(
-    () => apiGet('/produits'),
-    /Impossible de contacter le serveur admin/
-  )
+  await expect(apiGet('/produits')).rejects.toThrow(/Impossible de contacter le serveur admin/)
 })
 
 test('logoutAdminSession refreshes the CSRF token and retries once after a forbidden response', async () => {
   installWindow()
   installDocument('XSRF-TOKEN=stale-csrf-token')
 
-  const calls = []
-  globalThis.fetch = async (url, options = {}) => {
+  const calls: Array<{ url: string; options: RequestInit }> = []
+  ;(globalThis as unknown as { fetch: typeof fetch }).fetch = (async (url: string, options: RequestInit = {}) => {
     calls.push({ url, options })
 
     if (calls.length === 1) {
@@ -318,7 +321,7 @@ test('logoutAdminSession refreshes the CSRF token and retries once after a forbi
     }
 
     if (calls.length === 2) {
-      assert.equal(options.headers.get('X-XSRF-TOKEN'), 'csrf-body-token')
+      expect((options.headers as Headers).get('X-XSRF-TOKEN')).toBe('csrf-body-token')
       Object.defineProperty(globalThis, 'document', {
         configurable: true,
         value: {
@@ -341,15 +344,15 @@ test('logoutAdminSession refreshes the CSRF token and retries once after a forbi
       })
     }
 
-    assert.equal(options.headers.get('X-XSRF-TOKEN'), 'csrf-body-token-refreshed')
+    expect((options.headers as Headers).get('X-XSRF-TOKEN')).toBe('csrf-body-token-refreshed')
     return createMockResponse({
       data: { message: 'Déconnecté' },
     })
-  }
+  }) as unknown as typeof fetch
 
   await logoutAdminSession()
 
-  assert.deepEqual(calls.map((call) => call.url), [
+  expect(calls.map((call) => call.url)).toEqual([
     '/api/admins/csrf-token',
     '/api/admins/logout',
     '/api/admins/csrf-token',
