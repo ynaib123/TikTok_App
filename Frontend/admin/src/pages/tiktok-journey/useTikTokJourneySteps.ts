@@ -104,6 +104,12 @@ export function useCreationStep({
       message: 'Generation de l idee + script en cours.',
     })
 
+    // Invalide le cache react-query immediatement pour que le fallback
+    // `displayedGeneratedIdeas` (base sur la query content_ideas) puisse
+    // afficher la nouvelle idee meme si le polling direct ci-dessous
+    // rencontre une erreur transitoire (auth refresh, glitch reseau).
+    void refreshPipelineData()
+
     try {
       const nextIdeas = await waitForNewIdeas(baselineMaxId, requestedCount, requestedCategory)
       const idea = nextIdeas[0]

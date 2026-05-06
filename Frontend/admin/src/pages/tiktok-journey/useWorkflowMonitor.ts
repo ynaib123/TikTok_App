@@ -99,7 +99,14 @@ export function useWorkflowMonitor({
     let lastRun: WorkflowRun | null = null
 
     while (Date.now() < timeoutAt) {
-      const run = await fetchWorkflowRun(runId)
+      let run: WorkflowRun | null = null
+      try {
+        run = await fetchWorkflowRun(runId)
+      } catch {
+        // Erreur transitoire (refresh auth, glitch reseau) : on retry au tick suivant.
+        await sleep(1500)
+        continue
+      }
       lastRun = run
 
       if (String(run?.status || '').toUpperCase() === 'FAILED') {
@@ -141,10 +148,14 @@ export function useWorkflowMonitor({
     let lastStatus: ContentIdeaStatus | null = null
 
     while (Date.now() < timeoutAt) {
-      const status = await fetchContentIdeaStatus(contentIdeaId)
-      lastStatus = status
-      if (predicate(status)) {
-        return status
+      try {
+        const status = await fetchContentIdeaStatus(contentIdeaId)
+        lastStatus = status
+        if (predicate(status)) {
+          return status
+        }
+      } catch {
+        // Erreur transitoire : on garde lastStatus et on retry au tick suivant.
       }
       await sleep(1500)
     }
@@ -159,28 +170,46 @@ export function useWorkflowMonitor({
   ): Promise<ContentIdea[]> => {
     const timeoutAt = Date.now() + 90_000
     let bestMatch: ContentIdea[] = []
+    let lastFetchError: unknown = null
 
     while (Date.now() < timeoutAt) {
-      const ideas = await fetchRecentContentIdeas()
-      const nextIdeas = ideas
-        .filter((idea) => Number(idea.id) > baselineMaxId)
-        .filter((idea) => {
-          const currentCategory = String(idea?.category || '').trim().toLowerCase()
-          const expectedCategory = String(requestedCategory || '').trim().toLowerCase()
-          return !expectedCategory || !currentCategory || currentCategory === expectedCategory
-        })
-        .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
-
-      if (nextIdeas.length) {
-        bestMatch = nextIdeas.slice(0, Math.max(expectedCount, nextIdeas.length))
+      // On capte les erreurs transitoires (refresh auth, glitch reseau) pour
+      // ne pas tuer la boucle a la premiere defaillance — sinon le bouton
+      // "Generer" tombe en erreur alors que l'idee est en train d'etre creee.
+      let ideas: ContentIdea[] | null = null
+      try {
+        ideas = await fetchRecentContentIdeas()
+        lastFetchError = null
+      } catch (error) {
+        lastFetchError = error
       }
-      if (nextIdeas.length >= expectedCount) {
-        return nextIdeas.slice(0, expectedCount)
+
+      if (ideas) {
+        const nextIdeas = ideas
+          .filter((idea) => Number(idea.id) > baselineMaxId)
+          .filter((idea) => {
+            const currentCategory = String(idea?.category || '').trim().toLowerCase()
+            const expectedCategory = String(requestedCategory || '').trim().toLowerCase()
+            return !expectedCategory || !currentCategory || currentCategory === expectedCategory
+          })
+          .sort((left, right) => Number(right?.id || 0) - Number(left?.id || 0))
+
+        if (nextIdeas.length) {
+          bestMatch = nextIdeas.slice(0, Math.max(expectedCount, nextIdeas.length))
+        }
+        if (nextIdeas.length >= expectedCount) {
+          return nextIdeas.slice(0, expectedCount)
+        }
       }
       await sleep(1500)
     }
 
     if (bestMatch.length) return bestMatch.slice(0, expectedCount)
+    if (lastFetchError) {
+      throw new Error(
+        `Polling content_ideas en echec : ${(lastFetchError as Error)?.message || lastFetchError}`,
+      )
+    }
     throw new Error("Les nouvelles idees n'ont pas ete trouvees dans content_ideas.")
   }
 
@@ -194,7 +223,14 @@ export function useWorkflowMonitor({
     const baselineKeyword = String(baselineIdea?.keyword || '').trim()
 
     while (Date.now() < timeoutAt) {
-      const nextIdea = await fetchContentIdeaById(ideaId)
+      let nextIdea: ContentIdea | null = null
+      try {
+        nextIdea = await fetchContentIdeaById(ideaId)
+      } catch {
+        // Erreur transitoire : on retry au tick suivant.
+        await sleep(1500)
+        continue
+      }
       if (!nextIdea) {
         await sleep(1500)
         continue
@@ -222,23 +258,31 @@ export function useWorkflowMonitor({
     const timeoutAt = Date.now() + 180_000
 
     while (Date.now() < timeoutAt) {
-      if (typeof checkRenderStatus === 'function') {
-        await checkRenderStatus()
-      }
+      try {
+        if (typeof checkRenderStatus === 'function') {
+          await checkRenderStatus()
+        }
 
-      const status = await fetchContentIdeaStatus(ideaId)
-      if (String(status?.pipelineStage || '').toUpperCase() === 'FAILED') {
-        throw new Error(status?.lastErrorMessage || "La generation de la video a echoue.")
-      }
+        const status = await fetchContentIdeaStatus(ideaId)
+        if (String(status?.pipelineStage || '').toUpperCase() === 'FAILED') {
+          throw new Error(status?.lastErrorMessage || "La generation de la video a echoue.")
+        }
 
-      const nextIdea = await fetchContentIdeaById(ideaId)
-      if (!nextIdea) {
-        await sleep(4000)
-        continue
-      }
+        const nextIdea = await fetchContentIdeaById(ideaId)
+        if (!nextIdea) {
+          await sleep(4000)
+          continue
+        }
 
-      if (isRenderReady(nextIdea)) {
-        return nextIdea
+        if (isRenderReady(nextIdea)) {
+          return nextIdea
+        }
+      } catch (error) {
+        // Le seul throw qu'on doit reellement remonter : le pipeline FAILED.
+        // Tout autre throw (auth, reseau) est considere transitoire.
+        if (error instanceof Error && /generation de la video a echoue/i.test(error.message)) {
+          throw error
+        }
       }
 
       await sleep(4000)
@@ -251,9 +295,15 @@ export function useWorkflowMonitor({
     const timeoutAt = Date.now() + 90_000
 
     while (Date.now() < timeoutAt) {
-      const status = await fetchContentIdeaStatus(ideaId)
+      let status: ContentIdeaStatus | null = null
+      try {
+        status = await fetchContentIdeaStatus(ideaId)
+      } catch {
+        await sleep(1500)
+        continue
+      }
       if (status?.uploadUrl) {
-        const manualActions = await fetchManualActions()
+        const manualActions = await fetchManualActions().catch(() => [] as ManualAction[])
         const found = manualActions.find((item) => Number(item.id) === Number(ideaId))
         if (found) return found as unknown as ManualActionState
         return {

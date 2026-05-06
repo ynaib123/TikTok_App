@@ -26,7 +26,7 @@ interface TikTokStepScreenProps {
   steps: StepDescriptor[]
   currentStepIndex: number
   currentStep: StepDescriptor
-  goBackInFlow: () => void
+  closeAddFlow: () => void
   goToStep: (id: string) => void
 
   ChevronDownIcon: IconComponent
@@ -641,14 +641,14 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const handleLeaveWithoutSaving = () => {
     setShowLeaveConfirm(false)
-    props.goBackInFlow()
+    props.closeAddFlow()
   }
   const handleSaveAndLeave = () => {
     setShowLeaveConfirm(false)
     // Backend already persists the ContentIdea row at every step (script,
     // render, upload). The "save" here just means: leave the row as-is and
     // come back later via the library. Equivalent to closing the wizard.
-    props.goBackInFlow()
+    props.closeAddFlow()
   }
 
   let body: JSX.Element

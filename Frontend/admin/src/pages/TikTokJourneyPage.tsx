@@ -207,10 +207,10 @@ export default function TikTokJourneyPage() {
   })
 
   const {
+    closeAddFlow,
     displayedGeneratedIdeas,
     errorMessage,
     generationCount,
-    goBackInFlow,
     goToStep,
     isFlowRoute,
     isJourneyReady,
@@ -532,7 +532,7 @@ export default function TikTokJourneyPage() {
               steps={STEPS}
               currentStepIndex={currentStepIndex}
               currentStep={currentStep}
-              goBackInFlow={goBackInFlow}
+              closeAddFlow={closeAddFlow}
               goToStep={goToStep}
               ChevronDownIcon={ChevronDownIcon}
               BackArrow={BackArrow}
