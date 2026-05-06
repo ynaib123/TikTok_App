@@ -20,6 +20,17 @@ const EMPTY_OVERVIEW: AccountsOverview = {
   },
 };
 
+// Politique de recuperation : retry exponentiel + refetch agressif sur erreur
+// pour que la page se reanime en ~5s apres un blip backend (vs jamais sans
+// focus de la fenetre dans la config par defaut react-query).
+const RECOVERY_RETRY = 3;
+const RECOVERY_RETRY_DELAY = (attempt: number) => Math.min(1000 * 2 ** attempt, 10_000);
+const RECOVERY_REFETCH_ON_ERROR_MS = 5_000;
+const RECOVERY_REFETCH_HEALTHY_MS = 30_000;
+function recoveryRefetchInterval<T>(query: { state: { error: Error | null; data: T | undefined } }): number {
+  return query.state.error ? RECOVERY_REFETCH_ON_ERROR_MS : RECOVERY_REFETCH_HEALTHY_MS;
+}
+
 export function useTikTokAccounts() {
   const queryClient = useQueryClient();
   const cachedOverview = queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview);
@@ -28,6 +39,9 @@ export function useTikTokAccounts() {
     queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap,
     queryFn: () => fetchAndPrimeVideoOpsBootstrap(queryClient),
     staleTime: VIDEO_OPS_STALE_TIMES.bootstrap,
+    refetchInterval: recoveryRefetchInterval,
+    retry: RECOVERY_RETRY,
+    retryDelay: RECOVERY_RETRY_DELAY,
     placeholderData: (previousData) => previousData,
   });
 
@@ -37,6 +51,9 @@ export function useTikTokAccounts() {
     enabled: !bootstrapQuery.isPending || Boolean(cachedOverview),
     initialData: () => queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview),
     staleTime: VIDEO_OPS_STALE_TIMES.accountsOverview,
+    refetchInterval: recoveryRefetchInterval,
+    retry: RECOVERY_RETRY,
+    retryDelay: RECOVERY_RETRY_DELAY,
     placeholderData: (previousData) => previousData,
   });
 

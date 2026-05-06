@@ -39,6 +39,11 @@ export function useServiceConnections() {
     queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap,
     queryFn: () => fetchAndPrimeVideoOpsBootstrap(queryClient),
     staleTime: VIDEO_OPS_STALE_TIMES.bootstrap,
+    // Recovery policy : refetch agressif sur erreur (5s) sinon 30s, +
+    // retry exponentiel pour resister aux blips de redemarrage backend.
+    refetchInterval: (query) => (query.state.error ? 5_000 : 30_000),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
     placeholderData: (previousData) => previousData,
   });
 
@@ -48,6 +53,9 @@ export function useServiceConnections() {
     enabled: !bootstrapQuery.isPending || Boolean(cachedOverview),
     initialData: () => queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview),
     staleTime: VIDEO_OPS_STALE_TIMES.accountsOverview,
+    refetchInterval: (query) => (query.state.error ? 5_000 : 30_000),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
     placeholderData: (previousData) => previousData,
   });
 
