@@ -86,6 +86,7 @@ export function useTikTokAccountsController() {
     connect,
     disconnect,
     error: accountsError,
+    isLoading: isLoadingAccounts,
   } = useTikTokAccounts()
 
   const {
@@ -94,6 +95,7 @@ export function useTikTokAccountsController() {
     save,
     validate,
     remove,
+    isLoading: isLoadingServices,
   } = useServiceConnections()
 
   const {
@@ -389,6 +391,7 @@ export function useTikTokAccountsController() {
     countsByCategory,
     stats,
     availableProviders,
+    isBootstrapping: isLoadingAccounts || isLoadingServices,
     // Filters/UI state
     viewMode,
     setViewMode,

@@ -26,15 +26,18 @@ public class FailedCallbackRetryWorker {
     private final FailedCallbackRepository repository;
     private final FailedCallbackQueue queue;
     private final VideoOpsMetrics metrics;
+    private final CallbackReplayService replayService;
 
     public FailedCallbackRetryWorker(
             FailedCallbackRepository repository,
             FailedCallbackQueue queue,
-            VideoOpsMetrics metrics
+            VideoOpsMetrics metrics,
+            CallbackReplayService replayService
     ) {
         this.repository = repository;
         this.queue = queue;
         this.metrics = metrics;
+        this.replayService = replayService;
     }
 
     @Scheduled(fixedDelayString = "${app.video-ops.failed-callback-retry-interval-ms:120000}")
@@ -54,12 +57,21 @@ public class FailedCallbackRetryWorker {
                     continue;
                 }
 
-                // Without a transactional callback re-entry hook we can't truly replay
-                // the original handler here without coupling. The MVP records the next
-                // attempt timestamp and surfaces visibility; a follow-up wires the
-                // actual handler invocation.
-                queue.scheduleNextRetry(failed, failed.getErrorMessage());
-                logger.info("dead_letter retry_scheduled runId={} attempt={}", failed.getRunId(), failed.getAttemptCount());
+                CallbackReplayService.ReplayOutcome outcome = replayService.replay(failed);
+                if (outcome.succeeded()) {
+                    queue.markResolved(failed, "replayed");
+                    logger.info("dead_letter replay_success runId={} attempt={}",
+                            failed.getRunId(), failed.getAttemptCount());
+                } else if (!outcome.retryable()) {
+                    queue.markResolved(failed, "unrecoverable");
+                    metrics.incrementCallbackFailure(failed.getWorkflowType());
+                    logger.error("dead_letter replay_unrecoverable runId={} reason={}",
+                            failed.getRunId(), outcome.message());
+                } else {
+                    queue.scheduleNextRetry(failed, outcome.message());
+                    logger.info("dead_letter retry_scheduled runId={} attempt={}",
+                            failed.getRunId(), failed.getAttemptCount());
+                }
             } catch (Exception exception) {
                 logger.warn("dead_letter retry_loop error id={}", failed.getId(), exception);
             }

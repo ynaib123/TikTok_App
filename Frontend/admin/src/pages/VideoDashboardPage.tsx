@@ -1,21 +1,26 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import AdminShell from '../components/AdminShell'
 import { StatTile } from '../components/accounts/AccountsPresenters'
 import { useVideoDashboard } from '../hooks/useVideoDashboard'
+import { markAdminRouteReady } from '../services/adminPerformance'
+import { Button, Pill, Spinner } from '../design-system'
 import type { ServiceHealthStatus } from '../types'
 import '../styles/features/journey.css'
 import '../styles/features/accounts.css'
 import '../styles/features/video-dashboard.css'
 
-function pillClassFor(status: string | null | undefined): string {
-  if (!status) return 'is-draft'
+type PillTone = 'neutral' | 'success' | 'warning' | 'error' | 'info'
+
+function pillToneFor(status: string | null | undefined): PillTone {
+  if (!status) return 'neutral'
   const value = String(status).toUpperCase()
-  if (value === 'UP') return 'is-published'
-  if (value === 'DEGRADED' || value === 'WARNING') return 'is-rendering'
-  if (value === 'DOWN' || value === 'FAILED') return 'is-error'
-  if (value === 'DISABLED') return 'is-draft'
-  return 'is-ready'
+  if (value === 'UP' || value === 'SUCCEEDED') return 'success'
+  if (value === 'DEGRADED' || value === 'WARNING') return 'warning'
+  if (value === 'DOWN' || value === 'FAILED') return 'error'
+  if (value === 'DISABLED') return 'neutral'
+  return 'info'
 }
 
 interface HealthPillProps {
@@ -26,10 +31,12 @@ interface HealthPillProps {
 
 function HealthPill({ label, status, detail }: HealthPillProps) {
   return (
-    <div className={`journey-status-pill ${pillClassFor(status)}`} title={detail || ''}>
-      <strong>{label}</strong>
-      <span className="video-dashboard-pill-status">{status || '—'}</span>
-    </div>
+    <span title={detail || ''}>
+      <Pill tone={pillToneFor(status)}>
+        <strong>{label}</strong>
+        <span className="video-dashboard-pill-status">{status || '—'}</span>
+      </Pill>
+    </span>
   )
 }
 
@@ -49,7 +56,22 @@ export default function VideoDashboardPage() {
     stuck: stuckRuns,
   }
 
-  const feedbackItems = error ? [{ type: 'error' as const, message: error }] : []
+  // Empty-vs-error : si on a une erreur ET aucune donnee chargee, on affiche
+  // un etat indispo explicite plutot que "0 partout" qui ressemble a un etat normal.
+  // Le proxy Vite injecte deja "Backend indisponible..." dans son message 503 ;
+  // on n'ajoute pas de prefix supplementaire pour eviter le doublon.
+  const feedbackItems = error
+    ? [{ type: 'error' as const, message: error }]
+    : []
+
+  useEffect(() => {
+    if (isLoading) return
+    markAdminRouteReady('/dashboard', {
+      hasError: Boolean(error),
+      recentRuns: recentRuns.length,
+      failedRuns: failedRuns.length,
+    })
+  }, [error, failedRuns.length, isLoading, recentRuns.length])
 
   return (
     <div className="admin-page video-ops-page">
@@ -61,23 +83,19 @@ export default function VideoDashboardPage() {
               <p>Vue d&apos;ensemble du pipeline TikTok et de la santé des services.</p>
             </div>
             <div className="journey-page-head-actions">
-              <button
-                type="button"
-                className="journey-btn is-primary"
-                onClick={() => navigate('/tiktok')}
-              >
+              <Button variant="primary" onClick={() => navigate('/tiktok')}>
                 Lancer un parcours
-              </button>
-              <button
-                type="button"
-                className="journey-btn is-ghost"
+              </Button>
+              <Button
+                variant="ghost"
+                loading={isFetching}
                 onClick={() => {
                   void refresh()
                 }}
-                disabled={isFetching}
+                leadingIcon={isFetching ? <Spinner size={12} label="Rafraîchissement" /> : null}
               >
-                {isFetching ? 'Refresh…' : 'Refresh'}
-              </button>
+                Refresh
+              </Button>
             </div>
           </header>
 
@@ -158,9 +176,7 @@ export default function VideoDashboardPage() {
                       <span className="video-dashboard-run-id">
                         #{r.id} {r.workflowType}
                       </span>
-                      <span className={`journey-status-pill ${pillClassFor(String(r.status))}`}>
-                        {r.status}
-                      </span>
+                      <Pill tone={pillToneFor(String(r.status))}>{r.status}</Pill>
                     </div>
                   ))
                 )}

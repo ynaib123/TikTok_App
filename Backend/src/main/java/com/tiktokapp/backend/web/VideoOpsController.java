@@ -15,19 +15,12 @@ import com.tiktokapp.backend.dto.videoops.ServiceConnectionResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokAccountContextResponse;
-import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeRequest;
-import com.tiktokapp.backend.dto.videoops.TikTokOAuthAuthorizeResponse;
-import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackRequest;
-import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackResponse;
 import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextRequest;
 import com.tiktokapp.backend.dto.videoops.TikTokInitPublishContextResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaResponse;
 import com.tiktokapp.backend.dto.videoops.VideoContentIdeaStatusResponse;
-import com.tiktokapp.backend.dto.videoops.VideoDashboardResponse;
-import com.tiktokapp.backend.dto.videoops.VideoOpsHealthResponse;
-import com.tiktokapp.backend.service.videoops.VideoOpsHealthService;
+import com.tiktokapp.backend.dto.videoops.VideoOpsBootstrapResponse;
 import com.tiktokapp.backend.dto.videoops.VideoManualActionResponse;
-import com.tiktokapp.backend.dto.videoops.VideoObservabilityResponse;
 import com.tiktokapp.backend.dto.videoops.VideoUploadRequest;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowActionResponse;
 import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
@@ -38,11 +31,11 @@ import com.tiktokapp.backend.dto.videoops.ContentIdeaCreateRequest;
 import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.VideoOpsDataService;
-import com.tiktokapp.backend.service.videoops.TikTokOAuthService;
 import com.tiktokapp.backend.service.videoops.TikTokInternalAccountContextService;
 import com.tiktokapp.backend.service.videoops.TikTokInitPublishContextService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalProxyService;
 import com.tiktokapp.backend.service.videoops.VideoOpsInternalAuthService;
+import com.tiktokapp.backend.service.videoops.FailedCallbackQueue;
 import com.tiktokapp.backend.config.WorkflowContract;
 import com.tiktokapp.backend.service.AuditService;
 import org.slf4j.Logger;
@@ -84,57 +77,42 @@ public class VideoOpsController {
     private final VideoOpsService videoOpsService;
     private final VideoOpsDataService videoOpsDataService;
     private final AccountsService accountsService;
-    private final TikTokOAuthService tikTokOAuthService;
     private final TikTokInternalAccountContextService tikTokInternalAccountContextService;
     private final TikTokInitPublishContextService tikTokInitPublishContextService;
     private final VideoOpsInternalProxyService videoOpsInternalProxyService;
     private final VideoOpsInternalAuthService internalAuthService;
     private final SlackAlertService slackAlertService;
     private final BatchPublishService batchPublishService;
-    private final VideoOpsHealthService videoOpsHealthService;
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
+    private final FailedCallbackQueue failedCallbackQueue;
 
     public VideoOpsController(
             VideoOpsService videoOpsService,
             VideoOpsDataService videoOpsDataService,
             AccountsService accountsService,
-            TikTokOAuthService tikTokOAuthService,
             TikTokInternalAccountContextService tikTokInternalAccountContextService,
             TikTokInitPublishContextService tikTokInitPublishContextService,
             VideoOpsInternalProxyService videoOpsInternalProxyService,
             VideoOpsInternalAuthService internalAuthService,
             SlackAlertService slackAlertService,
             BatchPublishService batchPublishService,
-            VideoOpsHealthService videoOpsHealthService,
             ObjectMapper objectMapper,
-            AuditService auditService
+            AuditService auditService,
+            FailedCallbackQueue failedCallbackQueue
     ) {
         this.videoOpsService = videoOpsService;
         this.videoOpsDataService = videoOpsDataService;
         this.accountsService = accountsService;
-        this.tikTokOAuthService = tikTokOAuthService;
         this.tikTokInternalAccountContextService = tikTokInternalAccountContextService;
         this.tikTokInitPublishContextService = tikTokInitPublishContextService;
         this.videoOpsInternalProxyService = videoOpsInternalProxyService;
         this.internalAuthService = internalAuthService;
         this.slackAlertService = slackAlertService;
         this.batchPublishService = batchPublishService;
-        this.videoOpsHealthService = videoOpsHealthService;
         this.objectMapper = objectMapper;
         this.auditService = auditService;
-    }
-
-    @GetMapping("/health")
-    public ResponseEntity<VideoOpsHealthResponse> getVideoOpsHealth() {
-        VideoOpsHealthResponse health = videoOpsHealthService.buildHealth();
-        HttpStatus status = "DOWN".equals(health.status()) ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.OK;
-        return ResponseEntity.status(status).body(health);
-    }
-
-    @GetMapping("/dashboard")
-    public ResponseEntity<VideoDashboardResponse> getDashboard() {
-        return ResponseEntity.ok(videoOpsService.fetchDashboard());
+        this.failedCallbackQueue = failedCallbackQueue;
     }
 
     @GetMapping("/content-ideas")
@@ -156,11 +134,6 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.fetchManualActions());
     }
 
-    @GetMapping("/observability")
-    public ResponseEntity<VideoObservabilityResponse> getObservability() {
-        return ResponseEntity.ok(videoOpsService.fetchObservability());
-    }
-
     @GetMapping("/tiktok-accounts")
     public ResponseEntity<List<TikTokAccountResponse>> getTikTokAccounts() {
         return ResponseEntity.ok(videoOpsService.fetchTikTokAccounts());
@@ -174,6 +147,28 @@ public class VideoOpsController {
     @GetMapping("/accounts/readiness")
     public ResponseEntity<AccountsReadinessResponse> getAccountsReadiness() {
         return ResponseEntity.ok(accountsService.fetchReadiness());
+    }
+
+    @GetMapping("/bootstrap")
+    public ResponseEntity<VideoOpsBootstrapResponse> getBootstrap(
+            @PageableDefault(page = 0, size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        long startedAt = System.nanoTime();
+        AccountsOverviewResponse accountsOverview = accountsService.fetchOverview();
+        AccountsReadinessResponse accountsReadiness = accountsOverview.getReadiness() != null
+                ? accountsOverview.getReadiness()
+                : accountsService.fetchReadiness();
+
+        VideoOpsBootstrapResponse response = new VideoOpsBootstrapResponse(
+                accountsOverview,
+                accountsReadiness,
+                videoOpsService.fetchContentIdeas(pageable),
+                videoOpsService.fetchManualActions()
+        );
+        long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+        return ResponseEntity.ok()
+                .header("Server-Timing", "videoops-bootstrap;dur=" + durationMs)
+                .body(response);
     }
 
     @PutMapping("/accounts/services/{providerKey}")
@@ -240,27 +235,6 @@ public class VideoOpsController {
             @PathVariable long runId
     ) {
         return ResponseEntity.ok(videoOpsService.fetchWorkflowRun(runId));
-    }
-
-    @PostMapping("/tiktok-oauth/authorize")
-    public ResponseEntity<TikTokOAuthAuthorizeResponse> createTikTokAuthorizationUrl(
-            @RequestBody(required = false) TikTokOAuthAuthorizeRequest request,
-            Authentication authentication
-    ) {
-        String redirectPath = request == null ? null : request.getRedirectPath();
-        return ResponseEntity.ok(tikTokOAuthService.createAuthorizationUrl(authentication.getName(), redirectPath));
-    }
-
-    @PostMapping("/tiktok-oauth/callback")
-    public ResponseEntity<TikTokOAuthCallbackResponse> completeTikTokAuthorization(
-            @Valid @RequestBody TikTokOAuthCallbackRequest request,
-            Authentication authentication
-    ) {
-        return ResponseEntity.ok(tikTokOAuthService.completeAuthorization(
-                authentication.getName(),
-                request.getCode(),
-                request.getState()
-        ));
     }
 
     @PostMapping("/internal/alerts/notify")
@@ -497,7 +471,22 @@ public class VideoOpsController {
         logger.info("Workflow callback received runId={} contractVersion={}", runId,
                 (contractVersion == null || contractVersion.isBlank()) ? "<missing>" : contractVersion);
         VideoWorkflowRunCompletionRequest request = parseWorkflowCompletionRequest(rawBody);
-        return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
+        try {
+            return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
+        } catch (ResponseStatusException ex) {
+            // Client-style failures (validation, 4xx) are not transient — surface as-is.
+            throw ex;
+        } catch (Exception ex) {
+            String canonicalPayload;
+            try {
+                canonicalPayload = objectMapper.writeValueAsString(request);
+            } catch (Exception serialisationFailure) {
+                canonicalPayload = rawBody;
+            }
+            failedCallbackQueue.enqueue(runId, null, canonicalPayload, ex.getMessage());
+            logger.warn("Workflow callback runId={} enqueued for replay after error={}", runId, ex.getMessage());
+            throw ex;
+        }
     }
 
     private VideoWorkflowRunCompletionRequest parseWorkflowCompletionRequest(String rawBody) {

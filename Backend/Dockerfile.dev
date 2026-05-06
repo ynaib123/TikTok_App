@@ -6,9 +6,24 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends inotify-tools \
   && rm -rf /var/lib/apt/lists/*
 
+# Step 1 : warm up dependency cache. Cached as long as pom.xml does not change.
 COPY pom.xml pom.xml
 RUN mvn -q -DskipTests dependency:go-offline
 
+# Step 2 : pre-compile sources once at image build time so target/classes
+# is ready when the container boots. The bind-mount on /app overlays this at
+# runtime, but the named volume on /app/target/classes (declared in
+# docker-compose) preserves the pre-warmed classes — saving ~60-90s of cold
+# Maven compile on the first run.
+# Note : pas de '-o' ici car certains plugin descriptors (compiler, resources)
+# ne sont pas tous tires par dependency:go-offline et necessitent un acces
+# reseau pour la 1re compilation. Le runtime utilise '-o' une fois le cache plein.
+COPY src src
+RUN mvn -q -DskipTests compile
+
 EXPOSE 8080 8081
 
-CMD ["/bin/sh", "-lc", "mvn -q -DskipTests spring-boot:run & APP_PID=$!; while inotifywait -r -e modify,create,delete,move src pom.xml; do kill $APP_PID; wait $APP_PID || true; mvn -q -DskipTests spring-boot:run & APP_PID=$!; done"]
+# Runtime : the watcher recompiles incrementally on src changes; Spring Boot
+# DevTools picks up the new classes and reloads the context (~10s vs ~140s
+# full restart).
+CMD ["/bin/sh", "-lc", "(while true; do inotifywait -qq -r -e modify,create,delete,move src pom.xml 2>/dev/null && mvn -q -o -DskipTests compile; done) & exec mvn -q -o -DskipTests spring-boot:run -Dspring-boot.run.fork=false"]

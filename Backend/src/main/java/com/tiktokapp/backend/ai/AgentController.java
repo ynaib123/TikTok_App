@@ -3,7 +3,10 @@ package com.tiktokapp.backend.ai;
 import com.tiktokapp.backend.ai.dto.AgentRunRequest;
 import com.tiktokapp.backend.ai.dto.AgentRunResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,10 +23,16 @@ public class AgentController {
 
     private final AgentRegistry registry;
     private final AgentOrchestrator orchestrator;
+    private final boolean agentsEnabled;
 
-    public AgentController(AgentRegistry registry, AgentOrchestrator orchestrator) {
+    public AgentController(
+            AgentRegistry registry,
+            AgentOrchestrator orchestrator,
+            @Value("${app.ai.agents.enabled:false}") boolean agentsEnabled
+    ) {
         this.registry = registry;
         this.orchestrator = orchestrator;
+        this.agentsEnabled = agentsEnabled;
     }
 
     @GetMapping
@@ -37,7 +46,10 @@ public class AgentController {
             @Valid @RequestBody AgentRunRequest request,
             Authentication authentication
     ) {
-        // honour both path and body — body wins if mismatched
+        if (!agentsEnabled) {
+            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,
+                    "Agents IA non actives : definir app.ai.agents.enabled=true et configurer ANTHROPIC_API_KEY.");
+        }
         AgentRunRequest resolved = request.agentId() == null
                 ? new AgentRunRequest(agentId, request.input())
                 : request;

@@ -1,4 +1,5 @@
 import { useQueries, useQueryClient } from '@tanstack/react-query';
+import type { Query } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import {
@@ -11,14 +12,19 @@ import type {
   VideoOpsHealth,
   VideoOpsObservability,
 } from '../types';
+import { VIDEO_OPS_QUERY_KEYS, VIDEO_OPS_STALE_TIMES } from '../services/videoOpsQueries';
+import { pollIntervalForCollection } from './useAdaptivePolling';
 
 const REFRESH_INTERVAL_MS = 30_000;
 
-export const VIDEO_DASHBOARD_QUERY_KEYS = {
-  health: ['video-dashboard', 'health'] as const,
-  observability: ['video-dashboard', 'observability'] as const,
-  dashboard: ['video-dashboard', 'dashboard'] as const,
-};
+const ACTIVE_DASHBOARD_INTERVAL_MS = 5_000;
+
+function adaptiveDashboardInterval(observability: VideoOpsObservability | undefined): number {
+  if (!observability) return REFRESH_INTERVAL_MS;
+  const runs = observability.recentRuns ?? [];
+  const hasActiveRun = runs.some((r) => r.status !== 'SUCCEEDED' && r.status !== 'FAILED');
+  return hasActiveRun ? ACTIVE_DASHBOARD_INTERVAL_MS : REFRESH_INTERVAL_MS;
+}
 
 export interface UseVideoDashboardResult {
   health: VideoOpsHealth | null;
@@ -42,19 +48,32 @@ export function useVideoDashboard(): UseVideoDashboardResult {
   const results = useQueries({
     queries: [
       {
-        queryKey: VIDEO_DASHBOARD_QUERY_KEYS.health,
+        queryKey: VIDEO_OPS_QUERY_KEYS.health,
         queryFn: fetchVideoOpsHealth as () => Promise<VideoOpsHealth>,
         refetchInterval: REFRESH_INTERVAL_MS,
+        staleTime: VIDEO_OPS_STALE_TIMES.health,
+        placeholderData: (previousData: VideoOpsHealth | undefined) => previousData,
       },
       {
-        queryKey: VIDEO_DASHBOARD_QUERY_KEYS.observability,
+        queryKey: VIDEO_OPS_QUERY_KEYS.observability,
         queryFn: fetchVideoOpsObservability as () => Promise<VideoOpsObservability>,
-        refetchInterval: REFRESH_INTERVAL_MS,
+        refetchInterval: (query: Query<VideoOpsObservability>) =>
+          adaptiveDashboardInterval(query.state.data),
+        staleTime: VIDEO_OPS_STALE_TIMES.observability,
+        placeholderData: (previousData: VideoOpsObservability | undefined) => previousData,
       },
       {
-        queryKey: VIDEO_DASHBOARD_QUERY_KEYS.dashboard,
+        queryKey: VIDEO_OPS_QUERY_KEYS.dashboard,
         queryFn: fetchDashboardData as () => Promise<VideoOpsDashboard>,
-        refetchInterval: REFRESH_INTERVAL_MS,
+        refetchInterval: (query: Query<VideoOpsDashboard>) => {
+          const data = query.state.data;
+          const obs: VideoOpsObservability | undefined = data
+            ? { recentRuns: data.recentRuns ?? [] }
+            : undefined;
+          return adaptiveDashboardInterval(obs);
+        },
+        staleTime: VIDEO_OPS_STALE_TIMES.dashboard,
+        placeholderData: (previousData: VideoOpsDashboard | undefined) => previousData,
       },
     ],
   });
@@ -63,9 +82,9 @@ export function useVideoDashboard(): UseVideoDashboardResult {
 
   const refresh = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: VIDEO_DASHBOARD_QUERY_KEYS.health }),
-      queryClient.invalidateQueries({ queryKey: VIDEO_DASHBOARD_QUERY_KEYS.observability }),
-      queryClient.invalidateQueries({ queryKey: VIDEO_DASHBOARD_QUERY_KEYS.dashboard }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.health }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.observability }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.dashboard }),
     ]);
   }, [queryClient]);
 

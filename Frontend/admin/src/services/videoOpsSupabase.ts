@@ -16,6 +16,7 @@ import type {
   WorkflowRun,
   WorkflowTriggerPayload,
   WorkflowTriggerResponse,
+  VideoOpsBootstrapResponse,
 } from '../types'
 
 const USE_MOCK = import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH === 'true'
@@ -186,16 +187,45 @@ export async function fetchContentIdeaStatus(
   return apiGet(`/video-ops/content-ideas/${contentIdeaId}/status`)
 }
 
+function normalizeAccountsReadiness(raw: unknown): AccountsReadiness {
+  const r = asRecord(raw)
+  return {
+    ready: Boolean(r.ready),
+    connectedTikTokAccounts: Number(r.connectedTikTokAccounts ?? 0),
+    missingItems: Array.isArray(r.missingItems) ? (r.missingItems as string[]) : [],
+  }
+}
+
+function normalizeAccountsOverview(raw: unknown): AccountsOverview {
+  const r = asRecord(raw)
+  return {
+    tiktokAccounts: Array.isArray(r.tiktokAccounts) ? (r.tiktokAccounts as TikTokAccount[]) : [],
+    serviceConnections: Array.isArray(r.serviceConnections) ? (r.serviceConnections as ServiceConnection[]) : [],
+    readiness: normalizeAccountsReadiness(r.readiness),
+  }
+}
+
 export async function fetchTikTokAccounts(): Promise<TikTokAccount[]> {
-  return apiGet('/video-ops/tiktok-accounts')
+  const response = await apiGet('/video-ops/tiktok-accounts')
+  return Array.isArray(response) ? (response as TikTokAccount[]) : []
 }
 
 export async function fetchAccountsOverview(): Promise<AccountsOverview> {
-  return apiGet('/video-ops/accounts')
+  return normalizeAccountsOverview(await apiGet('/video-ops/accounts'))
 }
 
 export async function fetchAccountsReadiness(): Promise<AccountsReadiness> {
-  return apiGet('/video-ops/accounts/readiness')
+  return normalizeAccountsReadiness(await apiGet('/video-ops/accounts/readiness'))
+}
+
+export async function fetchVideoOpsBootstrap(): Promise<VideoOpsBootstrapResponse> {
+  const raw = asRecord(await apiGet('/video-ops/bootstrap'))
+  return {
+    accountsOverview: normalizeAccountsOverview(raw.accountsOverview),
+    accountsReadiness: normalizeAccountsReadiness(raw.accountsReadiness),
+    contentIdeas: normalizeContentIdeasPage(raw.contentIdeas),
+    manualActions: Array.isArray(raw.manualActions) ? (raw.manualActions as ManualAction[]) : [],
+  }
 }
 
 export async function saveServiceConnection(

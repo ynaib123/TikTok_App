@@ -5,6 +5,7 @@ import {
 } from './adminSessionStore.js'
 import { refreshAdminSession } from './adminAuthService.js'
 import { attachAdminCsrfHeader, clearAdminCsrfTokenCache } from './adminCsrfService.js'
+import { beginAdminPerf, endAdminPerf } from './adminPerformance'
 
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
 const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 5000
@@ -88,6 +89,10 @@ async function performFetch(endpoint, options = {}, requestOptions = {}) {
 
   const accessToken = skipAuth ? null : getAdminAccessToken()
   const headers = await createHeaders(options, accessToken)
+  const perfToken = beginAdminPerf('admin-api-request', {
+    endpoint,
+    method: String(options.method || 'GET').toUpperCase(),
+  })
   const response = await fetch(buildAdminApiUrl(endpoint), {
     ...options,
     credentials: 'include',
@@ -95,9 +100,22 @@ async function performFetch(endpoint, options = {}, requestOptions = {}) {
   })
 
   const parsed = await parseResponse(response)
+  endAdminPerf(perfToken, {
+    endpoint,
+    method: String(options.method || 'GET').toUpperCase(),
+    status: parsed.status,
+    traceId: parsed.traceId,
+    serverTiming: response.headers.get('Server-Timing'),
+  })
 
   if (!parsed.ok && !suppressConsoleError) {
-    console.error('Admin API Error:', createHttpError(parsed))
+    // Backend en cours de demarrage (proxy 503) ou bad gateway (502) :
+    // un warn suffit, c'est un etat transitoire connu, pas un vrai bug app.
+    if (parsed.status === 503 || parsed.status === 502) {
+      console.warn('Admin API transient unavailability:', parsed.status, endpoint)
+    } else {
+      console.error('Admin API Error:', createHttpError(parsed))
+    }
   }
 
   return parsed

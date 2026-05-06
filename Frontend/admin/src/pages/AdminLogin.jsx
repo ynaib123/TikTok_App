@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import AdminFeedbackBanner from '../components/AdminFeedbackBanner'
 import AdminRouteFallback from '../components/AdminRouteFallback'
 import { getAdminRememberPreference } from '../services/adminAuthService'
+import { prefetchAdminEssentials } from '../services/adminPrefetch'
+import { rememberAdminLoginFlowStart, resetAdminRouteReady } from '../services/adminPerformance'
 import '../styles/features/auth.css'
 import '../styles/themes/shell-openai.css'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const ADMIN_LOGIN_FALLBACK_MIN_DURATION_MS = 5000
+const ADMIN_LOGIN_FALLBACK_MIN_DURATION_MS = 400
 const ADMIN_LOGOUT_FALLBACK_STORAGE_KEY = 'admin-logout-fallback-until'
 
 function resolveMinimumDurationProgress({
@@ -32,6 +35,7 @@ function resolveMinimumDurationProgress({
 
 export default function AdminLogin() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { isAuthenticated, loading, login, error, role, setError } = useAdminAuth()
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
@@ -135,12 +139,15 @@ export default function AdminLogin() {
     setLoginStartedAt(startedAt)
     setIsLoading(true)
     setLoginProgressValue(34)
+    rememberAdminLoginFlowStart()
+    resetAdminRouteReady()
 
     try {
       const nextRole = await login(email.trim(), motDePasse, rememberMe)
       setIsLoading(false)
 
       if (nextRole === 'ADMIN') {
+        void prefetchAdminEssentials(queryClient)
         setLoginProgressValue(100)
         const elapsed = Date.now() - startedAt
         const remaining = Math.max(0, ADMIN_LOGIN_FALLBACK_MIN_DURATION_MS - elapsed)

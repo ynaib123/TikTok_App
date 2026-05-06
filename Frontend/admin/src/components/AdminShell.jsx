@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
-import { ADMIN_NAV_ITEMS } from '../pages/admin-dashboard/constants'
+import { ADMIN_NAV_ITEMS } from './adminNavItems'
 import AdminFeedbackBanner from './AdminFeedbackBanner'
 import AdminRouteFallback from './AdminRouteFallback'
+import { prefetchAdminRoute } from '../services/adminPrefetch'
 import '../styles/layout/shell.css'
 import '../styles/themes/shell-openai.css'
 
 const ADMIN_SIDEBAR_COLLAPSED_STORAGE_KEY = 'admin-sidebar-collapsed'
-const PREFETCH_ROUTE_HANDLERS = {
-  '/dashboard': () => import('../pages/VideoDashboardPage'),
-  '/tiktok': () => import('../pages/TikTokJourneyPage'),
-  '/accounts': () => import('../pages/TikTokAccountsPage'),
-}
-const ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS = 5000
+const ADMIN_BLOCKING_FALLBACK_MIN_DURATION_MS = 400
 const ADMIN_LOGOUT_FALLBACK_STORAGE_KEY = 'admin-logout-fallback-until'
 
 /**
@@ -143,6 +140,7 @@ export default function AdminShell({
   onBeforeLogout,
 }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const location = useLocation()
   const { logout, user } = useAdminAuth()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -277,9 +275,7 @@ export default function AdminShell({
   }
 
   const handlePrefetch = (path) => {
-    const prefetch = PREFETCH_ROUTE_HANDLERS[path]
-    if (!prefetch) return
-    void prefetch()
+    void prefetchAdminRoute(path, queryClient)
   }
 
   const handleLogout = async () => {

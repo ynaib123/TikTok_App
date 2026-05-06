@@ -101,17 +101,13 @@ public class AgentOrchestrator {
     }
 
     /**
-     * Hook for concrete agent execution. Default impl returns a stub
-     * "agent not yet wired" payload. Concrete subclass or replacement bean
-     * should call Claude API tool-use loop using the registered tools.
+     * Hook for concrete agent execution. Default impl throws so the run
+     * persists as FAILED rather than returning a misleading 200 stub.
+     * Override or replace this bean to wire a real Claude API tool-use loop.
      */
     protected JsonNode runAgentLoop(AgentDefinition definition, JsonNode input, AgentExecutionContext context) {
-        var stub = objectMapper.createObjectNode();
-        stub.put("agentId", definition.agentId());
-        stub.put("status", "not_implemented");
-        stub.put("message", "Concrete LLM tool-use loop not wired in this skeleton. See PHASE3_AI_FEATURES.md.");
-        stub.put("toolsAvailable", definition.allowedToolNames().size());
-        return stub;
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,
+                "AgentOrchestrator.runAgentLoop n'est pas branche : configure ANTHROPIC_API_KEY et fournis une implementation concrete.");
     }
 
     private String serialize(Object obj) {

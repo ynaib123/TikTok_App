@@ -2,6 +2,7 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.tiktokapp.backend.dto.videoops.ServiceConnectionRequest;
 import com.tiktokapp.backend.repository.ServiceConnectionRepository;
+import com.tiktokapp.backend.service.AuditService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,9 @@ class AccountsServiceTest {
     @Mock
     private ServiceConnectionGatewayService gatewayService;
 
+    @Mock
+    private AuditService auditService;
+
     private AccountsService accountsService;
 
     @BeforeEach
@@ -42,7 +46,8 @@ class AccountsServiceTest {
                 cryptoService,
                 videoOpsService,
                 gatewayService,
-                new ServiceQuotaProbe()
+                new ServiceQuotaProbe(),
+                auditService
         );
     }
 

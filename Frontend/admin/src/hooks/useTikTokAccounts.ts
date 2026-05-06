@@ -4,6 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { disconnectTikTokAccount, fetchAccountsOverview } from '../services/videoOpsSupabase.js';
 import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi.js';
 import type { AccountsOverview, TikTokAccount } from '../types';
+import {
+  fetchAndPrimeVideoOpsBootstrap,
+  VIDEO_OPS_QUERY_KEYS,
+  VIDEO_OPS_STALE_TIMES,
+} from '../services/videoOpsQueries';
 
 const EMPTY_OVERVIEW: AccountsOverview = {
   tiktokAccounts: [],
@@ -17,18 +22,31 @@ const EMPTY_OVERVIEW: AccountsOverview = {
 
 export function useTikTokAccounts() {
   const queryClient = useQueryClient();
+  const cachedOverview = queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview);
+
+  const bootstrapQuery = useQuery({
+    queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap,
+    queryFn: () => fetchAndPrimeVideoOpsBootstrap(queryClient),
+    staleTime: VIDEO_OPS_STALE_TIMES.bootstrap,
+    placeholderData: (previousData) => previousData,
+  });
 
   const overviewQuery = useQuery<AccountsOverview>({
-    queryKey: ['accounts-overview'],
+    queryKey: VIDEO_OPS_QUERY_KEYS.accountsOverview,
     queryFn: fetchAccountsOverview,
+    enabled: !bootstrapQuery.isPending || Boolean(cachedOverview),
+    initialData: () => queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview),
+    staleTime: VIDEO_OPS_STALE_TIMES.accountsOverview,
+    placeholderData: (previousData) => previousData,
   });
 
   const refresh = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['accounts-overview'] }),
-      queryClient.invalidateQueries({ queryKey: ['accounts-readiness'] }),
-      queryClient.invalidateQueries({ queryKey: ['tiktok-accounts'] }),
-      queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.accountsOverview }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.accountsReadiness }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.tiktokAccounts }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas }),
     ]);
   }, [queryClient]);
 

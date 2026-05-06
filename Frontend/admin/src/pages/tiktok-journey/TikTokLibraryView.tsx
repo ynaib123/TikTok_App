@@ -5,7 +5,7 @@
 import { useMemo, useState, type JSX } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import AdminToolbarMenuButton from '../admin-dashboard/AdminToolbarMenuButton'
+import AdminToolbarMenuButton from '../../components/AdminToolbarMenuButton'
 import VideoCard from '../../components/video-card/VideoCard'
 import type { ContentIdea } from '../../types'
 import { SelectionProvider, useSelection } from '../../contexts/SelectionContext'
@@ -13,6 +13,7 @@ import BulkDeleteSelectionBar from '../../components/bulk-delete/BulkDeleteSelec
 import BulkDeleteConfirmModal from '../../components/bulk-delete/BulkDeleteConfirmModal'
 import { useToasts } from '../../contexts/ToastContext'
 import { deleteContentIdea } from '../../services/videoOpsSupabase'
+import { VIDEO_OPS_QUERY_KEYS } from '../../services/videoOpsQueries'
 import '../../components/bulk-delete/bulk-delete.css'
 
 type Option = { value: string; label: string }
@@ -129,9 +130,11 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
     setIsDeleting(false)
     setConfirmDeleteOpen(false)
     selection.clear()
-    queryClient.invalidateQueries({ queryKey: ['content-ideas'] })
+    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap })
+    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas })
+    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.manualActions })
     queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
-    queryClient.invalidateQueries({ queryKey: ['video-ops-observability'] })
+    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.observability })
     if (failures === 0) {
       toasts.push(`${successes} vidéo${successes > 1 ? 's' : ''} supprimée${successes > 1 ? 's' : ''}`, { variant: 'success' })
     } else if (successes === 0) {

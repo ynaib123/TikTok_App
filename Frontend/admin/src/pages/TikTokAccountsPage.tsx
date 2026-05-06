@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import AdminShell from '../components/AdminShell'
 import { AccountsHeader } from '../components/accounts/AccountsHeader'
 import { AccountsToolbar } from '../components/accounts/AccountsToolbar'
@@ -6,6 +7,7 @@ import { AccountsStatsSection } from '../components/accounts/AccountsStatsSectio
 import { AccountsList } from '../components/accounts/AccountsList'
 import { AccountsServiceModal } from '../components/accounts/AccountsServiceModal'
 import { useTikTokAccountsController } from './useTikTokAccountsController'
+import { markAdminRouteReady } from '../services/adminPerformance'
 import '../styles/features/journey.css'
 import '../styles/features/tiktok-step.css'
 import '../styles/features/accounts.css'
@@ -13,6 +15,15 @@ import '../styles/features/accounts-modal.css'
 
 export default function TikTokAccountsPage() {
   const c = useTikTokAccountsController()
+
+  useEffect(() => {
+    if (c.isBootstrapping) return
+    markAdminRouteReady('/accounts', {
+      hasError: Boolean(c.accountsError || c.errorMessage),
+      rows: c.rows.length,
+      filteredRows: c.filteredRows.length,
+    })
+  }, [c.accountsError, c.errorMessage, c.filteredRows.length, c.isBootstrapping, c.rows.length])
 
   return (
     <div className="admin-page video-ops-page accounts-page-v2">
@@ -53,6 +64,7 @@ export default function TikTokAccountsPage() {
           <AccountsList
             rows={c.filteredRows}
             viewMode={c.viewMode}
+            loadFailed={Boolean(c.accountsError) && c.rows.length === 0}
             hasPendingAction={c.hasPendingAction}
             onDisconnectTikTok={(id) => void c.handleDisconnectTikTok(id)}
             onValidateService={(provider, connectionId) =>

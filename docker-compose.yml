@@ -65,6 +65,10 @@ services:
     volumes:
       - ./Backend:/app
       - maven_cache:/root/.m2
+      # target/ en volume nomme pour preserver les classes pre-compilees
+      # de l'image (sinon le bind-mount ./Backend les masque). Le Dockerfile
+      # warm-up populate ce volume au build, evitant un cold compile au boot.
+      - backend_target:/app/target
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
@@ -134,3 +138,4 @@ volumes:
   n8n_data:
   maven_cache:
   admin_node_modules:
+  backend_target:

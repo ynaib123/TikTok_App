@@ -22,8 +22,8 @@ Pas de push.
 | 1.4 | Resilience4j | ✅ | @CircuitBreaker/@Retry sur N8nWorkflowGateway + ServiceQuotaProbe |
 | 1.5 | OpenAPI / Swagger | ✅ | OpenApiConfig + springdoc dep + sécurité paths permitAll |
 | 1.6 | Refresh tokens persistés | ✅ | V4 migration + AdminRefreshTokenEntity/Repository + JPA-backed store + cleanup @Scheduled |
-| 1.7 | Tests Testcontainers | 🟡 | IntegrationTestBase + AuditServiceIntegrationTest. Reste à étendre aux autres services |
-| 1.8 | Audit log | 🟡 | V5 migration + AuditEvent + AuditEventRepository + AuditService + hook delete idea. Reste à hook login/logout/save service |
+| 1.7 | Tests Testcontainers | 🟡 | IntegrationTestBase + AuditServiceIntegrationTest + CriticalControllerPathsIntegrationTest (login fail/refresh/logout, accounts upsert/disconnect, callback rejection). 41 tests verts |
+| 1.8 | Audit log | ✅ | V5 + AuditEvent/Repository/Service + hooks: login (succès/échec), refresh, logout, service_connection saved/deleted, tiktok_account disconnected, content_idea deleted |
 | 1.9 | TS strict + a11y + Prettier + Husky | 🟡 | Prettier + Husky + lint-staged + eslint-plugin-jsx-a11y + eslint-config-prettier wired. Migration .js→.ts NON faite (60+ fichiers, hors scope nuit) |
 | 1.10 | CI GitHub Actions | ✅ | Trivy scan ajouté au workflow existant + dependabot.yml. Branch protection à activer manuellement côté GitHub |
 
@@ -35,12 +35,12 @@ Pas de push.
 | 2.2 | Splitter Controller | ❌ | Skipped (idem) |
 | 2.3 | Sub-workflows n8n | ❌ | Hors scope nuit (effort 10h, JSON manuel) |
 | 2.4 | Idempotency-key bout-en-bout | ✅ | Déjà plumbé via VideoWorkflowRun.idempotencyKey + n8n payload |
-| 2.5 | Dead-letter queue | ✅ | V6 migration + FailedCallback entity + FailedCallbackQueue + RetryWorker @Scheduled. Wiring du replay actuel = stub (next-step) |
-| 2.6 | Décomposer pages | ❌ | Skipped (16h, recommandé en daylight avec UI testing) |
-| 2.7 | Design system primitives | 🟡 | Button + Modal + Pill + Spinner + index. Storybook skipped |
+| 2.5 | Dead-letter queue | ✅ | V6 + FailedCallback + Queue + RetryWorker. Replay réel via CallbackReplayService (réinvoque completeWorkflowRun). Enqueue branché dans VideoOpsController sur exception transitoire |
+| 2.6 | Décomposer pages | 🟡 | VideoOpsController split en 3 (VideoOps + Observability + TikTokOAuth). Pages frontend non décomposées (TikTokJourneyPage 582L à voir) |
+| 2.7 | Design system primitives | ✅ | Button + Modal + Pill + Spinner + index. Adoptés dans VideoDashboardPage et AccountsHeader |
 | 2.8 | i18next | ❌ | Hors scope nuit |
 | 2.9 | react-query partout | ❌ | Skipped (refacto large) |
-| 2.10 | Polling intelligent | ✅ | useAdaptivePolling.ts (helper pollIntervalForStage). Wiring dans les useQuery existants à faire au réveil |
+| 2.10 | Polling intelligent | ✅ | useAdaptivePolling.ts + pollIntervalForCollection. Wiré dans useTikTokWorkflow.contentIdeasQuery + useVideoDashboard.observability/dashboard |
 | 2.11 | Docker compose dev | ✅ | docker-compose.dev.yml (postgres + n8n + backend + admin) |
 | 2.12 | Profiles Spring | ✅ | application-dev/staging/prod.yml |
 
@@ -48,7 +48,7 @@ Pas de push.
 
 | ID | Livrable | Statut | Notes |
 |----|----------|--------|-------|
-| 3.1 | Infrastructure AI agents | 🟡 | V7 migration + AgentRun entity + AgentRegistry + AgentToolRegistry + AgentOrchestrator (skeleton, runAgentLoop returns stub) + AgentController + AgentDefinition + AgentTool interface + BootstrapAgents (ping stub). LLM tool-use loop NON implémenté (nécessite ANTHROPIC_API_KEY user-managed) |
+| 3.1 | Infrastructure AI agents | 🟡 | V7 + scaffolding complet. Stub honnête : `app.ai.agents.enabled=false` par défaut → endpoint POST /run renvoie 501 explicite. runAgentLoop throw 501 (avant retournait un faux 200). À brancher : Anthropic SDK + ANTHROPIC_API_KEY |
 | 3.2-3.13 | Agents + features | ❌ | Hors scope nuit |
 
 ---
@@ -88,6 +88,19 @@ Pas de push.
 
 ## Limites connues
 
-- `FailedCallbackRetryWorker.retryDue()` enregistre les retry mais ne replay pas encore le handler original — c'est un MVP visibility-only. À étendre quand 2.1 (split VideoOpsService) sera fait pour avoir un point d'entrée propre.
 - Pas de PR ni push : tout reste sur la branche `wip/auto-phases` localement.
 - Pas de visual testing — toutes les vérifs sont compile/lint/type-check.
+- AgentOrchestrator.runAgentLoop : maintenant throw 501 (au lieu d'un faux 200). Endpoint gated par `app.ai.agents.enabled=false`. Brancher Anthropic SDK pour activer.
+
+## Session 2026-05-05 — solidification
+
+- ✅ Adaptive polling effectivement wiré (Phase 2.10 réelle)
+- ✅ Design system adopté (Phase 2.7 réelle)
+- ✅ Audit hooks complets (Phase 1.8 réelle)
+- ✅ DLQ replay réel (Phase 2.5 fini)
+- ✅ Split VideoOpsController (extrait observability + OAuth)
+- ✅ Tests contrôleurs critiques : 41 tests verts (vs 13 avant)
+- ✅ ApiExceptionHandler renforcé : OptimisticLocking → 409, IllegalArgument → 400 (avant : 500 silencieux)
+- ✅ AgentOrchestrator stub honnête : 501 explicite + feature flag
+- Backend `mvn test` : BUILD SUCCESS
+- Frontend `tsc --noEmit` : 0 erreur

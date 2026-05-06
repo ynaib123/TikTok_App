@@ -12,7 +12,7 @@
  * also in this drop-in folder.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, type Location } from 'react-router-dom'
 
 import AdminShell from '../components/AdminShell'
@@ -32,6 +32,7 @@ import {
   markPublishComplete,
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
+import { markAdminRouteReady } from '../services/adminPerformance'
 import TikTokLibraryView from './tiktok-journey/TikTokLibraryView'
 import TikTokStepScreen from './tiktok-journey/TikTokStepScreen'
 import { useActionState } from './tiktok-journey/useActionState'
@@ -232,6 +233,22 @@ export default function TikTokJourneyPage() {
     successMessage,
     uploadResult,
   } = flowState
+
+  useEffect(() => {
+    if (isLoading) return
+    markAdminRouteReady('/tiktok', {
+      hasError: Boolean(contentIdeasErrorMessage),
+      ideas: contentIdeas.length,
+      hasConnectedTikTokAccount,
+      isFlowRoute,
+    })
+  }, [
+    contentIdeas.length,
+    contentIdeasErrorMessage,
+    hasConnectedTikTokAccount,
+    isFlowRoute,
+    isLoading,
+  ])
 
   const listState = useTikTokJourneyListState({
     contentIdeas,

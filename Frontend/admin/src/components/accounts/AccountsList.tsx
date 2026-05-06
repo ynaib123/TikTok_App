@@ -23,6 +23,8 @@ export type AccountsActionStatus = 'saving' | 'disconnecting' | 'activating' | '
 export interface AccountsListProps {
   rows: AccountsListRow[]
   viewMode: 'cards' | 'table'
+  /** Si vrai, l'etat vide affiche un message d'indisponibilite plutot que "aucun compte ne correspond". */
+  loadFailed?: boolean
   hasPendingAction: (key: string | null | undefined, status: AccountsActionStatus) => boolean
   onDisconnectTikTok: (accountId: number) => void
   onValidateService: (provider: ServiceProvider, connectionId: number | string) => void
@@ -37,16 +39,20 @@ function rateRemainingPercent(rateUsage: AccountsListRow['rateUsage']): number {
 export function AccountsList({
   rows,
   viewMode,
+  loadFailed = false,
   hasPendingAction,
   onDisconnectTikTok,
   onValidateService,
   onLoadServiceProfile,
 }: AccountsListProps) {
+  const emptyMessage = loadFailed
+    ? 'Donnees indisponibles. Le backend est en train de revenir, recharge la page dans quelques secondes.'
+    : 'Aucun compte ne correspond aux filtres.'
   if (viewMode === 'cards') {
     return (
       <section className="accounts-cards-grid">
         {rows.length === 0 ? (
-          <div className="accounts-empty">Aucun compte ne correspond aux filtres.</div>
+          <div className="accounts-empty">{emptyMessage}</div>
         ) : (
           rows.map((row) => {
             const expiry = formatExpiry(row.expiresAt)
@@ -174,7 +180,7 @@ export function AccountsList({
           {rows.length === 0 ? (
             <tr>
               <td colSpan={7} className="accounts-empty">
-                Aucun compte ne correspond aux filtres.
+                {emptyMessage}
               </td>
             </tr>
           ) : (

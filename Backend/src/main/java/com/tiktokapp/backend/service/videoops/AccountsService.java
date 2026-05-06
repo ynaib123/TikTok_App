@@ -12,6 +12,7 @@ import com.tiktokapp.backend.model.ServiceConnectionProvider;
 import com.tiktokapp.backend.model.ServiceConnectionStatus;
 import com.tiktokapp.backend.model.ServiceConnectionValidationStatus;
 import com.tiktokapp.backend.repository.ServiceConnectionRepository;
+import com.tiktokapp.backend.service.AuditService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -23,8 +24,10 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -38,6 +41,7 @@ public class AccountsService {
     private final VideoOpsService videoOpsService;
     private final ServiceConnectionGatewayService gatewayService;
     private final ServiceQuotaProbe quotaProbe;
+    private final AuditService auditService;
 
     public AccountsService(
             ServiceConnectionRepository serviceConnectionRepository,
@@ -45,7 +49,8 @@ public class AccountsService {
             VideoOpsCryptoService cryptoService,
             VideoOpsService videoOpsService,
             ServiceConnectionGatewayService gatewayService,
-            ServiceQuotaProbe quotaProbe
+            ServiceQuotaProbe quotaProbe,
+            AuditService auditService
     ) {
         this.serviceConnectionRepository = serviceConnectionRepository;
         this.contentIdeaGateway = contentIdeaGateway;
@@ -53,6 +58,7 @@ public class AccountsService {
         this.videoOpsService = videoOpsService;
         this.gatewayService = gatewayService;
         this.quotaProbe = quotaProbe;
+        this.auditService = auditService;
     }
 
     public AccountsOverviewResponse fetchOverview() {
@@ -116,6 +122,12 @@ public class AccountsService {
         connection.setLastValidationMessage(trimToNull(validationResult.message()));
         serviceConnectionRepository.save(connection);
         deactivateOtherConnections(provider, connection.getId());
+        Map<String, Object> auditPayload = new HashMap<>();
+        auditPayload.put("provider", provider.name());
+        auditPayload.put("connectionId", connection.getId());
+        auditPayload.put("validationStatus", String.valueOf(validationResult.status()));
+        auditPayload.put("displayName", connection.getDisplayName());
+        auditService.log("service_connection.saved", "service_connection", String.valueOf(connection.getId()), auditPayload);
         return toResponse(connection);
     }
 
@@ -193,11 +205,17 @@ public class AccountsService {
         }
 
         serviceConnectionRepository.delete(connection);
+        Map<String, Object> auditPayload = new HashMap<>();
+        auditPayload.put("provider", provider.name());
+        auditPayload.put("connectionId", connectionId);
+        auditPayload.put("displayName", connection.getDisplayName());
+        auditService.log("service_connection.deleted", "service_connection", String.valueOf(connectionId), auditPayload);
     }
 
     @Transactional
     public void disconnectTikTokAccount(long accountId) {
         contentIdeaGateway.deleteTikTokAccount(accountId);
+        auditService.log("tiktok_account.disconnected", "tiktok_account", String.valueOf(accountId), Map.of("accountId", accountId));
     }
 
     private AccountsReadinessResponse buildReadiness(
@@ -289,8 +307,14 @@ public class AccountsService {
         try {
             return videoOpsService.fetchTikTokAccounts();
         } catch (ResponseStatusException exception) {
-            logger.warn("accounts overview could not fetch TikTok accounts and will fall back to an empty list", exception);
-            return List.of();
+            // Ne PLUS retourner une liste vide silencieusement : ca trompe le frontend
+            // et fait apparaitre "aucun compte connecte" alors que c'est une defaillance
+            // transitoire (blip DB / restart DevTools / etc.). On propage l'erreur en
+            // 503 pour que react-query la cache comme une erreur et garde son cache
+            // precedent, plutot que d'ecraser des donnees valides par du vide.
+            logger.warn("accounts overview failed to fetch TikTok accounts, surfacing 503 instead of empty fallback", exception);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Lecture des comptes TikTok indisponible temporairement.", exception);
         }
     }
 
