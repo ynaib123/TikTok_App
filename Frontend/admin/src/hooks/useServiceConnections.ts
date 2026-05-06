@@ -7,7 +7,7 @@ import {
   fetchAccountsOverview,
   saveServiceConnection,
   validateServiceConnection,
-} from '../services/videoOpsSupabase.js';
+} from '../services/videoOpsSupabase';
 import { SERVICE_CONNECTION_FIELDS } from '../types/services';
 import type {
   AccountsOverview,

@@ -6,7 +6,7 @@ import {
   fetchDashboardData,
   fetchVideoOpsHealth,
   fetchVideoOpsObservability,
-} from '../services/videoOpsSupabase.js';
+} from '../services/videoOpsSupabase';
 import type {
   VideoOpsDashboard,
   VideoOpsHealth,

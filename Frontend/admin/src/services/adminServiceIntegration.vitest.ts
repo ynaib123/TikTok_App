@@ -243,7 +243,10 @@ test('apiGet refreshes an expired admin session before requesting protected data
   expect(calls[0].url).toBe('/api/admins/csrf-token')
   expect(calls[1].url).toBe('/api/admins/refresh')
   expect(calls[2].url).toBe('/api/produits')
-  expect((calls[2].options.headers as Headers).get('Authorization')).toBe('Bearer fresh-token')
+  // Sprint securite : plus d'Authorization Bearer cote client. L'access token
+  // transite par cookie HttpOnly + credentials: 'include'.
+  expect((calls[2].options.headers as Headers).get('Authorization')).toBeNull()
+  expect(calls[2].options.credentials).toBe('include')
   expect(response).toEqual({ items: [{ id: 1, nom: 'Produit test' }] })
 })
 

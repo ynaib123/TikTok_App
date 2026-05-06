@@ -91,12 +91,21 @@ function persistSession(): void {
   localStorageArea?.removeItem(ADMIN_SESSION_STORAGE_KEY)
   sessionStorageArea?.removeItem(ADMIN_SESSION_STORAGE_KEY)
 
-  if (!sessionState.token) return
+  if (!sessionState.token && !sessionState.expiresAt) return
 
   const storage = resolveStorage()
   if (!storage) return
 
-  storage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(sessionState))
+  // Sprint securite : on ne persiste JAMAIS le token en storage cote JS.
+  // Le token transite uniquement via cookie HttpOnly. Le storage retient juste
+  // l'expiry et l'identite pour piloter le refresh + l'affichage UI.
+  const persistable: AdminSessionState = {
+    token: null,
+    expiresAt: sessionState.expiresAt,
+    role: sessionState.role,
+    user: sessionState.user,
+  }
+  storage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(persistable))
 }
 
 function emitChange(): void {
@@ -150,7 +159,9 @@ export function clearAdminSession(): void {
 }
 
 export function isAdminAccessTokenExpired(bufferMs: number = 0): boolean {
-  if (!sessionState.token || !sessionState.expiresAt) {
+  // Le token vit dans un cookie HttpOnly que le JS ne peut pas lire ; on s'appuie
+  // donc uniquement sur l'expiry (poseuse mise a jour par login/refresh).
+  if (!sessionState.expiresAt) {
     return true
   }
 

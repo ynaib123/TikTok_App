@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { disconnectTikTokAccount, fetchAccountsOverview } from '../services/videoOpsSupabase.js';
-import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi.js';
+import { disconnectTikTokAccount, fetchAccountsOverview } from '../services/videoOpsSupabase';
+import { createTikTokAuthorizationUrl } from '../services/tiktokOAuthApi';
 import type { AccountsOverview, TikTokAccount } from '../types';
 import {
   fetchAndPrimeVideoOpsBootstrap,

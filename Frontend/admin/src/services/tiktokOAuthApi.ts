@@ -1,4 +1,4 @@
-import { apiPost } from './adminApiClient.js'
+import { apiPost } from './adminApiClient'
 import type {
   TikTokOAuthAuthorizeResponse,
   TikTokOAuthCallbackResponse,

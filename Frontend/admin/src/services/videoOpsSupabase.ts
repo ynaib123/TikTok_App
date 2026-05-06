@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from './adminApiClient.js'
+import { apiDelete, apiGet, apiPost, apiPut } from './adminApiClient'
 import type {
   AccountsOverview,
   AccountsReadiness,

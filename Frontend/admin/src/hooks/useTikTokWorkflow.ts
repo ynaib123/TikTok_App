@@ -7,7 +7,7 @@ import {
   fetchContentIdeasPage,
   fetchManualActions,
   fetchTikTokAccounts,
-} from '../services/videoOpsSupabase.js';
+} from '../services/videoOpsSupabase';
 import type {
   AccountsReadiness,
   ContentIdea,

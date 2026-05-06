@@ -1,6 +1,5 @@
 import {
   clearAdminSession,
-  getAdminAccessToken,
   isAdminAccessTokenExpired,
 } from './adminSessionStore'
 import { refreshAdminSession } from './adminAuthService'
@@ -50,16 +49,15 @@ function shouldAttachCsrfHeader(method: string = 'GET'): boolean {
   return !['GET', 'HEAD', 'OPTIONS'].includes(String(method || 'GET').toUpperCase())
 }
 
-async function createHeaders(options: RequestInit = {}, accessToken: string | null = null): Promise<Headers> {
+// Sprint securite : l'access token est desormais transmis via cookie HttpOnly
+// (envoi automatique via credentials: 'include'). Plus aucun storage cote JS,
+// donc plus de surface XSS pour vol de token.
+async function createHeaders(options: RequestInit = {}): Promise<Headers> {
   const headers = new Headers(options.headers || {})
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
 
   if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
-  }
-
-  if (accessToken && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
   if (shouldAttachCsrfHeader(options.method)) {
@@ -114,12 +112,10 @@ async function performFetch(
   requestOptions: PerformFetchOptions = {},
 ): Promise<ParsedResponse> {
   const {
-    skipAuth = false,
     suppressConsoleError = false,
   } = requestOptions
 
-  const accessToken = skipAuth ? null : getAdminAccessToken()
-  const headers = await createHeaders(options, accessToken)
+  const headers = await createHeaders(options)
   const perfToken = beginAdminPerf('admin-api-request', {
     endpoint,
     method: String(options.method || 'GET').toUpperCase(),
@@ -283,8 +279,7 @@ export async function createAuthenticatedAdminRequest(
     await refreshAdminSession()
   }
 
-  const accessToken = skipAuth ? null : getAdminAccessToken()
-  const headers = await createHeaders(options, accessToken)
+  const headers = await createHeaders(options)
 
   return {
     url: buildAdminApiUrl(endpoint),

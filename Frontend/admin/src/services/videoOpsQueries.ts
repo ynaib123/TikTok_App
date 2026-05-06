@@ -133,11 +133,7 @@ export function primeVideoOpsBootstrapCache(
 }
 
 export async function fetchAndPrimeVideoOpsBootstrap(queryClient: QueryClient) {
-  const bootstrap = await queryClient.fetchQuery({
-    queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap,
-    queryFn: fetchVideoOpsBootstrap,
-    staleTime: VIDEO_OPS_STALE_TIMES.bootstrap,
-  })
+  const bootstrap = await fetchVideoOpsBootstrap()
 
   primeVideoOpsBootstrapCache(queryClient, bootstrap)
   return bootstrap
