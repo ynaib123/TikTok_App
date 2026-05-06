@@ -8,7 +8,11 @@ import com.tiktokapp.backend.dto.videoops.TikTokOAuthCallbackResponse;
 import com.tiktokapp.backend.model.TikTokAccount;
 import com.tiktokapp.backend.repository.TikTokAccountRepository;
 import com.tiktokapp.backend.service.JwtService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,6 +33,8 @@ import java.util.Map;
 
 @Service
 public class TikTokOAuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TikTokOAuthService.class);
 
     private static final String TIKTOK_AUTHORIZE_URL = "https://www.tiktok.com/v2/auth/authorize/";
     private static final String TIKTOK_TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
@@ -120,6 +126,8 @@ public class TikTokOAuthService {
         return redirectPath;
     }
 
+    @CircuitBreaker(name = "tiktok", fallbackMethod = "refreshAccessTokenFallback")
+    @Retry(name = "tiktok")
     public JsonNode refreshAccessToken(String refreshToken) {
         ensureConfigured();
         String body = formBody(Map.of(
@@ -136,6 +144,18 @@ public class TikTokOAuthService {
                 .build(), "Impossible de rafraichir le token TikTok.");
     }
 
+    @SuppressWarnings("unused")
+    private JsonNode refreshAccessTokenFallback(String refreshToken, Throwable cause) {
+        logger.warn("tiktok circuit breaker open or retries exhausted on refreshAccessToken: {}", cause.getMessage());
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "TikTok API indisponible (refresh token). Reessaie dans 60s.",
+                cause
+        );
+    }
+
+    @CircuitBreaker(name = "tiktok", fallbackMethod = "fetchCreatorInfoFallback")
+    @Retry(name = "tiktok")
     public JsonNode fetchCreatorInfo(String accessToken) {
         ensureConfigured();
         return sendTikTokRequest(HttpRequest.newBuilder()
@@ -145,6 +165,16 @@ public class TikTokOAuthService {
                 .header("Authorization", "Bearer " + accessToken)
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build(), "Impossible de lire creator_info TikTok.");
+    }
+
+    @SuppressWarnings("unused")
+    private JsonNode fetchCreatorInfoFallback(String accessToken, Throwable cause) {
+        logger.warn("tiktok circuit breaker open or retries exhausted on fetchCreatorInfo: {}", cause.getMessage());
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "TikTok API indisponible (creator info). Reessaie dans 60s.",
+                cause
+        );
     }
 
     public List<String> extractPrivacyLevelOptions(JsonNode creatorInfoPayload) {

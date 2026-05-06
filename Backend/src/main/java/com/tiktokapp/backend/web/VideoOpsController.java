@@ -453,6 +453,7 @@ public class VideoOpsController {
             @RequestHeader(name = "X-Video-Ops-Callback-Signature", required = false) String callbackSignature,
             @RequestHeader(name = "X-Video-Ops-Callback-Secret", required = false) String callbackSecret,
             @RequestHeader(name = WorkflowContract.HEADER_CONTRACT_VERSION, required = false) String contractVersion,
+            @RequestHeader(name = WorkflowContract.HEADER_IDEMPOTENCY_KEY, required = false) String idempotencyKey,
             HttpServletRequest servletRequest
     ) {
         videoOpsService.validateWorkflowCallbackRequest(
@@ -472,7 +473,7 @@ public class VideoOpsController {
                 (contractVersion == null || contractVersion.isBlank()) ? "<missing>" : contractVersion);
         VideoWorkflowRunCompletionRequest request = parseWorkflowCompletionRequest(rawBody);
         try {
-            return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request));
+            return ResponseEntity.ok(videoOpsService.completeWorkflowRun(runId, request, idempotencyKey));
         } catch (ResponseStatusException ex) {
             // Client-style failures (validation, 4xx) are not transient — surface as-is.
             throw ex;

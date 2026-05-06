@@ -118,7 +118,7 @@ class VideoOpsSecurityIntegrationTest {
         when(videoOpsService.triggerCheckShotstack(any(), eq("admin@tiktokapp.local"))).thenReturn(
                 new VideoWorkflowActionResponse(7L, 42L, "CHECK_SHOTSTACK", "ACCEPTED", "ok", false)
         );
-        when(videoOpsService.completeWorkflowRun(eq(99L), any())).thenReturn(
+        when(videoOpsService.completeWorkflowRun(eq(99L), any(), any())).thenReturn(
                 new VideoWorkflowRunDetailResponse(
                         99L,
                         42L,
@@ -336,7 +336,7 @@ class VideoOpsSecurityIntegrationTest {
                 eq(null),
                 eq("video-ops-callback-123")
         );
-        verify(videoOpsService).completeWorkflowRun(eq(99L), any(VideoWorkflowRunCompletionRequest.class));
+        verify(videoOpsService).completeWorkflowRun(eq(99L), any(VideoWorkflowRunCompletionRequest.class), any());
     }
 
     @Test
@@ -353,9 +353,10 @@ class VideoOpsSecurityIntegrationTest {
 
         verify(videoOpsService).completeWorkflowRun(
                 eq(99L),
-                argThat(request -> "SUCCEEDED".equals(request.getStatus())
+                argThat((VideoWorkflowRunCompletionRequest request) -> "SUCCEEDED".equals(request.getStatus())
                         && request.getResponsePayload() != null
-                        && request.getResponsePayload().contains("\"contentIdeaId\":42"))
+                        && request.getResponsePayload().contains("\"contentIdeaId\":42")),
+                any()
         );
     }
 
@@ -370,8 +371,9 @@ class VideoOpsSecurityIntegrationTest {
 
         verify(videoOpsService).completeWorkflowRun(
                 eq(99L),
-                argThat(request -> "FAILED".equals(request.getStatus())
-                        && "boom".equals(request.getErrorMessage()))
+                argThat((VideoWorkflowRunCompletionRequest request) -> "FAILED".equals(request.getStatus())
+                        && "boom".equals(request.getErrorMessage())),
+                any()
         );
     }
 

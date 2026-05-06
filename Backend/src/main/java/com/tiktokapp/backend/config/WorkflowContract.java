@@ -19,6 +19,14 @@ public final class WorkflowContract {
     /** Major-version contract header sent on every trigger and expected on every callback. */
     public static final String HEADER_CONTRACT_VERSION = "X-Workflow-Contract-Version";
 
+    /**
+     * Idempotency key header. Backend includes the run's idempotency key in the
+     * trigger payload; n8n MUST echo the same value in the callback header so the
+     * backend can detect / reject replays whose key does not match the active run.
+     * Absence is tolerated for legacy callbacks.
+     */
+    public static final String HEADER_IDEMPOTENCY_KEY = "X-Idempotency-Key";
+
     private WorkflowContract() {
         // utility
     }

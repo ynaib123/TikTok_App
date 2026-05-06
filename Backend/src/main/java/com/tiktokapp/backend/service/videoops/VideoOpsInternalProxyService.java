@@ -3,6 +3,10 @@ package com.tiktokapp.backend.service.videoops;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.model.ServiceConnectionProvider;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +23,8 @@ import java.time.Duration;
 @Service
 public class VideoOpsInternalProxyService {
 
+    private static final Logger logger = LoggerFactory.getLogger(VideoOpsInternalProxyService.class);
+
     private final ServiceConnectionResolver connectionResolver;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -34,6 +40,8 @@ public class VideoOpsInternalProxyService {
                 .build();
     }
 
+    @CircuitBreaker(name = "groq", fallbackMethod = "proxyGroqChatCompletionsFallback")
+    @Retry(name = "groq")
     public JsonNode proxyGroqChatCompletions(JsonNode requestBody) {
         ResolvedServiceConnection groq = connectionResolver.requireConnected(ServiceConnectionProvider.GROQ);
         String baseUrl = normalizeGroqApiBaseUrl(groq.baseUrl(), "https://api.groq.com");
@@ -45,6 +53,16 @@ public class VideoOpsInternalProxyService {
                 .POST(HttpRequest.BodyPublishers.ofString(toJson(requestBody)))
                 .build();
         return sendJson(request, "Groq");
+    }
+
+    @SuppressWarnings("unused")
+    private JsonNode proxyGroqChatCompletionsFallback(JsonNode requestBody, Throwable cause) {
+        logger.warn("groq circuit breaker open or retries exhausted: {}", cause.getMessage());
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Groq est indisponible. Reessaie dans 30s.",
+                cause
+        );
     }
 
     public JsonNode proxyPexelsVideoSearch(String query, Integer perPage, String orientation) {
