@@ -15,6 +15,8 @@ Frontend/admin/dist-ssr
 *.local
 .env
 .env.*
+# Le template d'environnement est intentionnellement committe.
+!.env.example
 n8n-local/database.sqlite
 n8n-local/database.sqlite-shm
 n8n-local/database.sqlite-wal
@@ -26,6 +28,10 @@ n8n-local/backup-before-codex-import/
 Backend/target/
 backups/
 Backend/*.log
+# Outils binaires embarques (Maven local) - ne devrait jamais etre committe
+Backend/tools/apache-maven-*/
+Backend/tools/apache-maven-*-bin.zip
+Backend/tools/apache-maven-*-bin.tar.gz
 playwright-report
 test-results
 
