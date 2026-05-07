@@ -105,13 +105,28 @@ public class ContentIdeaGateway {
 
     @Transactional
     public JsonNode updateContentIdea(long contentIdeaId, Map<String, Object> payload) {
-        logger.info("video_ops event=content_idea_patch contentIdeaId={} keys={}",
-                contentIdeaId, payload == null ? "null" : payload.keySet());
+        logger.info("video_ops event=content_idea_patch contentIdeaId={} payload={}",
+                contentIdeaId, payload == null ? "null" : summarizePatch(payload));
         ContentIdea idea = contentIdeaRepo.findById(contentIdeaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable."));
         applyContentIdeaPatch(idea, payload);
         contentIdeaRepo.save(idea);
         return objectMapper.valueToTree(List.of(toMap(idea)));
+    }
+
+    private String summarizePatch(Map<String, Object> patch) {
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> e : patch.entrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            String key = e.getKey();
+            Object value = e.getValue();
+            String v = value == null ? "null" : value.toString();
+            if (v.length() > 80) v = v.substring(0, 77) + "...";
+            sb.append(key).append("=").append(v);
+        }
+        return sb.append("}").toString();
     }
 
     @Transactional

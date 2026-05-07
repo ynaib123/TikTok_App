@@ -112,6 +112,10 @@ class VideoOpsSecurityIntegrationTest {
                         "",
                         "open-id-demo",
                         "render_ready",
+                        null,
+                        null,
+                        null,
+                        null,
                         null
                 )
         )));
