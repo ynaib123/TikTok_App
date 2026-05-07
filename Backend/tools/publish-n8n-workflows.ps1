@@ -9,6 +9,7 @@ $ErrorActionPreference = "Stop"
 $workflows = @(
     @{ Id = "q8OpzbRoQe8W8TzY"; File = "idea-script-fused.json" },
     @{ Id = "SAn6Iepn4rCpkHJg"; File = "render-template-video.json" },
+    @{ Id = "renderRemotion01"; File = "render-template-video-remotion.json" },
     @{ Id = "FVCRU7rTMuMCR1J3"; File = "check-shotstack.json" },
     @{ Id = "ql0Tg97q1cZ12aee"; File = "init-publish-tiktok.json" }
 )

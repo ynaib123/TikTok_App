@@ -1,14 +1,20 @@
 # n8n workflow definitions — canonical source
 
-These four files are the **source of truth** for every n8n workflow used by the
+These files are the **source of truth** for every n8n workflow used by the
 TikTok pipeline. Every change to a workflow must land here through a normal PR.
 
 | File | n8n ID | Role |
 | --- | --- | --- |
 | `idea-script-fused.json` | `q8OpzbRoQe8W8TzY` | Generate idea + script (Groq) |
 | `render-template-video.json` | `SAn6Iepn4rCpkHJg` | Build Shotstack render |
+| `render-template-video-remotion.json` | `renderRemotion01` | Build Remotion render job and call RenderVideo |
 | `check-shotstack.json` | `FVCRU7rTMuMCR1J3` | Poll Shotstack render status |
 | `init-publish-tiktok.json` | `ql0Tg97q1cZ12aee` | Init the TikTok publish session |
+
+`render-template-video-remotion.json` is the migration workflow for the
+Remotion renderer. Keep `APP_VIDEO_OPS_N8N_RENDER_PATH=/webhook/render-template-video`
+to continue using Shotstack. Switch it to
+`/webhook/render-template-video-remotion` to route render jobs to RenderVideo.
 
 ## Sync with the running n8n container
 

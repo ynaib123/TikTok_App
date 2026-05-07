@@ -252,9 +252,9 @@ export function useRenderStep({
       workflowType: workflowRun?.workflowType || 'RENDER_TEMPLATE_VIDEO',
       contentIdeaId: Number(idea.id),
       state: 'succeeded',
-      message: 'Video prete pour revue et upload.',
+      message: 'Video prete pour publication.',
     })
-    showSuccess('Video prete. Verifie le template avant de passer a l upload.')
+    showSuccess('Video prete. Verifie le template avant de passer a la publication.')
   }).catch((error: unknown) => {
     showError(error, "L'initialisation publish n'a pas abouti.")
   })
@@ -308,60 +308,25 @@ export function useUploadStep({
   markWorkflowFinished,
   isUploadCompleted,
 }: UseUploadStepOptions) {
-  const handlePrepareUpload = async () => runAction('prepareUpload', async () => {
+  const uploadVideo = async (actionOverride?: ManualActionState | null) => {
     const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id) {
-      throw new Error('Aucune video disponible pour preparer l upload.')
-    }
+    const action = actionOverride || manualAction
 
-    const workflowRun = await triggerPublishTikTokWorkflow({
-      source: 'backoffice-tiktok-step-upload-prepare',
-      contentIdeaId: idea.id,
-      topic: idea.topic,
-    })
-    markWorkflowStarted({
-      runId: workflowRun?.runId,
-      workflowType: workflowRun?.workflowType || 'INIT_PUBLISH_TIKTOK',
-      contentIdeaId: Number(idea.id),
-      message: 'Preparation de l upload TikTok en cours.',
-    })
-
-    const nextManualAction = await raceWorkflowRunAndUploadPreparation(workflowRun?.runId, Number(idea.id))
-
-    setManualAction((currentAction) => ({
-      ...currentAction,
-      ...nextManualAction,
-    }))
-    await refreshPipelineData()
-    markWorkflowFinished({
-      runId: workflowRun?.runId,
-      workflowType: workflowRun?.workflowType || 'INIT_PUBLISH_TIKTOK',
-      contentIdeaId: Number(idea.id),
-      state: 'succeeded',
-      message: 'Upload URL TikTok disponible.',
-    })
-    showSuccess('Upload URL disponible. Tu peux lancer l upload.')
-  }).catch((error: unknown) => {
-    showError(error, "La preparation de l'upload n'a pas abouti.")
-  })
-
-  const handleUploadVideo = async () => runAction('uploadVideo', async () => {
-    const idea = scriptedIdea || selectedGeneratedIdea
-    if (!idea?.id || !manualAction?.shotstackUrl || !manualAction?.uploadUrl) {
-      throw new Error('Il manque la video ou l upload URL pour lancer l upload.')
+    if (!idea?.id || !action?.shotstackUrl || !action?.uploadUrl) {
+      throw new Error('Il manque la video ou les informations necessaires pour lancer la publication.')
     }
 
     markWorkflowStarted({
       workflowType: 'TIKTOK_UPLOAD',
       contentIdeaId: Number(idea.id),
-      message: 'Upload TikTok en cours.',
+      message: 'Publication TikTok en cours.',
     })
 
     try {
       const result = await uploadTikTokMedia({
         id: idea.id,
-        shotstackUrl: manualAction.shotstackUrl,
-        uploadUrl: manualAction.uploadUrl,
+        shotstackUrl: action.shotstackUrl,
+        uploadUrl: action.uploadUrl,
       })
       setUploadResult(result || { ok: true })
       await refreshPipelineData()
@@ -369,9 +334,9 @@ export function useUploadStep({
         workflowType: 'TIKTOK_UPLOAD',
         contentIdeaId: Number(idea.id),
         state: 'succeeded',
-        message: 'Upload TikTok termine.',
+        message: 'Publication TikTok terminee.',
       })
-      showSuccess('Upload termine. Tu peux passer a la publication finale.')
+      showSuccess('Publication TikTok terminee.')
     } catch (error) {
       const [refreshedIdea, manualActions] = await Promise.all([
         fetchContentIdeaById(Number(idea.id)),
@@ -395,9 +360,9 @@ export function useUploadStep({
           workflowType: 'TIKTOK_UPLOAD',
           contentIdeaId: Number(idea.id),
           state: 'succeeded',
-          message: 'Upload termine cote serveur avant le callback.',
+          message: 'Publication terminee cote serveur avant le callback.',
         })
-        showSuccess('Upload termine cote serveur. La reponse HTTP a probablement expire, mais la video est bien passee en statut upload.')
+        showSuccess('Publication terminee cote serveur. La reponse HTTP a probablement expire, mais la video est bien passee en statut upload.')
         return
       }
 
@@ -405,16 +370,79 @@ export function useUploadStep({
         workflowType: 'TIKTOK_UPLOAD',
         contentIdeaId: Number(idea.id),
         state: 'failed',
-        message: (error as Error)?.message || "L'upload TikTok n'a pas abouti.",
+        message: (error as Error)?.message || "La publication TikTok n'a pas abouti.",
       })
       throw error
     }
+  }
+
+  const prepareUpload = async () => {
+    const idea = scriptedIdea || selectedGeneratedIdea
+    if (!idea?.id) {
+      throw new Error('Aucune video disponible pour preparer la publication.')
+    }
+
+    const workflowRun = await triggerPublishTikTokWorkflow({
+      source: 'backoffice-tiktok-step-upload-prepare',
+      contentIdeaId: idea.id,
+      topic: idea.topic,
+    })
+    markWorkflowStarted({
+      runId: workflowRun?.runId,
+      workflowType: workflowRun?.workflowType || 'INIT_PUBLISH_TIKTOK',
+      contentIdeaId: Number(idea.id),
+      message: 'Preparation de la publication TikTok en cours.',
+    })
+
+    const nextManualAction = await raceWorkflowRunAndUploadPreparation(workflowRun?.runId, Number(idea.id))
+
+    setManualAction((currentAction) => ({
+      ...currentAction,
+      ...nextManualAction,
+    }))
+    await refreshPipelineData()
+    markWorkflowFinished({
+      runId: workflowRun?.runId,
+      workflowType: workflowRun?.workflowType || 'INIT_PUBLISH_TIKTOK',
+      contentIdeaId: Number(idea.id),
+      state: 'succeeded',
+      message: 'Publication TikTok prete.',
+    })
+    return nextManualAction
+  }
+
+  const handlePrepareUpload = async () => runAction('prepareUpload', async () => {
+    await prepareUpload()
+    showSuccess('Publication TikTok prete. Tu peux la lancer.')
   }).catch((error: unknown) => {
-    showError(error, "L'upload TikTok n'a pas abouti.")
+    showError(error, "La preparation de la publication n'a pas abouti.")
   })
+
+  const handleUploadVideo = async () => runAction('uploadVideo', async () => {
+    await uploadVideo()
+  }).catch((error: unknown) => {
+    showError(error, "La publication TikTok n'a pas abouti.")
+  })
+
+  const handlePrepareAndUploadVideo = async (): Promise<boolean> => {
+    try {
+      const nextAction = manualAction?.uploadUrl
+        ? manualAction
+        : await runAction('prepareUpload', async () => prepareUpload())
+
+      await runAction('uploadVideo', async () => {
+        await uploadVideo(nextAction)
+      })
+      return true
+    } catch {
+      // Errors are already surfaced by the underlying handlers.
+      return false
+    }
+  }
 
   return {
     handlePrepareUpload,
+    handlePrepareAndUploadVideo,
     handleUploadVideo,
   }
 }

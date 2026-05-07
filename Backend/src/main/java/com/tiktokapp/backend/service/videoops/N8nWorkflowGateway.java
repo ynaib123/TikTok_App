@@ -2,6 +2,7 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.config.WorkflowContract;
 import com.tiktokapp.backend.model.VideoWorkflowType;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -29,10 +30,16 @@ public class N8nWorkflowGateway {
 
     private final N8nWorkflowContractService workflowContractService;
     private final ObjectMapper objectMapper;
+    private final VideoOpsProperties properties;
 
-    public N8nWorkflowGateway(N8nWorkflowContractService workflowContractService, ObjectMapper objectMapper) {
+    public N8nWorkflowGateway(
+            N8nWorkflowContractService workflowContractService,
+            ObjectMapper objectMapper,
+            VideoOpsProperties properties
+    ) {
         this.workflowContractService = workflowContractService;
         this.objectMapper = objectMapper;
+        this.properties = properties;
     }
 
     @CircuitBreaker(name = "n8n", fallbackMethod = "triggerFallback")
@@ -46,7 +53,7 @@ public class N8nWorkflowGateway {
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(20_000);
-            connection.setReadTimeout(60_000);
+            connection.setReadTimeout(Math.max(60_000, properties.getN8n().getReadTimeoutMs()));
             connection.setDoOutput(true);
             connection.setFixedLengthStreamingMode(requestBody.length);
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

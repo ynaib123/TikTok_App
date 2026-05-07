@@ -2,6 +2,7 @@ package com.tiktokapp.backend.service.videoops;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tiktokapp.backend.config.VideoOpsProperties;
 import com.tiktokapp.backend.model.ServiceConnectionProvider;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -27,14 +28,17 @@ public class VideoOpsInternalProxyService {
 
     private final ServiceConnectionResolver connectionResolver;
     private final ObjectMapper objectMapper;
+    private final VideoOpsProperties properties;
     private final HttpClient httpClient;
 
     public VideoOpsInternalProxyService(
             ServiceConnectionResolver connectionResolver,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            VideoOpsProperties properties
     ) {
         this.connectionResolver = connectionResolver;
         this.objectMapper = objectMapper;
+        this.properties = properties;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
                 .build();
@@ -109,6 +113,29 @@ public class VideoOpsInternalProxyService {
                 .GET()
                 .build();
         return sendJson(request, "Shotstack");
+    }
+
+    @CircuitBreaker(name = "renderVideo", fallbackMethod = "proxyRenderVideoFallback")
+    @Retry(name = "renderVideo")
+    public JsonNode proxyRenderVideo(JsonNode requestBody) {
+        String baseUrl = normalizeBaseUrl(properties.getRenderVideo().getBaseUrl(), "http://localhost:8090");
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/render"))
+                .timeout(Duration.ofMinutes(10))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(toJson(requestBody)))
+                .build();
+        return sendJson(request, "RenderVideo");
+    }
+
+    @SuppressWarnings("unused")
+    private JsonNode proxyRenderVideoFallback(JsonNode requestBody, Throwable cause) {
+        logger.warn("renderVideo circuit breaker open or retries exhausted: {}", cause.getMessage());
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Le service de rendu video est indisponible. Reessaie dans 30s.",
+                cause
+        );
     }
 
     private JsonNode sendJson(HttpRequest request, String providerName) {

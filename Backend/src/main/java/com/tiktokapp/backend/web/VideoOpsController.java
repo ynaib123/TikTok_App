@@ -323,6 +323,15 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsInternalProxyService.proxyShotstackRenderStatus(renderId));
     }
 
+    @PostMapping("/internal/render-video/render")
+    public ResponseEntity<JsonNode> proxyRenderVideo(
+            @RequestBody(required = false) JsonNode request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyRenderVideo(request));
+    }
+
     @PostMapping("/workflows/main-pipeline")
     public ResponseEntity<VideoWorkflowActionResponse> triggerMainPipeline(
             @Valid @RequestBody(required = false) WorkflowTriggerRequest request,

@@ -51,8 +51,11 @@ app:
     idempotency-window-seconds: ${APP_VIDEO_OPS_IDEMPOTENCY_WINDOW_SECONDS:90}
     allowed-shotstack-hosts: ${APP_VIDEO_OPS_ALLOWED_SHOTSTACK_HOSTS:shotstack-api-v1-output.s3-ap-southeast-2.amazonaws.com}
     allowed-upload-hosts: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:open-upload.tiktokapis.com,open.tiktokapis.com,business-api.tiktok.com}
+    render-video:
+      base-url: ${APP_VIDEO_OPS_RENDER_VIDEO_BASE_URL:http://localhost:8090}
     n8n:
       base-url: ${APP_VIDEO_OPS_N8N_BASE_URL:http://localhost:5678}
+      read-timeout-ms: ${APP_VIDEO_OPS_N8N_READ_TIMEOUT_MS:600000}
       main-pipeline-path: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_PATH:/webhook/fused-idea-script}
       script-generation-path: ${APP_VIDEO_OPS_N8N_SCRIPT_GENERATION_PATH:/webhook/script-generation}
       render-template-video-path: ${APP_VIDEO_OPS_N8N_RENDER_PATH:/webhook/render-template-video}
@@ -121,6 +124,9 @@ resilience4j:
         waitDurationInOpenState: 60s
       shotstack:
         baseConfig: default
+      renderVideo:
+        baseConfig: default
+        waitDurationInOpenState: 30s
       pexels:
         baseConfig: default
       groq:
@@ -140,6 +146,9 @@ resilience4j:
         maxAttempts: 2
       shotstack:
         baseConfig: default
+      renderVideo:
+        baseConfig: default
+        maxAttempts: 1
       pexels:
         baseConfig: default
       groq:

@@ -1,0 +1,322 @@
+[
+  {
+    "id": "renderRemotion01",
+    "name": "render-template-video-remotion",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "render-template-video-remotion",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "webhook-render-remotion",
+        "name": "Webhook: Render Remotion",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [0, 0]
+      },
+      {
+        "parameters": {
+          "jsCode": "const body = $json.body || $json;\nconst contentIdeaId = Number(body.contentIdeaId || 0);\nconst workflowRunId = Number(body.workflowRunId || 0);\nconst idempotencyKey = String(body.idempotencyKey || '').trim() || null;\nconst topic = String(body.topic || '').trim();\nconst script = String(body.script || '').trim();\nconst caption = String(body.caption || '').trim();\nconst keyword = String(body.keyword || topic || '').trim();\nconst category = String(body.category || '').trim() || null;\nconst tiktokAccountOpenId = String(body.tiktokAccountOpenId || '').trim() || null;\nconst source = String(body.source || 'n8n-render-remotion').trim();\n\nif (!contentIdeaId || contentIdeaId <= 0) throw new Error('contentIdeaId invalide');\nif (!workflowRunId || workflowRunId <= 0) throw new Error('workflowRunId invalide');\nif (!topic) throw new Error('topic manquant');\nif (!script) throw new Error('script manquant');\nif (!caption) throw new Error('caption manquante');\nif (!keyword) throw new Error('keyword manquant');\n\nconst hook = String(body.hook || script.split(/[.!?\\n]/)[0] || topic).trim().slice(0, 120);\n\nreturn [{ json: { contentIdeaId, workflowRunId, idempotencyKey, topic, script, caption, keyword, category, tiktokAccountOpenId, source, hook } }];"
+        },
+        "id": "validate-input",
+        "name": "Validate Input",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [240, 0]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/pexels/videos/search' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ query: $('Validate Input').item.json.keyword || $('Validate Input').item.json.topic || 'business', perPage: 50, orientation: 'portrait' }) }}",
+          "options": {
+            "timeout": 30000,
+            "retry": {
+              "maxRetries": 2,
+              "delayMultiplier": 2,
+              "initialDelay": 1000
+            }
+          }
+        },
+        "id": "pexels-search",
+        "name": "HTTP: Pexels Search",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [480, 0]
+      },
+      {
+        "parameters": {
+          "jsCode": "const videos = $json.videos || [];\nif (!videos.length) throw new Error('Aucune video Pexels trouvee');\n\nconst candidates = [];\nfor (const video of videos) {\n  for (const file of video.video_files || []) {\n    const width = Number(file.width || video.width || 0);\n    const height = Number(file.height || video.height || 0);\n    const duration = Number(video.duration || 0);\n    const link = String(file.link || '').trim();\n    if (!link || height <= width || duration < 5 || duration > 60) continue;\n\n    let score = 0;\n    if (width >= 1080 && height >= 1920) score += 150;\n    else if (width >= 720 && height >= 1280) score += 100;\n    else score += 40;\n    if (duration <= 20) score += 120;\n    else if (duration <= 35) score += 80;\n    else score += 30;\n    if (String(file.file_type || '').includes('mp4')) score += 30;\n\n    candidates.push({ link, width, height, duration, score, provider: 'pexels' });\n  }\n}\n\nif (!candidates.length) throw new Error('Aucune video portrait exploitable');\ncandidates.sort((a, b) => b.score - a.score);\nreturn [{ json: candidates[0] }];"
+        },
+        "id": "select-media",
+        "name": "Select Media",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [720, 0]
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $('Validate Input').item.json;\nconst media = $('Select Media').item.json;\nconst clean = (value, max = 160) => String(value || '').replace(/\\s+/g, ' ').trim().slice(0, max);\nconst durationSec = Math.min(30, Math.max(8, Number(media.duration || 15)));\n\nconst renderJob = {\n  contractVersion: '1.0.0',\n  workflowRunId: Number(input.workflowRunId),\n  contentIdeaId: Number(input.contentIdeaId),\n  source: input.source || 'n8n-render-remotion',\n  requestedAt: new Date().toISOString(),\n  idea: {\n    category: input.category || null,\n    topic: clean(input.topic, 240),\n    hook: clean(input.hook || input.topic, 140),\n    script: clean(input.script, 4000),\n    caption: clean(input.caption, 2200),\n    keyword: clean(input.keyword, 240),\n    language: 'fr',\n    cta: 'Regarde la suite',\n    visualStyle: 'premium editorial vertical TikTok'\n  },\n  account: {\n    openId: input.tiktokAccountOpenId || null,\n    nickname: null\n  },\n  render: {\n    templateId: 'tiktok-pro-vertical-v1',\n    aspectRatio: '9:16',\n    width: 1080,\n    height: 1920,\n    fps: 30,\n    durationSec,\n    qualityProfile: 'premium',\n    captionMode: 'line',\n    sceneStrategy: 'single-background',\n    safeZones: { topPx: 130, rightPx: 90, bottomPx: 180, leftPx: 90 }\n  },\n  assets: {\n    backgroundVideo: {\n      url: media.link,\n      provider: media.provider || 'pexels',\n      license: null,\n      width: Number(media.width || 0) || null,\n      height: Number(media.height || 0) || null,\n      durationSec: Number(media.duration || 0) || null,\n      qualityScore: Number(media.score || 0) || null\n    },\n    voiceover: null,\n    music: null,\n    captions: [],\n    overlays: [\n      { kind: 'title', text: clean(input.hook || input.topic, 120), startMs: 0, endMs: 3500 },\n      { kind: 'cta', text: 'Regarde la suite', startMs: Math.max(0, Math.round((durationSec - 4) * 1000)), endMs: Math.round(durationSec * 1000) }\n    ]\n  },\n  publication: {\n    title: clean(input.caption || input.topic, 150),\n    privacyLevel: null\n  }\n};\n\nreturn [{ json: { ...input, renderJob } }];"
+        },
+        "id": "build-render-job",
+        "name": "Build Render Job",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [960, 0]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/content-ideas/' + $json.contentIdeaId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ render_payload: JSON.stringify($json.renderJob), render_status: 'remotion_preparing', shotstack_status: 'preparing', final_video_status: 'processing', pipeline_status: 'rendering_requested', template_id: $json.renderJob.render.templateId }) }}",
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "update-preparing",
+        "name": "HTTP: Update Preparing",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [1200, 0]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/render-video/render' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($('Build Render Job').item.json.renderJob) }}",
+          "options": {
+            "timeout": 600000
+          }
+        },
+        "id": "render-video",
+        "name": "HTTP: RenderVideo Render",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [1440, 0]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/content-ideas/' + $('Build Render Job').item.json.contentIdeaId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ shotstack_render_id: $json.renderId, shotstack_status: 'done', shotstack_url: $json.outputUrl, final_video_status: 'ready', render_status: 'remotion_rendered', pipeline_status: 'render_ready' }) }}",
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "update-rendered",
+        "name": "HTTP: Update Rendered",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [1680, 0]
+      },
+      {
+        "parameters": {
+          "jsCode": "const baseUrl = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nconst callbackSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst input = $('Build Render Job').item.json;\nconst render = $('HTTP: RenderVideo Render').item.json;\nconst idempotencyKey = String(input.idempotencyKey || '').trim();\n\nconst body = JSON.stringify({\n  status: 'SUCCEEDED',\n  message: 'Remotion render completed.',\n  responsePayload: JSON.stringify({ contentIdeaId: input.contentIdeaId, renderId: render.renderId, outputUrl: render.outputUrl, engine: 'remotion' })\n});\n\nconst http = require('http');\nconst https = require('https');\nconst { URL } = require('url');\nconst url = new URL(baseUrl + '/api/video-ops/workflow-runs/' + input.workflowRunId + '/complete');\nconst client = url.protocol === 'https:' ? https : http;\nconst response = await new Promise((resolve, reject) => {\n  const req = client.request({\n    protocol: url.protocol,\n    hostname: url.hostname,\n    port: url.port || (url.protocol === 'https:' ? 443 : 80),\n    path: url.pathname + url.search,\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Content-Length': Buffer.byteLength(body),\n      'X-Video-Ops-Callback-Secret': callbackSecret,\n      ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {}),\n      'X-Request-Timestamp': Date.now().toString()\n    }\n  }, (res) => {\n    let data = '';\n    res.on('data', (chunk) => { data += chunk; });\n    res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));\n  });\n  req.on('error', reject);\n  req.setTimeout(20000, () => req.destroy(new Error('Callback timeout')));\n  req.write(body);\n  req.end();\n});\n\nif (response.statusCode < 200 || response.statusCode >= 300) {\n  throw new Error('Callback failed: ' + response.statusCode + ' ' + response.body);\n}\n\nreturn [{ json: { ok: true, callbackStatusCode: response.statusCode } }];"
+        },
+        "id": "callback-success",
+        "name": "Callback: Success",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [1920, 0]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { ok: true, contentIdeaId: $('Build Render Job').item.json.contentIdeaId, workflowRunId: $('Build Render Job').item.json.workflowRunId, status: 'rendered', engine: 'remotion', shotstackRenderId: $('HTTP: RenderVideo Render').item.json.renderId, outputUrl: $('HTTP: RenderVideo Render').item.json.outputUrl } }}",
+          "options": {
+            "responseCode": 200
+          }
+        },
+        "id": "respond-success",
+        "name": "Respond: Success",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [2160, 0]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { ok: false, error: $json.message || $json.error?.message || 'Render failed' } }}",
+          "options": {
+            "responseCode": 500
+          }
+        },
+        "id": "respond-error",
+        "name": "Respond: Error",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [2160, 220]
+      }
+    ],
+    "connections": {
+      "Webhook: Render Remotion": {
+        "main": [
+          [
+            {
+              "node": "Validate Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Input": {
+        "main": [
+          [
+            {
+              "node": "HTTP: Pexels Search",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: Pexels Search": {
+        "main": [
+          [
+            {
+              "node": "Select Media",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Select Media": {
+        "main": [
+          [
+            {
+              "node": "Build Render Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Render Job": {
+        "main": [
+          [
+            {
+              "node": "HTTP: Update Preparing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: Update Preparing": {
+        "main": [
+          [
+            {
+              "node": "HTTP: RenderVideo Render",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: RenderVideo Render": {
+        "main": [
+          [
+            {
+              "node": "HTTP: Update Rendered",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP: Update Rendered": {
+        "main": [
+          [
+            {
+              "node": "Respond: Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Respond: Success": {
+        "main": [
+          [
+            {
+              "node": "Callback: Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": {},
+    "pinData": {},
+    "active": false
+  }
+]

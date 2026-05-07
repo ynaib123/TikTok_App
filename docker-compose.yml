@@ -51,6 +51,7 @@ services:
       APP_VIDEO_OPS_TIKTOK_REDIRECT_URI: ${APP_VIDEO_OPS_TIKTOK_REDIRECT_URI:-}
       APP_VIDEO_OPS_TIKTOK_OAUTH_SCOPES: ${APP_VIDEO_OPS_TIKTOK_OAUTH_SCOPES:-user.info.basic,video.publish}
       APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS: ${APP_VIDEO_OPS_ALLOWED_UPLOAD_HOSTS:-open-upload.tiktokapis.com,open-upload-sg.tiktokapis.com,open.tiktokapis.com,business-api.tiktokapis.com}
+      APP_VIDEO_OPS_RENDER_VIDEO_BASE_URL: ${APP_VIDEO_OPS_RENDER_VIDEO_BASE_URL:-http://render-video:8090}
       APP_ALERTING_ENABLED: ${APP_ALERTING_ENABLED:-true}
       APP_ALERTING_SLACK_WEBHOOK_URL: ${APP_ALERTING_SLACK_WEBHOOK_URL:-}
       APP_ALERTING_COOLDOWN_SECONDS: ${APP_ALERTING_COOLDOWN_SECONDS:-300}
@@ -59,6 +60,8 @@ services:
       APP_ALERTING_STUCK_RUN_THRESHOLD_SECONDS: ${APP_ALERTING_STUCK_RUN_THRESHOLD_SECONDS:-600}
       APP_ALERTING_STUCK_RUN_CHECK_INTERVAL_MS: ${APP_ALERTING_STUCK_RUN_CHECK_INTERVAL_MS:-120000}
       APP_VIDEO_OPS_N8N_BASE_URL: ${APP_VIDEO_OPS_N8N_BASE_URL:-http://n8n:5678}
+      APP_VIDEO_OPS_N8N_READ_TIMEOUT_MS: ${APP_VIDEO_OPS_N8N_READ_TIMEOUT_MS:-600000}
+      APP_VIDEO_OPS_N8N_RENDER_PATH: ${APP_VIDEO_OPS_N8N_RENDER_PATH:-/webhook/render-template-video}
 
     ports:
       - "8080:8080"
@@ -69,6 +72,22 @@ services:
       # de l'image (sinon le bind-mount ./Backend les masque). Le Dockerfile
       # warm-up populate ce volume au build, evitant un cold compile au boot.
       - backend_target:/app/target
+
+  render-video:
+    build:
+      context: .
+      dockerfile: RenderVideo/Dockerfile
+    container_name: tiktok-app-render-video
+    restart: unless-stopped
+    environment:
+      PORT: 8090
+      RENDER_VIDEO_SCHEMA_PATH: /contracts/render-video-job.schema.json
+      RENDER_VIDEO_OUTPUT_DIR: /app/renders
+      RENDER_VIDEO_PUBLIC_BASE_URL: ${APP_RENDER_VIDEO_PUBLIC_BASE_URL:-http://localhost:8090}
+    ports:
+      - "8090:8090"
+    volumes:
+      - render_video_renders:/app/renders
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
@@ -100,6 +119,7 @@ services:
       - ./n8n-local:/home/node/.n8n
     depends_on:
       - backend
+      - render-video
 
   frontend:
     build:
@@ -139,3 +159,4 @@ volumes:
   maven_cache:
   admin_node_modules:
   backend_target:
+  render_video_renders:

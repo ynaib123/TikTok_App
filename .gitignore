@@ -26,6 +26,9 @@ n8n-local/storage/
 n8n-local/database.sqlite.bak*
 n8n-local/backup-before-codex-import/
 Backend/target/
+RenderVideo/dist/
+RenderVideo/renders/
+RenderVideo/renders-smoke/
 backups/
 Backend/*.log
 # Outils binaires embarques (Maven local) - ne devrait jamais etre committe

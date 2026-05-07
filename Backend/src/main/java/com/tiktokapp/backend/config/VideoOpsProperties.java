@@ -33,8 +33,10 @@ public class VideoOpsProperties {
     ));
 
     private final N8n n8n = new N8n();
+    private final RenderVideo renderVideo = new RenderVideo();
 
     public N8n getN8n() { return n8n; }
+    public RenderVideo getRenderVideo() { return renderVideo; }
 
     public static class N8n {
         private String baseUrl = "http://localhost:5678";
@@ -43,6 +45,7 @@ public class VideoOpsProperties {
         private String renderTemplateVideoPath = "/webhook/render-template-video";
         private String checkShotstackPath = "/webhook/check-shotstack";
         private String initPublishTikTokPath = "/webhook/init-publish-tiktok";
+        private int readTimeoutMs = 600000;
 
         public String getBaseUrl() { return baseUrl; }
         public void setBaseUrl(String v) { this.baseUrl = v; }
@@ -56,6 +59,15 @@ public class VideoOpsProperties {
         public void setCheckShotstackPath(String v) { this.checkShotstackPath = v; }
         public String getInitPublishTikTokPath() { return initPublishTikTokPath; }
         public void setInitPublishTikTokPath(String v) { this.initPublishTikTokPath = v; }
+        public int getReadTimeoutMs() { return readTimeoutMs; }
+        public void setReadTimeoutMs(int v) { this.readTimeoutMs = v; }
+    }
+
+    public static class RenderVideo {
+        private String baseUrl = "http://localhost:8090";
+
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String v) { this.baseUrl = v; }
     }
 
     public String getTiktokClientKey() {

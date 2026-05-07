@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import AdminShell from '../components/AdminShell'
 import { fetchContentIdeaStatus, fetchContentIdeaByIdFromPages } from '../services/videoOpsSupabase'
+import { readJourneyWorkspace } from './tiktok-journey/journeyWorkspace'
 import '../styles/features/journey.css'
 import '../styles/features/accounts.css'
 import '../styles/features/idea-detail.css'
@@ -68,6 +69,8 @@ function nextStepFor(idea: IdeaDetail | null, statusInfo: StatusInfo | null): Ne
   const stage = String(statusInfo?.pipelineStage || '').toUpperCase()
   const tiktokStatus = String(idea?.tiktokStatus || '').toLowerCase()
   if (tiktokStatus === 'published') return null
+  const savedWorkspace = idea?.id ? readJourneyWorkspace(idea.id) : null
+  if (savedWorkspace?.stepId) return { stepId: savedWorkspace.stepId, label: 'Reprendre le parcours' }
   if (idea?.uploadUrl && idea?.shotstackUrl) return { stepId: 'upload', label: "Continuer vers l'upload" }
   if (idea?.shotstackUrl) return { stepId: 'upload', label: "Préparer l'upload TikTok" }
   if (stage === 'SCRIPT_READY' || idea?.script || idea?.scripts) return { stepId: 'init-publish', label: 'Générer la vidéo' }
@@ -219,7 +222,14 @@ export default function IdeaDetailPage() {
                       <span className="idea-next-title">{next.label}</span>
                       <span className="idea-next-desc">Continue dans le parcours pour faire avancer cette idée.</span>
                     </div>
-                    <button className="journey-btn is-primary" onClick={() => navigate(`/tiktok/${next.stepId}`)}>Continuer →</button>
+                    <button
+                      className="journey-btn is-primary"
+                      onClick={() => navigate(`/tiktok/${next.stepId}`, {
+                        state: idea?.id ? { resumeWorkspaceIdeaId: idea.id } : undefined,
+                      })}
+                    >
+                      Continuer →
+                    </button>
                   </section>
                 )}
               </div>

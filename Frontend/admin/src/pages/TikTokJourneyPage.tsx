@@ -12,10 +12,11 @@
  * also in this drop-in folder.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, type Location } from 'react-router-dom'
 
 import AdminShell from '../components/AdminShell'
+import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { useTikTokWorkflow } from '../hooks'
 import {
   triggerCheckShotstackWorkflow,
@@ -40,10 +41,13 @@ import { useTikTokJourneyFlowState } from './tiktok-journey/useTikTokJourneyFlow
 import { useTikTokJourneyListState } from './tiktok-journey/useTikTokJourneyListState'
 import {
   useCreationStep,
-  usePublishStep,
   useRenderStep,
   useUploadStep,
 } from './tiktok-journey/useTikTokJourneySteps'
+import {
+  clearJourneyWorkspace,
+  saveJourneyWorkspace,
+} from './tiktok-journey/journeyWorkspace'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
@@ -55,19 +59,25 @@ import type { ContentIdea, TikTokAccount } from '../types'
 type JourneyLocationState = {
   tiktokOAuthSuccess?: string
   accountsWarning?: string
+  resumeWorkspaceIdeaId?: number
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
+type PendingExitTarget =
+  | { kind: 'library' }
+  | { kind: 'path'; path: string }
+  | { kind: 'logout' }
+  | { kind: 'browser-back' }
+
 /* ── Step definitions (kept identical to original) ─────────────────────── */
 
 const STEPS = [
   { id: 'creation',     label: 'Création', sub: 'Générer une idée + script' },
   { id: 'init-publish', label: 'Vidéo',    sub: 'Rendre la vidéo Shotstack' },
-  { id: 'upload',       label: 'Upload',   sub: 'Pousser sur TikTok' },
-  { id: 'publish',      label: 'Publish',  sub: 'Publier définitivement' },
+  { id: 'upload',       label: 'Publication', sub: 'Publier sur TikTok' },
 ]
 const TIKTOK_BASE_ROUTE = '/tiktok'
 const TIKTOK_STEP_ROUTES = STEPS.map((step) => `${TIKTOK_BASE_ROUTE}/${step.id}`)
@@ -114,9 +124,9 @@ function formatShortOpenId(value: string | null | undefined) {
 
 function getIdeaStatusLabel(idea: ContentIdea | null | undefined) {
   if (isPublished(idea)) return 'publiee'
-  if (String(idea?.tiktokStatus || '').toLowerCase() === 'uploaded') return 'uploadee'
+  if (String(idea?.tiktokStatus || '').toLowerCase() === 'uploaded') return 'publiee'
   if (String(idea?.tiktokStatus || '').toLowerCase() === 'uploading') return 'publication en cours'
-  if (idea?.uploadUrl) return 'prete upload'
+  if (idea?.uploadUrl) return 'prete publication'
   if (isRenderReady(idea)) return 'rendue'
   if (idea?.shotstackStatus === 'rendering') return 'rendering'
   return idea?.tiktokStatus || 'draft'
@@ -166,6 +176,9 @@ function AddIcon()     { return (<svg viewBox="0 0 24 24" fill="none" stroke="cu
 export default function TikTokJourneyPage() {
   const navigate = useNavigate()
   const location = useLocation() as Location<JourneyLocationState>
+  const resumeWorkspaceIdeaIdRef = useRef<number | null>(location.state?.resumeWorkspaceIdeaId ?? null)
+  const pendingExitTargetRef = useRef<PendingExitTarget | null>(null)
+  const { logout } = useAdminAuth()
   const {
     accountsReadiness,
     contentIdeas,
@@ -175,11 +188,18 @@ export default function TikTokJourneyPage() {
   } = useTikTokWorkflow()
   const { busyActions, isBusy, runAction } = useActionState()
   const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
 
   const currentStepIndex = useMemo(
     () => TIKTOK_STEP_ROUTES.findIndex((route) => location.pathname === route),
     [location.pathname],
   )
+
+  useEffect(() => {
+    if (location.pathname === `${TIKTOK_BASE_ROUTE}/publish`) {
+      navigate(`${TIKTOK_BASE_ROUTE}/upload`, { replace: true })
+    }
+  }, [location.pathname, navigate])
 
   const connectedTikTokAccount = useMemo<TikTokAccount | null>(
     () => tiktokAccounts.find((account) => String(account?.openId || '').trim() || String(account?.scope || '').trim()) || null,
@@ -350,7 +370,7 @@ export default function TikTokJourneyPage() {
     markWorkflowFinished: workflowMonitor.markWorkflowFinished,
   })
 
-  const { handlePrepareUpload, handleUploadVideo } = useUploadStep({
+  const { handlePrepareAndUploadVideo, handlePrepareUpload, handleUploadVideo } = useUploadStep({
     scriptedIdea,
     selectedGeneratedIdea,
     manualAction,
@@ -372,21 +392,132 @@ export default function TikTokJourneyPage() {
     isUploadCompleted: workflowMonitor.isUploadCompleted,
   })
 
-  const { handlePublishVideo } = usePublishStep({
-    scriptedIdea,
-    selectedGeneratedIdea,
-    markPublishComplete,
-    refreshPipelineData,
-    showSuccess,
-    showError,
-    runAction,
-    markWorkflowStarted: workflowMonitor.markWorkflowStarted,
-    markWorkflowFinished: workflowMonitor.markWorkflowFinished,
-    navigate,
-  })
-
   const activeIdea = scriptedIdea || selectedGeneratedIdea
   const currentStep = isFlowRoute ? STEPS[currentStepIndex] : STEPS[0]
+
+  const openLeaveConfirm = (target: PendingExitTarget = { kind: 'library' }) => {
+    pendingExitTargetRef.current = target
+    setIsLeaveConfirmOpen(true)
+  }
+
+  const closeLeaveConfirm = () => {
+    pendingExitTargetRef.current = null
+    setIsLeaveConfirmOpen(false)
+  }
+
+  const completeFlowExit = async (shouldSave: boolean) => {
+    const pendingTarget = pendingExitTargetRef.current
+    pendingExitTargetRef.current = null
+    setIsLeaveConfirmOpen(false)
+
+    if (shouldSave && activeIdea?.id && currentStep?.id) {
+      saveJourneyWorkspace(activeIdea.id, currentStep.id)
+    }
+
+    if (pendingTarget?.kind === 'path') {
+      navigate(pendingTarget.path)
+      return
+    }
+
+    if (pendingTarget?.kind === 'logout') {
+      await logout()
+      navigate('/login', { replace: true })
+      return
+    }
+
+    closeAddFlow()
+  }
+
+  const leaveWithoutSaving = () => {
+    void completeFlowExit(false)
+  }
+
+  const saveAndLeaveFlow = () => {
+    void completeFlowExit(true)
+  }
+
+  useEffect(() => {
+    if (!isFlowRoute) return
+
+    const resumeIdeaId = Number(resumeWorkspaceIdeaIdRef.current || 0)
+    if (!resumeIdeaId) return
+
+    let cancelled = false
+
+    const restoreWorkspace = async () => {
+      try {
+        const [idea, manualActions] = await Promise.all([
+          fetchContentIdeaByIdFromPages(resumeIdeaId),
+          fetchManualActions(),
+        ])
+        if (cancelled || !idea?.id) return
+
+        const manualActionRecord = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
+
+        setGeneratedIdeas([idea])
+        setSelectedGeneratedIdeaId(Number(idea.id))
+        setScriptedIdea(idea)
+        setManualAction(manualActionRecord ? { ...manualActionRecord } : {
+          id: Number(idea.id),
+          topic: idea.topic ?? null,
+          shotstackUrl: idea.shotstackUrl || null,
+          uploadUrl: idea.uploadUrl || null,
+          tiktokStatus: idea.tiktokStatus || null,
+          finalVideoStatus: idea.finalVideoStatus || null,
+          shotstackStatus: idea.shotstackStatus || null,
+          pipelineStatus: idea.pipelineStatus || null,
+          lastError: idea.lastError || null,
+        })
+      } catch {
+        // Resume is best-effort. If it fails, the route still opens normally.
+      } finally {
+        if (!cancelled) {
+          resumeWorkspaceIdeaIdRef.current = null
+          window.history.replaceState({}, document.title, location.pathname)
+        }
+      }
+    }
+
+    void restoreWorkspace()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    isFlowRoute,
+    location.pathname,
+    setGeneratedIdeas,
+    setManualAction,
+    setScriptedIdea,
+    setSelectedGeneratedIdeaId,
+  ])
+
+  useEffect(() => {
+    if (!isFlowRoute) return undefined
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isFlowRoute])
+
+  useEffect(() => {
+    if (!isFlowRoute) return undefined
+
+    const historyState = { ...(window.history.state || {}), tiktokJourneyGuard: true, tiktokJourneyGuardAt: Date.now() }
+    window.history.pushState(historyState, '', window.location.href)
+
+    const handlePopState = () => {
+      window.history.go(1)
+      openLeaveConfirm({ kind: 'browser-back' })
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [isFlowRoute, location.pathname])
 
   const handleValidateInitPublish = () => {
     const previewUrl = manualAction?.shotstackUrl || scriptedIdea?.shotstackUrl || selectedGeneratedIdea?.shotstackUrl
@@ -395,16 +526,54 @@ export default function TikTokJourneyPage() {
       return
     }
     goToStep('upload')
-    showSuccess('Template video valide. Tu peux preparer l upload.')
+    showSuccess('Template video valide. Tu peux lancer la publication.')
   }
 
-  const handleValidateUpload = () => {
-    if (!uploadResult) {
-      setErrorMessage('Lance l upload avant de valider cette etape.')
+  const handleValidateUpload = () => {}
+
+  const handleSaveAndCloseFlow = () => {
+    void completeFlowExit(true)
+  }
+
+  const handleShellBeforeNavigate = async (path: string) => {
+    if (!isFlowRoute) return true
+    openLeaveConfirm({ kind: 'path', path })
+    return false
+  }
+
+  const handleShellBeforeLogout = async () => {
+    if (!isFlowRoute) return true
+    openLeaveConfirm({ kind: 'logout' })
+    return false
+  }
+
+  const guardedStepNavigate = ((to: string | number, options?: { replace?: boolean; state?: unknown }) => {
+    if (typeof to === 'number') {
+      navigate(to)
       return
     }
-    goToStep('publish')
-    showSuccess('Upload valide. Derniere etape: publication.')
+
+    if (isFlowRoute && !TIKTOK_STEP_ROUTES.includes(to)) {
+      openLeaveConfirm({ kind: 'path', path: to })
+      return
+    }
+
+    navigate(to, options)
+  }) as typeof navigate
+
+  const handlePublishToTikTok = async () => {
+    const uploadCompleted = await handlePrepareAndUploadVideo()
+    if (!uploadCompleted || !activeIdea?.id) return
+
+    try {
+      await markPublishComplete(activeIdea.id)
+      clearJourneyWorkspace(activeIdea.id)
+      await refreshPipelineData()
+      showSuccess('Vidéo publiée avec succès sur TikTok.')
+      navigate(`/tiktok/idea/${activeIdea.id}`)
+    } catch (error) {
+      showError(getErrorMessage(error, "La finalisation de la publication n'a pas abouti."))
+    }
   }
 
   const safeHandleGenerateIdea = async () => {
@@ -445,6 +614,8 @@ export default function TikTokJourneyPage() {
           { type: 'error',   message: errorMessage },
           { type: 'success', message: successMessage },
         ]}
+        onBeforeNavigate={handleShellBeforeNavigate}
+        onBeforeLogout={handleShellBeforeLogout}
       >
         <div className="video-ops-shell journey-shell">
           {!isFlowRoute ? (
@@ -533,6 +704,12 @@ export default function TikTokJourneyPage() {
               currentStepIndex={currentStepIndex}
               currentStep={currentStep}
               closeAddFlow={closeAddFlow}
+              saveAndCloseFlow={handleSaveAndCloseFlow}
+              isLeaveConfirmOpen={isLeaveConfirmOpen}
+              openLeaveConfirm={() => openLeaveConfirm({ kind: 'library' })}
+              closeLeaveConfirm={closeLeaveConfirm}
+              leaveWithoutSaving={leaveWithoutSaving}
+              saveAndLeaveFlow={saveAndLeaveFlow}
               goToStep={goToStep}
               ChevronDownIcon={ChevronDownIcon}
               BackArrow={BackArrow}
@@ -544,8 +721,9 @@ export default function TikTokJourneyPage() {
               generationCategory={generationCategory}
               generationCount={generationCount}
               handleGenerateIdea={safeHandleGenerateIdea}
+              handlePrepareAndUploadVideo={handlePublishToTikTok}
               handlePrepareUpload={handlePrepareUpload}
-              handlePublishVideo={handlePublishVideo}
+              handlePublishVideo={handlePublishToTikTok}
               handleRetryInitPublish={safeHandleRetryInitPublish}
               handleUploadVideo={handleUploadVideo}
               handleValidateCreation={handleValidateCreation}
@@ -562,7 +740,7 @@ export default function TikTokJourneyPage() {
               isUploadingVideo={isUploadingVideo}
               manualAction={manualAction}
               maxIdeaBatchSize={MAX_IDEA_BATCH_SIZE}
-              navigate={navigate}
+              navigate={guardedStepNavigate}
               openListMenu={openListMenu}
               scriptedIdea={scriptedIdea}
               selectedGeneratedIdea={selectedGeneratedIdea}
