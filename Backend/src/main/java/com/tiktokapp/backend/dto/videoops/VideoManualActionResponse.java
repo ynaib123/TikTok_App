@@ -12,6 +12,10 @@ public class VideoManualActionResponse {
     private final String shotstackStatus;
     private final String pipelineStatus;
     private final String lastError;
+    private final String templateId;
+    private final String qualityProfile;
+    private final String renderEngine;
+    private final String thumbnailUrl;
 
     public VideoManualActionResponse(
             Long id,
@@ -23,7 +27,11 @@ public class VideoManualActionResponse {
             String finalVideoStatus,
             String shotstackStatus,
             String pipelineStatus,
-            String lastError
+            String lastError,
+            String templateId,
+            String qualityProfile,
+            String renderEngine,
+            String thumbnailUrl
     ) {
         this.id = id;
         this.topic = topic;
@@ -35,6 +43,10 @@ public class VideoManualActionResponse {
         this.shotstackStatus = shotstackStatus;
         this.pipelineStatus = pipelineStatus;
         this.lastError = lastError;
+        this.templateId = templateId;
+        this.qualityProfile = qualityProfile;
+        this.renderEngine = renderEngine;
+        this.thumbnailUrl = thumbnailUrl;
     }
 
     public Long getId() {
@@ -75,5 +87,21 @@ public class VideoManualActionResponse {
 
     public String getLastError() {
         return lastError;
+    }
+
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public String getQualityProfile() {
+        return qualityProfile;
+    }
+
+    public String getRenderEngine() {
+        return renderEngine;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
     }
 }

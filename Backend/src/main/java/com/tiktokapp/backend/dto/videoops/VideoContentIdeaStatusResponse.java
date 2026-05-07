@@ -18,6 +18,10 @@ public class VideoContentIdeaStatusResponse {
     private final String lastEventMessage;
     private final String lastEventSeverity;
     private final String lastUpdatedAt;
+    private final String templateId;
+    private final String qualityProfile;
+    private final String renderEngine;
+    private final String thumbnailUrl;
 
     public VideoContentIdeaStatusResponse(
             long contentIdeaId,
@@ -35,7 +39,11 @@ public class VideoContentIdeaStatusResponse {
             VideoWorkflowRunDetailResponse lastWorkflowRun,
             String lastEventMessage,
             String lastEventSeverity,
-            String lastUpdatedAt
+            String lastUpdatedAt,
+            String templateId,
+            String qualityProfile,
+            String renderEngine,
+            String thumbnailUrl
     ) {
         this.contentIdeaId = contentIdeaId;
         this.topic = topic;
@@ -53,6 +61,26 @@ public class VideoContentIdeaStatusResponse {
         this.lastEventMessage = lastEventMessage;
         this.lastEventSeverity = lastEventSeverity;
         this.lastUpdatedAt = lastUpdatedAt;
+        this.templateId = templateId;
+        this.qualityProfile = qualityProfile;
+        this.renderEngine = renderEngine;
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public String getQualityProfile() {
+        return qualityProfile;
+    }
+
+    public String getRenderEngine() {
+        return renderEngine;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
     }
 
     public long getContentIdeaId() {

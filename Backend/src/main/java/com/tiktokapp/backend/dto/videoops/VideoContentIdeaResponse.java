@@ -16,6 +16,10 @@ public class VideoContentIdeaResponse {
     private final String tiktokAccountOpenId;
     private final String pipelineStatus;
     private final String lastError;
+    private final String templateId;
+    private final String qualityProfile;
+    private final String renderEngine;
+    private final String thumbnailUrl;
 
     public VideoContentIdeaResponse(
             Long id,
@@ -31,7 +35,11 @@ public class VideoContentIdeaResponse {
             String uploadUrl,
             String tiktokAccountOpenId,
             String pipelineStatus,
-            String lastError
+            String lastError,
+            String templateId,
+            String qualityProfile,
+            String renderEngine,
+            String thumbnailUrl
     ) {
         this.id = id;
         this.category = category;
@@ -47,6 +55,10 @@ public class VideoContentIdeaResponse {
         this.tiktokAccountOpenId = tiktokAccountOpenId;
         this.pipelineStatus = pipelineStatus;
         this.lastError = lastError;
+        this.templateId = templateId;
+        this.qualityProfile = qualityProfile;
+        this.renderEngine = renderEngine;
+        this.thumbnailUrl = thumbnailUrl;
     }
 
     public Long getId() {
@@ -103,5 +115,21 @@ public class VideoContentIdeaResponse {
 
     public String getLastError() {
         return lastError;
+    }
+
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public String getQualityProfile() {
+        return qualityProfile;
+    }
+
+    public String getRenderEngine() {
+        return renderEngine;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
     }
 }

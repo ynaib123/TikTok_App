@@ -148,7 +148,11 @@ public class VideoOpsService {
                     uploadUrl,
                     text(row, "tiktok_account_open_id", ""),
                     stage.name().toLowerCase(Locale.ROOT),
-                    state != null ? state.getLastErrorMessage() : null
+                    state != null ? state.getLastErrorMessage() : null,
+                    text(row, "template_id", ""),
+                    text(row, "quality_profile", ""),
+                    text(row, "render_engine", ""),
+                    text(row, "thumbnail_url", "")
             ));
         });
         return contentIdeas;
@@ -259,7 +263,11 @@ public class VideoOpsService {
                 ),
                 lastEvent == null ? null : lastEvent.getMessage(),
                 lastEvent == null ? null : lastEvent.getSeverity(),
-                state == null || state.getUpdatedAt() == null ? null : state.getUpdatedAt().toString()
+                state == null || state.getUpdatedAt() == null ? null : state.getUpdatedAt().toString(),
+                text(row, "template_id", ""),
+                text(row, "quality_profile", ""),
+                text(row, "render_engine", ""),
+                text(row, "thumbnail_url", "")
         );
     }
 
@@ -282,7 +290,11 @@ public class VideoOpsService {
                         item.getFinalVideoStatus(),
                         item.getShotstackStatus(),
                         item.getPipelineStatus(),
-                        item.getLastError()
+                        item.getLastError(),
+                        item.getTemplateId(),
+                        item.getQualityProfile(),
+                        item.getRenderEngine(),
+                        item.getThumbnailUrl()
                 ))
                 .toList();
     }
@@ -956,7 +968,11 @@ public class VideoOpsService {
                 uploadUrl,
                 valueOrDefault(idea.getTiktokAccountOpenId(), ""),
                 stage.name().toLowerCase(Locale.ROOT),
-                state != null ? state.getLastErrorMessage() : null
+                state != null ? state.getLastErrorMessage() : null,
+                valueOrDefault(idea.getTemplateId(), ""),
+                valueOrDefault(idea.getQualityProfile(), ""),
+                valueOrDefault(idea.getRenderEngine(), ""),
+                valueOrDefault(idea.getThumbnailUrl(), "")
         );
     }
 
