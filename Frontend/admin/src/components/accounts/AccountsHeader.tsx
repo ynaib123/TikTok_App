@@ -1,4 +1,5 @@
 import { ProviderGlyph } from './AccountsPresenters'
+import { Button } from '../../design-system'
 import type { ServiceProvider } from '../../types'
 
 type AvailableProvider = { key: string; title: string; kind: string }
@@ -26,14 +27,14 @@ export function AccountsHeader({
       </div>
       <div className="journey-page-head-actions">
         <div className="accounts-connect-menu">
-          <button
-            type="button"
-            className="journey-btn is-primary"
+          <Button
+            variant="primary"
             onClick={() => setConnectMenuOpen((v) => !v)}
             disabled={isConnectingTikTok}
+            loading={isConnectingTikTok}
           >
             + Connecter un service
-          </button>
+          </Button>
           {connectMenuOpen ? (
             <div className="accounts-connect-menu-popover" role="menu">
               {availableProviders.map((p) => (

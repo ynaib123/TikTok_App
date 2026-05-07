@@ -7,7 +7,7 @@ import {
   fetchAccountsOverview,
   saveServiceConnection,
   validateServiceConnection,
-} from '../services/videoOpsSupabase.js';
+} from '../services/videoOpsSupabase';
 import { SERVICE_CONNECTION_FIELDS } from '../types/services';
 import type {
   AccountsOverview,
@@ -15,6 +15,11 @@ import type {
   ServiceConnectionForm,
   ServiceProvider,
 } from '../types';
+import {
+  fetchAndPrimeVideoOpsBootstrap,
+  VIDEO_OPS_QUERY_KEYS,
+  VIDEO_OPS_STALE_TIMES,
+} from '../services/videoOpsQueries';
 
 const EMPTY_OVERVIEW: AccountsOverview = {
   tiktokAccounts: [],
@@ -28,18 +33,39 @@ const EMPTY_OVERVIEW: AccountsOverview = {
 
 export function useServiceConnections() {
   const queryClient = useQueryClient();
+  const cachedOverview = queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview);
+
+  const bootstrapQuery = useQuery({
+    queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap,
+    queryFn: () => fetchAndPrimeVideoOpsBootstrap(queryClient),
+    staleTime: VIDEO_OPS_STALE_TIMES.bootstrap,
+    // Recovery policy : refetch agressif sur erreur (5s) sinon 30s, +
+    // retry exponentiel pour resister aux blips de redemarrage backend.
+    refetchInterval: (query) => (query.state.error ? 5_000 : 30_000),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+    placeholderData: (previousData) => previousData,
+  });
 
   const overviewQuery = useQuery<AccountsOverview>({
-    queryKey: ['accounts-overview'],
+    queryKey: VIDEO_OPS_QUERY_KEYS.accountsOverview,
     queryFn: fetchAccountsOverview,
+    enabled: !bootstrapQuery.isPending || Boolean(cachedOverview),
+    initialData: () => queryClient.getQueryData<AccountsOverview>(VIDEO_OPS_QUERY_KEYS.accountsOverview),
+    staleTime: VIDEO_OPS_STALE_TIMES.accountsOverview,
+    refetchInterval: (query) => (query.state.error ? 5_000 : 30_000),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+    placeholderData: (previousData) => previousData,
   });
 
   const refresh = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['accounts-overview'] }),
-      queryClient.invalidateQueries({ queryKey: ['accounts-readiness'] }),
-      queryClient.invalidateQueries({ queryKey: ['tiktok-accounts'] }),
-      queryClient.invalidateQueries({ queryKey: ['content-ideas'] }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.accountsOverview }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.accountsReadiness }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.tiktokAccounts }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas }),
     ]);
   }, [queryClient]);
 

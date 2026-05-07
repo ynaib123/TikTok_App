@@ -6,9 +6,11 @@ import com.tiktokapp.backend.dto.AdminProfileResponse;
 import com.tiktokapp.backend.dto.LoginRequest;
 import com.tiktokapp.backend.dto.RefreshTokenRequest;
 import com.tiktokapp.backend.service.AdminAuthService;
+import com.tiktokapp.backend.service.AuditService;
 import com.tiktokapp.backend.service.InMemoryRefreshTokenStore;
 import com.tiktokapp.backend.service.JwtService;
 import com.tiktokapp.backend.service.RefreshTokenPayload;
+import java.util.HashMap;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -35,17 +37,20 @@ public class AdminAuthController {
     private final JwtService jwtService;
     private final InMemoryRefreshTokenStore refreshTokenStore;
     private final RefreshCookieService refreshCookieService;
+    private final AuditService auditService;
 
     public AdminAuthController(
             AdminAuthService adminAuthService,
             JwtService jwtService,
             InMemoryRefreshTokenStore refreshTokenStore,
-            RefreshCookieService refreshCookieService
+            RefreshCookieService refreshCookieService,
+            AuditService auditService
     ) {
         this.adminAuthService = adminAuthService;
         this.jwtService = jwtService;
         this.refreshTokenStore = refreshTokenStore;
         this.refreshCookieService = refreshCookieService;
+        this.auditService = auditService;
     }
 
     @GetMapping("/csrf-token")
@@ -58,10 +63,22 @@ public class AdminAuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AdminAuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        AdminProfileResponse admin = adminAuthService.authenticate(request.getEmail(), request.getMotDePasse())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identifiants administrateur invalides."));
+        AdminProfileResponse admin;
+        try {
+            admin = adminAuthService.authenticate(request.getEmail(), request.getMotDePasse())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identifiants administrateur invalides."));
+        } catch (ResponseStatusException ex) {
+            HashMap<String, Object> failPayload = new HashMap<>();
+            failPayload.put("email", request.getEmail());
+            failPayload.put("rememberMe", Boolean.TRUE.equals(request.getRememberMe()));
+            auditService.log(null, request.getEmail(), "admin.login.failed", "admin", null, failPayload);
+            throw ex;
+        }
 
         boolean rememberMe = Boolean.TRUE.equals(request.getRememberMe());
+        HashMap<String, Object> payload = new HashMap<>();
+        payload.put("rememberMe", rememberMe);
+        auditService.log(admin.getId(), admin.getEmail(), "admin.login", "admin", String.valueOf(admin.getId()), payload);
         return buildAuthResponse(admin, rememberMe);
     }
 
@@ -90,6 +107,8 @@ public class AdminAuthController {
             refreshTokenStore.revoke(jti);
             boolean rememberMe = Boolean.TRUE.equals(claims.get("rememberMe", Boolean.class));
             AdminProfileResponse admin = adminAuthService.getConfiguredAdmin();
+            auditService.log(admin.getId(), admin.getEmail(), "admin.token.refresh", "admin",
+                    String.valueOf(admin.getId()), Map.of("rememberMe", rememberMe));
             return buildAuthResponse(admin, rememberMe);
         } catch (Exception ignored) {
             return unauthorizedResponse();
@@ -102,16 +121,26 @@ public class AdminAuthController {
             HttpServletRequest servletRequest
     ) {
         String rawRefreshToken = resolveRefreshToken(servletRequest, request);
+        String revokedJti = null;
+        String subject = null;
         if (rawRefreshToken != null) {
             try {
                 Claims claims = jwtService.parseToken(rawRefreshToken);
-                refreshTokenStore.revoke(claims.getId());
+                revokedJti = claims.getId();
+                subject = claims.getSubject();
+                refreshTokenStore.revoke(revokedJti);
             } catch (Exception ignored) {
             }
         }
 
+        HashMap<String, Object> payload = new HashMap<>();
+        payload.put("jti", revokedJti);
+        payload.put("hadToken", rawRefreshToken != null);
+        auditService.log(null, subject, "admin.logout", "admin", subject, payload);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingCookie())
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingAccessCookie())
                 .body(Map.of("message", "Deconnecte"));
     }
 
@@ -120,14 +149,20 @@ public class AdminAuthController {
         RefreshTokenPayload refreshPayload = jwtService.generateAdminRefreshToken(admin, rememberMe);
         refreshTokenStore.store(refreshPayload.jti(), refreshPayload.token(), refreshPayload.expiresAt());
 
-        long maxAgeSeconds = Math.max(1, Duration.between(Instant.now(), refreshPayload.expiresAt()).getSeconds());
+        long refreshMaxAgeSeconds = Math.max(1, Duration.between(Instant.now(), refreshPayload.expiresAt()).getSeconds());
+        long accessTtlSeconds = jwtService.getAccessTokenTtlSeconds();
 
+        // Sprint securite : access token pose en cookie HttpOnly (defense XSS).
+        // On garde aussi le token dans le body pour les clients backend (tests, integrations
+        // futures, scripts) qui ne peuvent pas / ne veulent pas s'appuyer sur les cookies.
+        // Le frontend admin lui ne stocke plus le token, il s'appuie uniquement sur le cookie.
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildRefreshCookie(refreshPayload.token(), maxAgeSeconds))
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildRefreshCookie(refreshPayload.token(), refreshMaxAgeSeconds))
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildAccessCookie(accessToken, accessTtlSeconds))
                 .body(new AdminAuthResponse(
                         accessToken,
                         null,
-                        jwtService.getAccessTokenTtlSeconds(),
+                        accessTtlSeconds,
                         admin,
                         "ADMIN"
                 ));
@@ -136,6 +171,7 @@ public class AdminAuthController {
     private ResponseEntity<AdminAuthResponse> unauthorizedResponse() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingCookie())
+                .header(HttpHeaders.SET_COOKIE, refreshCookieService.buildClearingAccessCookie())
                 .build();
     }
 

@@ -51,19 +51,24 @@ export default function VideoPreviewModal({ idea, onClose }: VideoPreviewModalPr
   const sub = [idea.category, idea.caption].filter(Boolean).join(' · ')
 
   return createPortal(
-    <div
-      className="vc-modal-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Apercu video: ${title}`}
-    >
-      <div className="vc-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="vc-modal-overlay">
+      <button
+        type="button"
+        className="vc-modal-backdrop"
+        aria-label="Fermer la fenêtre"
+        onClick={onClose}
+      />
+      <div
+        className="vc-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Aperçu vidéo : ${title}`}
+      >
         <button
           type="button"
           className="vc-modal-close"
           onClick={onClose}
-          aria-label="Fermer l apercu video"
+          aria-label="Fermer l’aperçu vidéo"
         >
           <CloseIcon />
         </button>
@@ -76,7 +81,9 @@ export default function VideoPreviewModal({ idea, onClose }: VideoPreviewModalPr
             controls
             autoPlay
             playsInline
-          />
+          >
+            <track kind="captions" />
+          </video>
         </div>
 
         <div className="vc-modal-footer">

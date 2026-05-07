@@ -11,6 +11,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
@@ -24,13 +26,16 @@ public class SecurityConfig {
 
     private final SecurityProperties securityProperties;
     private final AdminJwtAuthenticationFilter adminJwtAuthenticationFilter;
+    private final com.tiktokapp.backend.web.security.RateLimitFilter rateLimitFilter;
 
     public SecurityConfig(
             SecurityProperties securityProperties,
-            AdminJwtAuthenticationFilter adminJwtAuthenticationFilter
+            AdminJwtAuthenticationFilter adminJwtAuthenticationFilter,
+            com.tiktokapp.backend.web.security.RateLimitFilter rateLimitFilter
     ) {
         this.securityProperties = securityProperties;
         this.adminJwtAuthenticationFilter = adminJwtAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -56,13 +61,43 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/pexels/videos/search",
                                 "/api/video-ops/internal/shotstack/render",
                                 "/api/video-ops/internal/shotstack/render/*",
-                                "/api/video-ops/accounts/**"
+                                "/api/video-ops/accounts/**",
+                                "/api/ai/agents/*/run"
                         )
                 )
                 .cors(Customizer.withDefaults())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(frame -> frame.deny())
+                        // X-XSS-Protection: 0 = guidance moderne (Chromium a retire l'XSS auditor,
+                        // les implementations heritees etaient elles-memes exploitables).
+                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.DISABLED))
+                        .referrerPolicy(ref -> ref.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicyHeader(perm -> perm.policy("camera=(), microphone=(), geolocation=(), payment=()"))
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000)
+                        )
+                        // CSP : backend sert essentiellement du JSON. Les exceptions 'unsafe-inline'
+                        // sont la pour Swagger UI (dev) et pages d'erreur whitelabel Spring Boot.
+                        // En prod, Swagger est desactive (application-prod.yml) donc l'API reelle
+                        // exposee ne consomme pas l'unsafe-inline.
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                        + "script-src 'self' 'unsafe-inline'; "
+                                        + "style-src 'self' 'unsafe-inline'; "
+                                        + "img-src 'self' data: https:; "
+                                        + "font-src 'self' data:; "
+                                        + "connect-src 'self'; "
+                                        + "frame-ancestors 'none'; "
+                                        + "base-uri 'self'; "
+                                        + "form-action 'self'; "
+                                        + "object-src 'none'"
+                        ))
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
@@ -81,11 +116,18 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/groq/chat-completions",
                                 "/api/video-ops/internal/pexels/videos/search",
                                 "/api/video-ops/internal/shotstack/render",
-                                "/api/video-ops/internal/shotstack/render/*"
+                                "/api/video-ops/internal/shotstack/render/*",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/actuator/prometheus"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(adminJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

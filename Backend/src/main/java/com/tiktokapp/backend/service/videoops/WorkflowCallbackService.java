@@ -46,8 +46,37 @@ public class WorkflowCallbackService {
 
     @Transactional
     public VideoWorkflowRunDetailResponse completeRun(long runId, VideoWorkflowRunCompletionRequest request) {
+        return completeRun(runId, request, null);
+    }
+
+    /**
+     * Variante avec idempotency key. Si {@code idempotencyKey} est fourni (header
+     * {@code X-Idempotency-Key} cote n8n) et qu'il ne correspond pas a la cle
+     * du run cible, le callback est rejete en {@code 409 Conflict} : c'est le
+     * signe d'un replay vers un run obsolete (n8n a relance, le backend a
+     * trigger un nouveau run, l'ancienne tentative arrive en retard).
+     * <p>
+     * L'absence d'idempotency key reste toleree pour les workflows n8n qui
+     * n'echo pas encore le header (compat retro pendant la migration).
+     */
+    @Transactional
+    public VideoWorkflowRunDetailResponse completeRun(long runId, VideoWorkflowRunCompletionRequest request, String idempotencyKey) {
         VideoWorkflowRun run = workflowRunRepository.findById(runId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()
+                && run.getIdempotencyKey() != null
+                && !idempotencyKey.trim().equals(run.getIdempotencyKey())) {
+            logger.warn(
+                    "video_ops event=workflow_callback_idempotency_mismatch workflowRunId={} expected={} received={}",
+                    runId, run.getIdempotencyKey(), idempotencyKey
+            );
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Callback rejete: idempotency key " + idempotencyKey
+                            + " ne correspond pas au run actif (" + run.getIdempotencyKey() + "). Probable replay obsolete."
+            );
+        }
 
         VideoWorkflowRunStatus nextStatus = WorkflowCompletionStatusMapper.toRunStatus(request.getStatus());
 

@@ -1,0 +1,56 @@
+# Phase 2.12 — dev profile.
+# Activated with SPRING_PROFILES_ACTIVE=dev.
+
+logging:
+  level:
+    com.tiktokapp.backend: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.springframework.security: INFO
+
+app:
+  security:
+    secure-cookies: false
+  alerting:
+    enabled: false
+  # Levier 2 : 1er tick DLQ retarde a 10 min en dev (vs 2 min default) pour
+  # ne pas frapper le pool DB pendant la fenetre de demarrage.
+  video-ops:
+    failed-callback-retry-interval-ms: 600000
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+spring:
+  # Levier 1 : lazy-initialization. Les beans sont crees a la 1re utilisation
+  # plutot qu'au boot. Gain typique : 30-50% sur le temps de demarrage.
+  # Spring Boot detecte les @Scheduled / @EventListener et les force a etre
+  # initialises eagerly automatiquement, donc rien de critique n'est casse.
+  main:
+    lazy-initialization: true
+  devtools:
+    restart:
+      enabled: true
+      poll-interval: 2s
+      quiet-period: 1s
+    livereload:
+      enabled: false
+  jpa:
+    # Desactive le pattern open-in-view (anti-pattern N+1, lourdise les requetes
+    # web et impose un Hibernate session par requete meme sans JPA).
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          # Diminue les aller-retours JDBC pour metadata LOB.
+          lob:
+            non_contextual_creation: true

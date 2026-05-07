@@ -550,7 +550,11 @@ public class VideoOpsService {
     }
 
     public VideoWorkflowRunDetailResponse completeWorkflowRun(long runId, VideoWorkflowRunCompletionRequest request) {
-        return workflowCallbackService.completeRun(runId, request);
+        return workflowCallbackService.completeRun(runId, request, null);
+    }
+
+    public VideoWorkflowRunDetailResponse completeWorkflowRun(long runId, VideoWorkflowRunCompletionRequest request, String idempotencyKey) {
+        return workflowCallbackService.completeRun(runId, request, idempotencyKey);
     }
 
     public void validateWorkflowCallbackRequest(String method, String path, String body, String timestamp, String signature, String legacySecret) {

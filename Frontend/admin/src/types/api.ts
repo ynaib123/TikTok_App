@@ -29,6 +29,13 @@ export interface AccountsOverview {
   readiness: AccountsReadiness;
 }
 
+export interface VideoOpsBootstrapResponse {
+  accountsOverview: AccountsOverview;
+  accountsReadiness: AccountsReadiness;
+  contentIdeas: SpringPageResponse<ContentIdea>;
+  manualActions: ManualAction[];
+}
+
 export type SaveServiceConnectionPayload = ServiceConnectionForm;
 
 export interface WorkflowTriggerPayload {

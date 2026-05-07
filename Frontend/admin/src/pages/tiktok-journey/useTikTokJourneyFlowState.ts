@@ -370,7 +370,7 @@ export function useTikTokJourneyFlowState({
 
   const goToStep = useCallback((stepId: string) => {
     dispatch({ type: 'WORKFLOW_STARTED', workflowType: stepId })
-    navigate(`${tiktokBaseRoute}/${stepId}`)
+    navigate(`${tiktokBaseRoute}/${stepId}`, { replace: true })
   }, [navigate, tiktokBaseRoute])
 
   const startAddFlow = useCallback(() => {
@@ -389,17 +389,17 @@ export function useTikTokJourneyFlowState({
     }
 
     dispatch({ type: 'PIPELINE_RESET', stepIndex: state.currentStepIndex })
-    navigate(`${tiktokBaseRoute}/creation`)
+    navigate(`${tiktokBaseRoute}/creation`, { replace: true })
   }, [accountsReadiness, isJourneyReady, navigate, state.currentStepIndex, tiktokBaseRoute])
 
   const closeAddFlow = useCallback(() => {
     dispatch({ type: 'PIPELINE_RESET', stepIndex: -1 })
-    navigate(tiktokBaseRoute)
+    navigate(tiktokBaseRoute, { replace: true })
   }, [navigate, tiktokBaseRoute])
 
   const goBackInFlow = useCallback(() => {
     if (!isFlowRoute) {
-      navigate(tiktokBaseRoute)
+      navigate(tiktokBaseRoute, { replace: true })
       return
     }
 
@@ -408,10 +408,11 @@ export function useTikTokJourneyFlowState({
       return
     }
 
-    navigate(stepRoutes[state.currentStepIndex - 1])
+    navigate(stepRoutes[state.currentStepIndex - 1], { replace: true })
   }, [closeAddFlow, isFlowRoute, navigate, state.currentStepIndex, stepRoutes, tiktokBaseRoute])
 
   return {
+    closeAddFlow,
     displayedGeneratedIdeas,
     errorMessage: state.errorMessage,
     generatedIdeas: state.generatedIdeas,

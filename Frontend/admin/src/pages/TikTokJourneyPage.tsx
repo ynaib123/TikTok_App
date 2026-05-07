@@ -12,7 +12,7 @@
  * also in this drop-in folder.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, type Location } from 'react-router-dom'
 
 import AdminShell from '../components/AdminShell'
@@ -32,6 +32,7 @@ import {
   markPublishComplete,
   uploadTikTokMedia,
 } from '../services/videoOpsSupabase'
+import { markAdminRouteReady } from '../services/adminPerformance'
 import TikTokLibraryView from './tiktok-journey/TikTokLibraryView'
 import TikTokStepScreen from './tiktok-journey/TikTokStepScreen'
 import { useActionState } from './tiktok-journey/useActionState'
@@ -48,6 +49,7 @@ import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
 import '../styles/themes/products-dark.css'
 import '../styles/features/journey.css'
+import '../styles/features/tiktok-step.css'
 import type { ContentIdea, TikTokAccount } from '../types'
 
 type JourneyLocationState = {
@@ -62,18 +64,18 @@ function getErrorMessage(error: unknown, fallback: string) {
 /* ── Step definitions (kept identical to original) ─────────────────────── */
 
 const STEPS = [
-  { id: 'creation',     label: 'Creation', sub: 'Generer une idee + script' },
-  { id: 'init-publish', label: 'Video',    sub: 'Rendre la video Shotstack' },
+  { id: 'creation',     label: 'Création', sub: 'Générer une idée + script' },
+  { id: 'init-publish', label: 'Vidéo',    sub: 'Rendre la vidéo Shotstack' },
   { id: 'upload',       label: 'Upload',   sub: 'Pousser sur TikTok' },
-  { id: 'publish',      label: 'Publish',  sub: 'Publier definitivement' },
+  { id: 'publish',      label: 'Publish',  sub: 'Publier définitivement' },
 ]
 const TIKTOK_BASE_ROUTE = '/tiktok'
 const TIKTOK_STEP_ROUTES = STEPS.map((step) => `${TIKTOK_BASE_ROUTE}/${step.id}`)
 
 const LIST_FILTER_OPTIONS = [
   { value: 'all',         label: 'Toutes' },
-  { value: 'published',   label: 'Publiees' },
-  { value: 'unpublished', label: 'Non publiees' },
+  { value: 'published',   label: 'Publiées' },
+  { value: 'unpublished', label: 'Non publiées' },
   { value: 'ready',       label: 'Rendues' },
 ]
 
@@ -124,11 +126,13 @@ function getIdeaStatusLabel(idea: ContentIdea | null | undefined) {
 
 function VideoPreview({ url }: { url: string | null | undefined }) {
   if (!url) {
-    return <div className="journey-video-preview-empty">Aucune video pour le moment.</div>
+    return <div className="journey-video-preview-empty">Aucune vidéo pour le moment.</div>
   }
   return (
     <div className="journey-video-preview">
-      <video src={url} controls playsInline />
+      <video src={url} controls playsInline>
+        <track kind="captions" />
+      </video>
     </div>
   )
 }
@@ -203,10 +207,10 @@ export default function TikTokJourneyPage() {
   })
 
   const {
+    closeAddFlow,
     displayedGeneratedIdeas,
     errorMessage,
     generationCount,
-    goBackInFlow,
     goToStep,
     isFlowRoute,
     isJourneyReady,
@@ -229,6 +233,22 @@ export default function TikTokJourneyPage() {
     successMessage,
     uploadResult,
   } = flowState
+
+  useEffect(() => {
+    if (isLoading) return
+    markAdminRouteReady('/tiktok', {
+      hasError: Boolean(contentIdeasErrorMessage),
+      ideas: contentIdeas.length,
+      hasConnectedTikTokAccount,
+      isFlowRoute,
+    })
+  }, [
+    contentIdeas.length,
+    contentIdeasErrorMessage,
+    hasConnectedTikTokAccount,
+    isFlowRoute,
+    isLoading,
+  ])
 
   const listState = useTikTokJourneyListState({
     contentIdeas,
@@ -431,8 +451,8 @@ export default function TikTokJourneyPage() {
             <>
               <header className="journey-page-head">
                 <div className="journey-page-head-copy">
-                  <h1>Bibliotheque TikTok</h1>
-                  <p>Gere tes idees, scripts et videos. Lance un nouveau parcours pour generer une video de A a Z.</p>
+                  <h1>Bibliothèque TikTok</h1>
+                  <p>Gère tes idées, scripts et vidéos. Lance un nouveau parcours pour générer une vidéo de A à Z.</p>
                 </div>
                 <div className="journey-page-head-actions">
                   <button
@@ -446,26 +466,26 @@ export default function TikTokJourneyPage() {
                 </div>
               </header>
 
-              <section className="journey-stats" aria-label="Statistiques bibliotheque">
+              <section className="journey-stats" aria-label="Statistiques bibliothèque">
                 <div className="journey-stat">
                   <span className="journey-stat-label">Total</span>
                   <span className="journey-stat-value">{libraryStats.total}</span>
-                  <span className="journey-stat-trend">Toutes idees confondues</span>
+                  <span className="journey-stat-trend">Toutes idées confondues</span>
                 </div>
                 <div className="journey-stat">
-                  <span className="journey-stat-label">Publiees</span>
+                  <span className="journey-stat-label">Publiées</span>
                   <span className="journey-stat-value">{libraryStats.published}</span>
                   <span className="journey-stat-trend is-up">Live sur TikTok</span>
                 </div>
                 <div className="journey-stat">
-                  <span className="journey-stat-label">Pretes a publier</span>
+                  <span className="journey-stat-label">Prêtes à publier</span>
                   <span className="journey-stat-value">{libraryStats.ready}</span>
-                  <span className="journey-stat-trend">Rendues, non publiees</span>
+                  <span className="journey-stat-trend">Rendues, non publiées</span>
                 </div>
                 <div className="journey-stat">
                   <span className="journey-stat-label">Brouillons</span>
                   <span className="journey-stat-value">{libraryStats.drafts}</span>
-                  <span className="journey-stat-trend is-warn">Encore a generer</span>
+                  <span className="journey-stat-trend is-warn">Encore à générer</span>
                 </div>
               </section>
 
@@ -512,7 +532,7 @@ export default function TikTokJourneyPage() {
               steps={STEPS}
               currentStepIndex={currentStepIndex}
               currentStep={currentStep}
-              goBackInFlow={goBackInFlow}
+              closeAddFlow={closeAddFlow}
               goToStep={goToStep}
               ChevronDownIcon={ChevronDownIcon}
               BackArrow={BackArrow}

@@ -77,6 +77,14 @@ Puis ouvrir :
 - frontend admin : `http://localhost:5174`
 - n8n : `http://localhost:5678`
 
+Dans la stack Docker principale :
+
+- `frontend` tourne avec Vite dans le conteneur et recharge les changements via bind mount
+- `backend` tourne avec Spring Boot DevTools : reload du contexte en ~5-10 s sur modification d'un fichier `.java`, sans redemarrer la JVM
+- `n8n` avec montage des workflows locaux
+
+Le `docker-compose.yml` racine est l'unique stack dev/prod-like ; il y a quelques petites bascules par variables d'env (`SPRING_PROFILES_ACTIVE=dev` reduit le boot a ~25 s).
+
 ## Configuration backend video ops
 
 Variables backend recommandees pour un fonctionnement complet :

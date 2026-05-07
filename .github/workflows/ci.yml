@@ -44,11 +44,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint (fail on any warning)
+        run: npm run lint -- --max-warnings=0
 
       - name: Type-check
         run: npm run type-check
+
+      - name: Unit tests (node --test + vitest)
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -60,3 +63,30 @@ jobs:
         env:
           PLAYWRIGHT_ENABLE_VIDEO_OPS_E2E: "true"
         run: npm run test:e2e -- tiktok-journey.spec.js
+
+  workflows-json:
+    name: n8n workflow JSON validity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate canonical workflow JSON
+        run: |
+          set -e
+          for f in Backend/tools/n8n-workflows/*.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
+            echo "ok $f"
+          done
+
+  security:
+    name: Security scan (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"

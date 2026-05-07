@@ -1,6 +1,11 @@
 import process from 'node:process'
 import { test, expect } from '@playwright/test'
 
+// Suite skipped: AdminClientsPage was removed during the TikTok-pipeline
+// refactor. Selectors like .admin-client-list-item still exist in CSS and
+// shared catalog code, but no page renders them.
+test.skip(true, 'Clients module retired — see admin-products.spec.js.')
+
 const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || 'admin@myshop.com'
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || '123456'
 

@@ -1,6 +1,12 @@
 import process from 'node:process'
 import { test, expect } from '@playwright/test'
 
+// Suite skipped: the products module (/products, /products/add, /products/:id/edit)
+// was retired during the TikTok-pipeline refactor. AdminProductsPage.jsx still
+// compiles but is no longer wired into AdminApp routes. Keeping the spec file
+// for archival; revisit if /products is reintroduced.
+test.skip(true, 'Products module retired — see admin-products.spec.js header comment.')
+
 const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || 'admin@myshop.com'
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || '123456'
 const demoImageUrl = process.env.PLAYWRIGHT_PRODUCT_IMAGE_URL || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80'
