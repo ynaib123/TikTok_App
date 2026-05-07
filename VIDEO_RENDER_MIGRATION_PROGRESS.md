@@ -1,6 +1,6 @@
 # Video Render Migration Progress
 
-Derniere mise a jour: 2026-05-07 (Phase 5)
+Derniere mise a jour: 2026-05-07 (Phases 6 + 7)
 
 Objectif:
 - migrer progressivement du pipeline actuel `n8n + Shotstack + upload TikTok`
@@ -13,8 +13,8 @@ Statut global:
 - [x] Phase 3 terminee: branchement n8n optionnel vers Remotion
 - [x] Phase 4 terminee: templates premium
 - [x] Phase 5 terminee: finition FFmpeg
-- [ ] Phase 6 non commencee: amelioration backoffice
-- [ ] Phase 7 non commencee: migration complete + nettoyage legacy
+- [x] Phase 6 terminee: amelioration backoffice
+- [x] Phase 7 preparee: outils de comparaison + runbook (nettoyage legacy NON execute, decision prod)
 
 ## Architecture cible
 
@@ -213,12 +213,49 @@ Verifications faites:
 But:
 - donner un controle produit reel sur le rendu
 
-Taches restantes:
-- [ ] ajouter le choix de template dans le parcours
-- [ ] ajouter une preview plus fidele
-- [ ] ajouter des reglages editoriaux
-- [ ] afficher le moteur de rendu utilise
-- [ ] afficher des statuts de rendu plus detailles
+Taches:
+- [x] ajouter le choix de template dans le parcours (selecteur 3 options sur step Creation)
+- [x] ajouter une preview plus fidele (thumbnail JPG affichee dans la side card du step Video)
+- [x] ajouter des reglages editoriaux (selecteur qualityProfile draft/standard/high/premium)
+- [x] afficher le moteur de rendu utilise (KV "Moteur" dans la side card)
+- [x] afficher des statuts de rendu plus detailles (template, qualite + thumbnail)
+
+Livrables backend:
+- [V8__render_quality_profile.sql](/C:/TikTok_App/Backend/src/main/resources/db/migration/V8__render_quality_profile.sql) - colonnes `quality_profile`, `render_engine`, `thumbnail_url`
+- [ContentIdea.java](/C:/TikTok_App/Backend/src/main/java/com/tiktokapp/backend/model/ContentIdea.java) - 3 nouveaux champs + getters/setters
+- [ContentIdeaGateway.java](/C:/TikTok_App/Backend/src/main/java/com/tiktokapp/backend/service/videoops/ContentIdeaGateway.java) - patch + read map etendus
+- [WorkflowTriggerRequest.java](/C:/TikTok_App/Backend/src/main/java/com/tiktokapp/backend/dto/videoops/WorkflowTriggerRequest.java) - champs `templateId` / `qualityProfile`
+- [VideoOpsService.java](/C:/TikTok_App/Backend/src/main/java/com/tiktokapp/backend/service/videoops/VideoOpsService.java) - resolution + persistance + injection dans payload n8n
+- [render-template-video-remotion.json](/C:/TikTok_App/Backend/tools/n8n-workflows/render-template-video-remotion.json) - lit templateId/qualityProfile du payload, persiste les nouvelles colonnes
+
+Livrables frontend:
+- [workflow.ts](/C:/TikTok_App/Frontend/admin/src/types/workflow.ts) - types `RenderTemplateId`, `RenderQualityProfile`, `RenderEngine` + extension `ContentIdea` / `ManualAction`
+- [api.ts](/C:/TikTok_App/Frontend/admin/src/types/api.ts) - extension `WorkflowTriggerPayload`
+- [TikTokJourneyPage.tsx](/C:/TikTok_App/Frontend/admin/src/pages/TikTokJourneyPage.tsx) - state `selectedTemplateId` / `selectedQualityProfile` + options
+- [TikTokStepScreen.tsx](/C:/TikTok_App/Frontend/admin/src/pages/tiktok-journey/TikTokStepScreen.tsx) - 2 nouveaux selects + side card "Rendu" + thumbnail
+- [useTikTokJourneySteps.ts](/C:/TikTok_App/Frontend/admin/src/pages/tiktok-journey/useTikTokJourneySteps.ts) - propage les selections au workflow
+- [videoOpsSupabase.ts](/C:/TikTok_App/Frontend/admin/src/services/videoOpsSupabase.ts) - normalize les nouveaux champs
+
+Verifications faites:
+- `mvn -DskipTests compile` (backend) OK
+- `npm run build` (frontend admin) OK
+- JSON workflow Remotion valide
+
+## Phase 7 - Migration complete et nettoyage
+
+But:
+- basculer en prod proprement
+
+Taches:
+- [x] outil de comparaison Shotstack vs Remotion ([Backend/tools/compare-render-engines.mjs](/C:/TikTok_App/Backend/tools/compare-render-engines.mjs))
+- [x] runbook de bascule + rollback ([MIGRATION_RUNBOOK.md](/C:/TikTok_App/MIGRATION_RUNBOOK.md))
+- [x] note de deprecation sur le workflow Shotstack ([Backend/tools/n8n-workflows/DEPRECATION.md](/C:/TikTok_App/Backend/tools/n8n-workflows/DEPRECATION.md))
+- [ ] activation Remotion sur sous-ensemble en prod (decision humaine, depend du runbook)
+- [ ] mesure stabilite et qualite sur 14 jours (humain)
+- [ ] retrait Shotstack si stable (humain - voir DEPRECATION.md)
+- [ ] nettoyage final des contrats et workflows legacy (humain)
+
+Note: les actions destructives (suppression workflow Shotstack, suppression code ShotstackRenderClient) sont **volontairement non automatisees**. Auto mode n'execute pas les rollbacks irreversibles sans confirmation. Le runbook decrit la procedure manuelle.
 
 ## Phase 7 - Migration complete et nettoyage
 
@@ -241,4 +278,4 @@ Si une autre session doit reprendre sans contexte:
 3. lire [RenderVideo/README.md](/C:/TikTok_App/RenderVideo/README.md)
 4. verifier que `APP_VIDEO_OPS_N8N_RENDER_PATH` pointe vers le moteur souhaite
 5. pour tester Remotion bout en bout, demarrer `render-video`, backend et n8n puis importer/publier le workflow `render-template-video-remotion.json`
-6. prochaine vraie phase produit: Phase 6 (UI selecteur de template + statuts) ou Phase 7 (migration prod)
+6. prochaine etape: appliquer la procedure du runbook MIGRATION_RUNBOOK.md en environnement reel
