@@ -10,12 +10,25 @@
 
 param(
     [switch]$DryRun,
-    [string]$Only = ''
+    [string]$Only = '',
+    [string]$ApiKey = $env:N8N_API_KEY
 )
 
 $ErrorActionPreference = 'Stop'
 
-$apiKey = 'REDACTED-N8N-API-KEY-rotated-via-n8n-UI'
+if (-not $ApiKey) {
+    # Fallback : lire .env a la racine pour la cle n8n.
+    $envPath = Join-Path $PSScriptRoot '..\..\.env'
+    if (Test-Path $envPath) {
+        $line = Get-Content $envPath | Where-Object { $_ -match '^N8N_API_KEY=' }
+        if ($line) { $ApiKey = ($line -split '=', 2)[1] }
+    }
+}
+if (-not $ApiKey) {
+    throw "N8N_API_KEY est requise. Definir via env var, parametre -ApiKey, ou ligne N8N_API_KEY=... dans .env"
+}
+
+$apiKey = $ApiKey
 $base = 'http://localhost:5678/api/v1'
 $headers = @{ 'X-N8N-API-KEY' = $apiKey }
 
