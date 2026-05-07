@@ -29,24 +29,17 @@
       },
       {
         "parameters": {
-          "method": "POST",
-          "url": "={{ String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '') + '/api/video-ops/internal/pexels/videos/search' }}",
+          "method": "GET",
+          "url": "={{ (() => {\n  const raw = String($('Validate Input').item.json.keyword || $('Validate Input').item.json.topic || 'business');\n  const normalized = raw.replace(/[\"'&]/g, ' ').replace(/[^\\w\\s-]/g, ' ').replace(/\\s+/g, ' ').trim();\n  const query = (normalized || 'business').split(' ').slice(0, 4).join(' ') || 'business';\n  return 'https://api.pexels.com/videos/search?query=' + encodeURIComponent(query) + '&per_page=50&orientation=portrait';\n})() }}",
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
               {
-                "name": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "name": "X-Video-Ops-Internal-Secret",
-                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+                "name": "Authorization",
+                "value": "={{ $env.PEXELS_API_KEY }}"
               }
             ]
           },
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify({ query: $('Validate Input').item.json.keyword || $('Validate Input').item.json.topic || 'business', perPage: 50, orientation: 'portrait' }) }}",
           "options": {
             "timeout": 30000,
             "retry": {
