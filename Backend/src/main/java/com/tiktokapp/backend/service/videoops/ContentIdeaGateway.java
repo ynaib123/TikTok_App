@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -103,7 +104,15 @@ public class ContentIdeaGateway {
                 .orElse(objectMapper.createArrayNode());
     }
 
-    @Transactional
+    /**
+     * Propagation REQUIRES_NEW : chaque patch s'exécute dans sa propre transaction.
+     * Sans ça, un appel depuis VideoOpsService.triggerRenderTemplate (lui-même
+     * @Transactional) garderait un row-lock PostgreSQL sur content_ideas pendant
+     * tout l'appel synchrone à n8n. Pendant ce temps, le workflow n8n essaierait
+     * de PATCH la même ligne et bloquerait jusqu'à 20s (timeout du HTTP node n8n),
+     * puis abandonnerait avec "connection aborted".
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public JsonNode updateContentIdea(long contentIdeaId, Map<String, Object> payload) {
         logger.info("video_ops event=content_idea_patch contentIdeaId={} payload={}",
                 contentIdeaId, payload == null ? "null" : summarizePatch(payload));
