@@ -409,11 +409,6 @@ function RenderStep(p: StepBodyProps) {
             <KV label="Template" value={templateOption?.label || templateId} />
             <KV label="Qualite" value={qualityOption?.label || qualityProfile} />
           </div>
-          {thumbnailUrl ? (
-            <div className="journey-thumbnail">
-              <img src={thumbnailUrl} alt="Apercu thumbnail du rendu" />
-            </div>
-          ) : null}
         </div>
 
         <div className="journey-wizard-side-card">

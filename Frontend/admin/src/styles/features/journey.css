@@ -567,8 +567,10 @@
 }
 
 .journey-wizard-grid-main.is-video-stage {
-  width: min(380px, calc((100vh - 220px) * 9 / 16));
-  min-width: min(380px, calc((100vh - 220px) * 9 / 16));
+  /* Fenêtre 9:16 adaptative: prend la hauteur dispo, max 540px de large.
+     Le video lui-même est en object-fit: contain (pas de rognage). */
+  width: min(540px, calc((100vh - 200px) * 9 / 16));
+  min-width: min(540px, calc((100vh - 200px) * 9 / 16));
   aspect-ratio: 9 / 16;
   justify-self: end;
   align-items: flex-end;
@@ -897,7 +899,9 @@
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  /* contain = vidéo entière (lettrebox éventuel), pas de rognage */
+  object-fit: contain;
+  background: #000;
 }
 
 .journey-video-preview-empty {
