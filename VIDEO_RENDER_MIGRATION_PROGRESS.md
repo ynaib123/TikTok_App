@@ -1,6 +1,6 @@
 # Video Render Migration Progress
 
-Derniere mise a jour: 2026-05-07 (Phase 4)
+Derniere mise a jour: 2026-05-07 (Phase 5)
 
 Objectif:
 - migrer progressivement du pipeline actuel `n8n + Shotstack + upload TikTok`
@@ -12,7 +12,7 @@ Statut global:
 - [x] Phase 2 terminee: service de rendu Remotion
 - [x] Phase 3 terminee: branchement n8n optionnel vers Remotion
 - [x] Phase 4 terminee: templates premium
-- [ ] Phase 5 non commencee: finition FFmpeg
+- [x] Phase 5 terminee: finition FFmpeg
 - [ ] Phase 6 non commencee: amelioration backoffice
 - [ ] Phase 7 non commencee: migration complete + nettoyage legacy
 
@@ -177,12 +177,36 @@ Verifications faites:
 But:
 - ameliorer le fichier final techniquement
 
-Taches restantes:
-- [ ] integrer FFmpeg au pipeline de sortie
-- [ ] normaliser l'audio
-- [ ] optimiser l'encodage MP4 vertical
-- [ ] ajouter compression/bitrates controles
-- [ ] preparer thumbnail et outputs auxiliaires si besoin
+Taches:
+- [x] integrer FFmpeg au pipeline de sortie (via ffmpeg-static)
+- [x] normaliser l'audio (loudnorm EBU R128: I=-14, TP=-1.5, LRA=11)
+- [x] optimiser l'encodage MP4 vertical (libx264 high@4.1, yuv420p, +faststart)
+- [x] ajouter compression/bitrates controles (4 profils: draft/standard/high/premium)
+- [x] preparer thumbnail (JPG genere a 0.5s, accessible via `thumbnailUrl`)
+
+Livrables:
+- [RenderVideo/src/postProcess.ts](/C:/TikTok_App/RenderVideo/src/postProcess.ts) - mux voiceover + music, loudnorm, ré-encode profile, thumbnail
+- [RenderVideo/scripts/smoke-postprocess.mjs](/C:/TikTok_App/RenderVideo/scripts/smoke-postprocess.mjs) - smoke test FFmpeg
+- modifications [RenderVideo/src/server.ts](/C:/TikTok_App/RenderVideo/src/server.ts) pour pipeline raw -> postProcess -> final + thumbnail
+- [RenderVideo/README.md](/C:/TikTok_App/RenderVideo/README.md) documente les profils
+
+Profils de qualite:
+| Profil   | Preset   | CRF | maxrate  | Audio   |
+|----------|----------|-----|----------|---------|
+| draft    | veryfast | 28  | 4.5 Mbps | 96 kbps |
+| standard | fast     | 24  | 6.5 Mbps | 128 kbps|
+| high     | medium   | 21  | 8.5 Mbps | 160 kbps|
+| premium  | slow     | 19  | 10 Mbps  | 192 kbps|
+
+Configuration:
+- `FFMPEG_BIN_PATH`: surcharge optionnelle du binaire ffmpeg (sinon `ffmpeg-static`)
+- `assets.music.volume`: volume de la musique en mix, defaut 0.18 (clamp [0, 1])
+- la cible `loudnorm` est `I=-14` quand voiceover present, `I=-16` pour musique seule
+
+Verifications faites:
+- `npm run type-check` OK
+- `npm run build` OK
+- `node scripts/smoke-postprocess.mjs`: mux voice+music + loudnorm + thumbnail OK; cas no-audio OK
 
 ## Phase 6 - Amelioration du backoffice
 
@@ -217,4 +241,4 @@ Si une autre session doit reprendre sans contexte:
 3. lire [RenderVideo/README.md](/C:/TikTok_App/RenderVideo/README.md)
 4. verifier que `APP_VIDEO_OPS_N8N_RENDER_PATH` pointe vers le moteur souhaite
 5. pour tester Remotion bout en bout, demarrer `render-video`, backend et n8n puis importer/publier le workflow `render-template-video-remotion.json`
-6. prochaine vraie phase produit: Phase 5 (FFmpeg) ou Phase 6 (UI selecteur de template)
+6. prochaine vraie phase produit: Phase 6 (UI selecteur de template + statuts) ou Phase 7 (migration prod)

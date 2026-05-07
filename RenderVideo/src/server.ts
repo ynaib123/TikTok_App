@@ -6,6 +6,7 @@ import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
 import express from 'express'
 import { asRenderVideoJob, validateContract } from './contracts.js'
+import { postProcess } from './postProcess.js'
 import { listTemplates, resolveCompositionId } from './remotion/templateRegistry.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -53,7 +54,7 @@ async function downloadRemoteAsset(url: string, outputPath: string) {
   const response = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 RenderVideo/0.1',
-      'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.8',
+      'Accept': 'video/mp4,video/*;q=0.9,audio/*;q=0.9,*/*;q=0.8',
     },
   })
 
@@ -122,8 +123,12 @@ app.post('/render', async (request, response, next) => {
 
     const job = asRenderVideoJob(request.body)
     const renderId = createRenderId(job.contentIdeaId, job.workflowRunId)
-    const outputFileName = `${renderId}.mp4`
-    const outputPath = path.join(outputDir, outputFileName)
+    const rawFileName = `${renderId}.raw.mp4`
+    const finalFileName = `${renderId}.mp4`
+    const thumbnailFileName = `${renderId}.jpg`
+    const rawPath = path.join(outputDir, rawFileName)
+    const finalPath = path.join(outputDir, finalFileName)
+    const thumbnailPath = path.join(outputDir, thumbnailFileName)
     const renderJob = await prepareLocalAssets(job, renderId)
 
     const serveUrl = await getBundleLocation()
@@ -138,9 +143,21 @@ app.post('/render', async (request, response, next) => {
       composition,
       serveUrl,
       codec: 'h264',
-      outputLocation: outputPath,
+      outputLocation: rawPath,
       inputProps: { job: renderJob },
     })
+
+    const post = await postProcess({
+      inputPath: rawPath,
+      outputPath: finalPath,
+      thumbnailPath,
+      job: renderJob,
+      workDir: path.join(outputDir, 'tmp', renderId),
+      downloadAsset: downloadRemoteAsset,
+    })
+
+    fs.rmSync(rawPath, { force: true })
+    fs.rmSync(path.join(outputDir, 'tmp', renderId), { recursive: true, force: true })
 
     response.status(201).json({
       ok: true,
@@ -149,12 +166,17 @@ app.post('/render', async (request, response, next) => {
       status: 'rendered',
       templateId: renderJob.render.templateId,
       compositionId,
-      outputUrl: `${publicBaseUrl}/renders/${outputFileName}`,
-      outputPath,
+      outputUrl: `${publicBaseUrl}/renders/${finalFileName}`,
+      outputPath: finalPath,
+      thumbnailUrl: `${publicBaseUrl}/renders/${thumbnailFileName}`,
+      thumbnailPath,
       width: composition.width,
       height: composition.height,
       fps: composition.fps,
       durationInFrames: composition.durationInFrames,
+      qualityProfile: post.qualityProfile,
+      audioMixed: post.audioMixed,
+      loudnessNormalized: post.loudnessNormalized,
     })
   } catch (error) {
     next(error)

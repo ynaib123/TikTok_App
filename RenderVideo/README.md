@@ -28,7 +28,11 @@ Retourne:
   "status": "rendered",
   "templateId": "tiktok-pro-vertical",
   "compositionId": "tiktok-pro-vertical",
-  "outputUrl": "http://localhost:8090/renders/remotion-123-456.mp4"
+  "outputUrl": "http://localhost:8090/renders/remotion-123-456.mp4",
+  "thumbnailUrl": "http://localhost:8090/renders/remotion-123-456.jpg",
+  "qualityProfile": "premium",
+  "audioMixed": true,
+  "loudnessNormalized": true
 }
 ```
 
@@ -56,6 +60,26 @@ La palette utilisee est derivee de `idea.category` (puis `idea.visualStyle` en f
 
 Les pistes sont prises de `assets.captions[]` quand presentes, sinon le service derive automatiquement des sous-titres en decoupant `idea.script`.
 
+## Post-process FFmpeg (Phase 5)
+
+Apres le rendu Remotion, le service applique automatiquement un pipeline FFmpeg:
+
+- mux audio: `assets.voiceover.url` + `assets.music.url` (le second au volume `assets.music.volume`, defaut 0.18)
+- normalisation EBU R128 (`loudnorm` cible `I=-14`, `TP=-1.5`, `LRA=11`) si une piste audio est presente
+- ré-encodage `libx264` + `aac` 48 kHz stereo, `pix_fmt yuv420p`, `+faststart` pour streaming TikTok
+- thumbnail JPG generee a 0.5s
+
+### Profils de qualite (`render.qualityProfile`)
+
+| Profil    | Preset    | CRF | maxrate  | Audio   |
+|-----------|-----------|-----|----------|---------|
+| draft     | veryfast  | 28  | 4.5 Mbps | 96 kbps |
+| standard  | fast      | 24  | 6.5 Mbps | 128 kbps|
+| high      | medium    | 21  | 8.5 Mbps | 160 kbps|
+| premium   | slow      | 19  | 10 Mbps  | 192 kbps|
+
+`FFMPEG_BIN_PATH` permet de surcharger le binaire ffmpeg (defaut: `ffmpeg-static`).
+
 ## Scripts
 
 - `npm run dev`
@@ -63,6 +87,7 @@ Les pistes sont prises de `assets.captions[]` quand presentes, sinon le service 
 - `npm start`
 - `npm run type-check`
 - `node scripts/smoke-templates.mjs` (smoke test selectComposition pour les 3 templates)
+- `node scripts/smoke-postprocess.mjs` (smoke test mux audio + loudnorm + thumbnail)
 
 ## Variables d'environnement
 
@@ -71,3 +96,4 @@ Les pistes sont prises de `assets.captions[]` quand presentes, sinon le service 
 - `RENDER_VIDEO_OUTPUT_DIR`: dossier de sortie MP4
 - `RENDER_VIDEO_PUBLIC_BASE_URL`: base URL publique pour les fichiers rendus
 - `REMOTION_ENTRY`: entrypoint Remotion optionnel
+- `FFMPEG_BIN_PATH`: chemin custom du binaire ffmpeg (sinon ffmpeg-static)
