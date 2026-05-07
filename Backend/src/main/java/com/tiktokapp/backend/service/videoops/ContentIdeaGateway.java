@@ -6,6 +6,8 @@ import com.tiktokapp.backend.model.ContentIdea;
 import com.tiktokapp.backend.model.TikTokAccount;
 import com.tiktokapp.backend.repository.ContentIdeaRepository;
 import com.tiktokapp.backend.repository.TikTokAccountRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ import java.util.Map;
  */
 @Service
 public class ContentIdeaGateway {
+
+    private static final Logger logger = LoggerFactory.getLogger(ContentIdeaGateway.class);
 
     private final ContentIdeaRepository contentIdeaRepo;
     private final TikTokAccountRepository tiktokAccountRepo;
@@ -101,6 +105,8 @@ public class ContentIdeaGateway {
 
     @Transactional
     public JsonNode updateContentIdea(long contentIdeaId, Map<String, Object> payload) {
+        logger.info("video_ops event=content_idea_patch contentIdeaId={} keys={}",
+                contentIdeaId, payload == null ? "null" : payload.keySet());
         ContentIdea idea = contentIdeaRepo.findById(contentIdeaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable."));
         applyContentIdeaPatch(idea, payload);
