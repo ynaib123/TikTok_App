@@ -80,6 +80,9 @@ services:
       dockerfile: RenderVideo/Dockerfile
     container_name: tiktok-app-render-video
     restart: unless-stopped
+    # Chromium headless utilise /dev/shm pour la mémoire partagée (2 onglets internes
+    # de Chrome + GPU process). Le défaut Docker (64 MB) fait crasher avec "Target closed".
+    shm_size: '2gb'
     environment:
       PORT: 8090
       RENDER_VIDEO_SCHEMA_PATH: /contracts/render-video-job.schema.json

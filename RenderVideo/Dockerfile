@@ -41,6 +41,11 @@ ENV RENDER_VIDEO_OUTPUT_DIR=/app/renders
 
 RUN npm run build
 
+# Pré-télécharge Chrome Headless Shell pour éviter ~30s de download au 1er render.
+# Sans ça, le 1er POST /render téléchargerait 92 MB en bloquant la chaîne.
+RUN node -e "import('@remotion/renderer').then(m => m.ensureBrowser())" \
+    || echo "Chrome prefetch skipped (will download at first render)"
+
 EXPOSE 8090
 
 CMD ["npm", "start"]
