@@ -14,7 +14,8 @@
         "name": "Webhook: Render Remotion",
         "type": "n8n-nodes-base.webhook",
         "typeVersion": 2.1,
-        "position": [0, 0]
+        "position": [0, 0],
+        "webhookId": "26ec0a5e-4183-499f-9b4a-f12aa3baf745"
       },
       {
         "parameters": {
