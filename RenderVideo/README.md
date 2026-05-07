@@ -94,6 +94,24 @@ Apres le rendu Remotion, le service applique automatiquement un pipeline FFmpeg:
 - `PORT`: port HTTP, defaut `8090`
 - `RENDER_VIDEO_SCHEMA_PATH`: chemin du contrat JSON
 - `RENDER_VIDEO_OUTPUT_DIR`: dossier de sortie MP4
-- `RENDER_VIDEO_PUBLIC_BASE_URL`: base URL publique pour les fichiers rendus
+- `RENDER_VIDEO_PUBLIC_BASE_URL`: base URL publique pour les fichiers rendus (mode local)
 - `REMOTION_ENTRY`: entrypoint Remotion optionnel
 - `FFMPEG_BIN_PATH`: chemin custom du binaire ffmpeg (sinon ffmpeg-static)
+
+### Storage Cloudflare R2 (Phase 7)
+
+Quand les 5 variables ci-dessous sont presentes, le service uploade automatiquement
+chaque MP4 + thumbnail vers Cloudflare R2 et renvoie l'URL `r2.dev` au lieu de
+l'URL locale. Les fichiers locaux sont supprimes apres upload.
+
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME`
+- `R2_PUBLIC_BASE_URL` (ex: `https://pub-xxxxxxxx.r2.dev`)
+
+Si une seule manque, le service garde le comportement local.
+
+`GET /health` expose le mode actif via `storage: "local" | "r2"`.
+La reponse `POST /render` contient `storage`, `outputUrl`, `thumbnailUrl`
+qui pointent vers R2 quand actif.

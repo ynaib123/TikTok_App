@@ -7,6 +7,7 @@ import { renderMedia, selectComposition } from '@remotion/renderer'
 import express from 'express'
 import { asRenderVideoJob, validateContract } from './contracts.js'
 import { postProcess } from './postProcess.js'
+import { isR2Enabled } from './r2Storage.js'
 import { listTemplates, resolveCompositionId } from './remotion/templateRegistry.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -102,6 +103,7 @@ app.get('/health', (_request, response) => {
     service: 'render-video',
     engine: 'remotion',
     templates: listTemplates(),
+    storage: isR2Enabled() ? 'r2' : 'local',
   })
 })
 
@@ -153,11 +155,20 @@ app.post('/render', async (request, response, next) => {
       thumbnailPath,
       job: renderJob,
       workDir: path.join(outputDir, 'tmp', renderId),
+      renderId,
       downloadAsset: downloadRemoteAsset,
     })
 
     fs.rmSync(rawPath, { force: true })
     fs.rmSync(path.join(outputDir, 'tmp', renderId), { recursive: true, force: true })
+
+    if (post.storage === 'r2') {
+      fs.rmSync(finalPath, { force: true })
+      fs.rmSync(thumbnailPath, { force: true })
+    }
+
+    const outputUrl = post.remoteVideoUrl || `${publicBaseUrl}/renders/${finalFileName}`
+    const thumbnailUrl = post.remoteThumbnailUrl || `${publicBaseUrl}/renders/${thumbnailFileName}`
 
     response.status(201).json({
       ok: true,
@@ -166,10 +177,11 @@ app.post('/render', async (request, response, next) => {
       status: 'rendered',
       templateId: renderJob.render.templateId,
       compositionId,
-      outputUrl: `${publicBaseUrl}/renders/${finalFileName}`,
-      outputPath: finalPath,
-      thumbnailUrl: `${publicBaseUrl}/renders/${thumbnailFileName}`,
-      thumbnailPath,
+      storage: post.storage,
+      outputUrl,
+      outputPath: post.storage === 'r2' ? null : finalPath,
+      thumbnailUrl,
+      thumbnailPath: post.storage === 'r2' ? null : thumbnailPath,
       width: composition.width,
       height: composition.height,
       fps: composition.fps,

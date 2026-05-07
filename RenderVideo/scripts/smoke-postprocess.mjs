@@ -84,6 +84,7 @@ async function main() {
     thumbnailPath: thumbPath,
     job,
     workDir: path.join(tmpDir, 'work'),
+    renderId: 'smoke-001',
     downloadAsset,
   })
 
@@ -105,6 +106,7 @@ async function main() {
     thumbnailPath: thumbNoAudio,
     job: noAudioJob,
     workDir: path.join(tmpDir, 'work-noaudio'),
+    renderId: 'smoke-002',
     downloadAsset,
   })
   if (noAudioResult.audioMixed) throw new Error('audioMixed should be false when no audio')

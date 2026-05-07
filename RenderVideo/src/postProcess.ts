@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import ffmpegStatic from 'ffmpeg-static'
+import { isR2Enabled, uploadToR2 } from './r2Storage.js'
 import type { RenderVideoJob } from './renderJob.js'
 
 const execFileAsync = promisify(execFile)
@@ -13,6 +14,7 @@ export interface PostProcessOptions {
   thumbnailPath: string
   job: RenderVideoJob
   workDir: string
+  renderId: string
   downloadAsset: (url: string, outputPath: string) => Promise<void>
 }
 
@@ -22,6 +24,9 @@ export interface PostProcessResult {
   qualityProfile: RenderVideoJob['render']['qualityProfile']
   audioMixed: boolean
   loudnessNormalized: boolean
+  storage: 'local' | 'r2'
+  remoteVideoUrl: string | null
+  remoteThumbnailUrl: string | null
 }
 
 interface QualityProfile {
@@ -64,6 +69,7 @@ export async function postProcess({
   thumbnailPath,
   job,
   workDir,
+  renderId,
   downloadAsset,
 }: PostProcessOptions): Promise<PostProcessResult> {
   const profile = qualityProfiles[job.render.qualityProfile] || qualityProfiles.standard
@@ -156,11 +162,30 @@ export async function postProcess({
   if (voicePath) fs.rmSync(voicePath, { force: true })
   if (musicPath) fs.rmSync(musicPath, { force: true })
 
+  let remoteVideoUrl: string | null = null
+  let remoteThumbnailUrl: string | null = null
+  let storage: 'local' | 'r2' = 'local'
+
+  if (isR2Enabled()) {
+    const videoKey = `renders/${renderId}.mp4`
+    const thumbKey = `renders/${renderId}.jpg`
+    const [videoUpload, thumbUpload] = await Promise.all([
+      uploadToR2({ filePath: outputPath, key: videoKey, contentType: 'video/mp4' }),
+      uploadToR2({ filePath: thumbnailPath, key: thumbKey, contentType: 'image/jpeg' }),
+    ])
+    remoteVideoUrl = videoUpload.url
+    remoteThumbnailUrl = thumbUpload.url
+    storage = 'r2'
+  }
+
   return {
     outputPath,
     thumbnailPath,
     qualityProfile: job.render.qualityProfile,
     audioMixed,
     loudnessNormalized,
+    storage,
+    remoteVideoUrl,
+    remoteThumbnailUrl,
   }
 }
