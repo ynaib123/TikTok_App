@@ -19,7 +19,6 @@ import AdminShell from '../components/AdminShell'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { useTikTokWorkflow } from '../hooks'
 import {
-  triggerCheckShotstackWorkflow,
   triggerMainContentPipeline,
   triggerPublishTikTokWorkflow,
   triggerRenderTemplateWorkflow,
@@ -76,7 +75,7 @@ type PendingExitTarget =
 
 const STEPS = [
   { id: 'creation',     label: 'Création', sub: 'Générer une idée + script' },
-  { id: 'init-publish', label: 'Vidéo',    sub: 'Rendre la vidéo Shotstack' },
+  { id: 'init-publish', label: 'Vidéo',    sub: 'Rendre la vidéo Remotion' },
   { id: 'upload',       label: 'Publication', sub: 'Publier sur TikTok' },
 ]
 const TIKTOK_BASE_ROUTE = '/tiktok'
@@ -368,7 +367,6 @@ export default function TikTokJourneyPage() {
     selectedTemplateId,
     selectedQualityProfile,
     goToStep,
-    triggerCheckShotstackWorkflow,
     triggerRenderTemplateWorkflow,
     fetchContentIdeaById: fetchContentIdeaByIdFromPages,
     waitForWorkflowRunCompletion: workflowMonitor.waitForWorkflowRunCompletion,

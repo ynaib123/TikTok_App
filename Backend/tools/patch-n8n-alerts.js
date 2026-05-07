@@ -15,8 +15,7 @@ const BASE = 'http://localhost:5678/api/v1';
 
 const TARGETS = [
   { id: 'ql0Tg97q1cZ12aee', name: 'init-publish-tiktok-fixed',     errorTerminalKeywords: ['callback: error', 'callback error', 'respond: error', 'respond error'] },
-  { id: 'SAn6Iepn4rCpkHJg', name: 'render-professional-quality',   errorTerminalKeywords: ['callback: error', 'callback error', 'respond: error', 'respond error'] },
-  { id: 'FVCRU7rTMuMCR1J3', name: 'check-shotstack-fixed',         errorTerminalKeywords: ['callback: error', 'callback error', 'respond: error', 'respond error'] },
+  { id: 'renderRemotion01', name: 'render-template-video-remotion', errorTerminalKeywords: ['callback: error', 'callback error', 'respond: error', 'respond error'] },
   { id: 'q8OpzbRoQe8W8TzY', name: 'idea-script-generation-fused',  errorTerminalKeywords: ['prepare error', 'callback error', 'callback: error', 'respond error'] },
 ];
 

@@ -165,12 +165,10 @@ Attention :
 
 L instance locale `n8n` charge ses workflows depuis `n8n-local/database.sqlite`.
 
-Au 2 mai 2026, la base locale contient deja les workflows actifs migres pour :
+Au 7 mai 2026, la base locale contient les workflows actifs pour :
 
-- `creation-ideas`
-- `script-generation-single-llm`
-- `render-template-video-with-callback`
-- `check-shotstack-fixed`
+- `idea-script-generation-fused`
+- `render-template-video-remotion`
 - `init-publish-tiktok-fixed`
 
 Les fichiers JSON dans `n8n-local/` et `docs/n8n-workflows/` restent utiles pour revision, export ou reimport manuel, mais un reimport n est pas requis tant que les workflows actifs en base restent ceux-la.

@@ -332,12 +332,6 @@ export async function triggerMainContentPipeline(
   return apiPost('/video-ops/workflows/main-pipeline', payload)
 }
 
-export async function triggerCheckShotstackWorkflow(
-  payload: WorkflowTriggerPayload = {},
-): Promise<WorkflowTriggerResponse> {
-  return apiPost('/video-ops/workflows/check-shotstack', payload)
-}
-
 export async function triggerRenderTemplateWorkflow(
   payload: WorkflowTriggerPayload = {},
 ): Promise<WorkflowTriggerResponse> {

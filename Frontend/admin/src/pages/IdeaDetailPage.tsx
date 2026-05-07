@@ -193,7 +193,7 @@ export default function IdeaDetailPage() {
                   )}
                   <div className="idea-video-actions">
                     {idea.shotstackUrl && (
-                      <a href={idea.shotstackUrl} target="_blank" rel="noreferrer" className="journey-btn">Ouvrir Shotstack</a>
+                      <a href={idea.shotstackUrl} target="_blank" rel="noreferrer" className="journey-btn">Ouvrir la video</a>
                     )}
                     {idea.uploadUrl && (
                       <a href={idea.uploadUrl} target="_blank" rel="noreferrer" className="journey-btn">Télécharger MP4</a>

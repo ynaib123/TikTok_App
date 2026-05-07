@@ -153,7 +153,6 @@ export interface UseRenderStepOptions {
   selectedTemplateId: string | null
   selectedQualityProfile: string | null
   goToStep: (step: string) => void
-  triggerCheckShotstackWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
   triggerRenderTemplateWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
   fetchContentIdeaById: (ideaId: number | string) => Promise<ContentIdea | null>
   waitForWorkflowRunCompletion: (runId: number | string | null | undefined, timeoutMs?: number) => Promise<WorkflowRun | null>
@@ -176,7 +175,6 @@ export function useRenderStep({
   selectedTemplateId,
   selectedQualityProfile,
   goToStep,
-  triggerCheckShotstackWorkflow,
   triggerRenderTemplateWorkflow,
   fetchContentIdeaById,
   waitForWorkflowRunCompletion,
@@ -228,13 +226,7 @@ export function useRenderStep({
     }
 
     if (!renderedIdea || !isRenderReady(renderedIdea)) {
-      renderedIdea = await waitForRenderedVideo(Number(idea.id), async () => {
-        await triggerCheckShotstackWorkflow({
-          source: 'backoffice-tiktok-step-render-status-check',
-          contentIdeaId: idea.id,
-          force: true,
-        })
-      })
+      renderedIdea = await waitForRenderedVideo(Number(idea.id), null)
     }
 
     const finalIdea = renderedIdea

@@ -87,34 +87,6 @@ public class VideoOpsInternalProxyService {
         return sendJson(request, "Pexels");
     }
 
-    public JsonNode proxyShotstackRender(JsonNode requestBody) {
-        ResolvedServiceConnection shotstack = connectionResolver.requireConnected(ServiceConnectionProvider.SHOTSTACK);
-        String baseUrl = normalizeShotstackEditBaseUrl(shotstack.baseUrl(), "https://api.shotstack.io");
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/render"))
-                .timeout(Duration.ofSeconds(60))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", shotstack.secretValue())
-                .POST(HttpRequest.BodyPublishers.ofString(toJson(requestBody)))
-                .build();
-        return sendJson(request, "Shotstack");
-    }
-
-    public JsonNode proxyShotstackRenderStatus(String renderId) {
-        if (trimToNull(renderId) == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "renderId est obligatoire.");
-        }
-        ResolvedServiceConnection shotstack = connectionResolver.requireConnected(ServiceConnectionProvider.SHOTSTACK);
-        String baseUrl = normalizeShotstackEditBaseUrl(shotstack.baseUrl(), "https://api.shotstack.io");
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/render/" + encode(renderId.trim())))
-                .timeout(Duration.ofSeconds(30))
-                .header("x-api-key", shotstack.secretValue())
-                .GET()
-                .build();
-        return sendJson(request, "Shotstack");
-    }
-
     @CircuitBreaker(name = "renderVideo", fallbackMethod = "proxyRenderVideoFallback")
     @Retry(name = "renderVideo")
     public JsonNode proxyRenderVideo(JsonNode requestBody) {
@@ -183,19 +155,6 @@ public class VideoOpsInternalProxyService {
             return normalized + "/v1";
         }
         return normalized + "/openai/v1";
-    }
-
-    private String normalizeShotstackEditBaseUrl(String rawBaseUrl, String fallback) {
-        String normalized = normalizeBaseUrl(rawBaseUrl, fallback);
-        if (normalized.endsWith("/edit/v1") || normalized.endsWith("/edit/stage")) {
-            return normalized;
-        }
-        if (normalized.endsWith("/v1") || normalized.endsWith("/stage")) {
-            return normalized.startsWith("https://api.shotstack.io/edit/")
-                    ? normalized
-                    : normalized.replace("https://api.shotstack.io", "https://api.shotstack.io/edit");
-        }
-        return normalized + "/edit/v1";
     }
 
     private String encode(String value) {

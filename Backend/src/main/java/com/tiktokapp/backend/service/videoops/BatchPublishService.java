@@ -250,7 +250,7 @@ public class BatchPublishService {
     private String describeStatus(ContentIdea idea) {
         return "publish=" + idea.getPublishStatus()
                 + " finalVideo=" + idea.getFinalVideoStatus()
-                + " shotstack=" + (idea.getShotstackUrl() == null ? "absent" : "present")
+                + " video=" + (idea.getShotstackUrl() == null ? "absent" : "present")
                 + " account=" + (idea.getTiktokAccountOpenId() == null ? "missing" : "ok");
     }
 

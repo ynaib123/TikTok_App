@@ -110,7 +110,6 @@ export interface VideoOpsApi {
   fetchWorkflowRun: (runId: number | string) => Promise<WorkflowRun>;
   fetchVideoOpsObservability: () => Promise<VideoObservability>;
   triggerMainContentPipeline: (payload?: WorkflowTriggerPayload) => Promise<WorkflowTriggerResponse>;
-  triggerCheckShotstackWorkflow: (payload?: WorkflowTriggerPayload) => Promise<WorkflowTriggerResponse>;
   triggerRenderTemplateWorkflow: (payload?: WorkflowTriggerPayload) => Promise<WorkflowTriggerResponse>;
   triggerPublishTikTokWorkflow: (payload?: WorkflowTriggerPayload) => Promise<WorkflowTriggerResponse>;
   uploadTikTokMedia: (payload: UploadTikTokMediaPayload) => Promise<UploadTikTokMediaResponse>;

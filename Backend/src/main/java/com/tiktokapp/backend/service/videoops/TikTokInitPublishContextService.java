@@ -51,7 +51,7 @@ public class TikTokInitPublishContextService {
 
         String shotstackUrl = trimToNull(contentIdea.path("shotstack_url").asText(""));
         if (shotstackUrl == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La video finale Shotstack est absente.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La video finale est absente.");
         }
 
         String publishStatus = trimToNull(contentIdea.path("publish_status").asText(""));

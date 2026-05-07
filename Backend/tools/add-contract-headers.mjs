@@ -14,8 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS_DIR = path.join(__dirname, 'n8n-workflows');
 const FILES = [
   'idea-script-fused.json',
-  'render-template-video.json',
-  'check-shotstack.json',
+  'render-template-video-remotion.json',
   'init-publish-tiktok.json',
 ];
 

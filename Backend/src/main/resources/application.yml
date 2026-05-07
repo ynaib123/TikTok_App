@@ -58,7 +58,7 @@ app:
       read-timeout-ms: ${APP_VIDEO_OPS_N8N_READ_TIMEOUT_MS:600000}
       main-pipeline-path: ${APP_VIDEO_OPS_N8N_MAIN_PIPELINE_PATH:/webhook/fused-idea-script}
       script-generation-path: ${APP_VIDEO_OPS_N8N_SCRIPT_GENERATION_PATH:/webhook/script-generation}
-      render-template-video-path: ${APP_VIDEO_OPS_N8N_RENDER_PATH:/webhook/render-template-video}
+      render-template-video-path: ${APP_VIDEO_OPS_N8N_RENDER_PATH:/webhook/render-template-video-remotion}
       check-shotstack-path: ${APP_VIDEO_OPS_N8N_CHECK_PATH:/webhook/check-shotstack}
       init-publish-tik-tok-path: ${APP_VIDEO_OPS_N8N_INIT_PUBLISH_PATH:/webhook/init-publish-tiktok}
   rate-limit:
@@ -122,8 +122,6 @@ resilience4j:
       tiktok:
         baseConfig: default
         waitDurationInOpenState: 60s
-      shotstack:
-        baseConfig: default
       renderVideo:
         baseConfig: default
         waitDurationInOpenState: 30s
@@ -144,8 +142,6 @@ resilience4j:
       tiktok:
         baseConfig: default
         maxAttempts: 2
-      shotstack:
-        baseConfig: default
       renderVideo:
         baseConfig: default
         maxAttempts: 1

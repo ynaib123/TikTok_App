@@ -59,8 +59,6 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/tiktok/account-context",
                                 "/api/video-ops/internal/groq/chat-completions",
                                 "/api/video-ops/internal/pexels/videos/search",
-                                "/api/video-ops/internal/shotstack/render",
-                                "/api/video-ops/internal/shotstack/render/*",
                                 "/api/video-ops/accounts/**",
                                 "/api/ai/agents/*/run"
                         )
@@ -115,8 +113,6 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/tiktok/account-context",
                                 "/api/video-ops/internal/groq/chat-completions",
                                 "/api/video-ops/internal/pexels/videos/search",
-                                "/api/video-ops/internal/shotstack/render",
-                                "/api/video-ops/internal/shotstack/render/*",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

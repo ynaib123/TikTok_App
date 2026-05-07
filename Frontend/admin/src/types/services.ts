@@ -1,4 +1,4 @@
-export type ServiceProvider = 'GROQ' | 'SHOTSTACK' | 'PEXELS';
+export type ServiceProvider = 'GROQ' | 'PEXELS';
 
 export type ServiceCategory = 'llm' | 'video' | 'photo' | 'social';
 
@@ -11,7 +11,6 @@ export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
 
 export const SERVICE_PROVIDER_CATEGORY: Record<ServiceProvider | 'TIKTOK', ServiceCategory> = {
   GROQ: 'llm',
-  SHOTSTACK: 'video',
   PEXELS: 'photo',
   TIKTOK: 'social',
 };
@@ -65,15 +64,6 @@ export const SERVICE_CONNECTION_FIELDS: Record<ServiceProvider, ServiceProviderF
     secretLabel: 'API key',
     defaultBaseUrl: 'https://api.groq.com',
     metadataPlaceholder: '{"model":"llama-3.3-70b-versatile"}',
-    sourceLabel: 'Profil actif en base',
-  },
-  SHOTSTACK: {
-    title: 'Shotstack',
-    baseUrlLabel: 'API base URL',
-    identifierLabel: 'Environment / owner',
-    secretLabel: 'API key',
-    defaultBaseUrl: 'https://api.shotstack.io/edit/v1',
-    metadataPlaceholder: '{"environment":"production"}',
     sourceLabel: 'Profil actif en base',
   },
   PEXELS: {

@@ -65,6 +65,7 @@ public class AccountsService {
         List<TikTokAccountResponse> tiktokAccounts = safelyFetchTikTokAccounts();
         List<ServiceConnectionResponse> serviceConnections = serviceConnectionRepository.findAllByOrderByProviderKeyAscActiveDescIdDesc().stream()
                 .filter(c -> c.getProviderKey() != ServiceConnectionProvider.N8N)
+                .filter(c -> c.getProviderKey() != ServiceConnectionProvider.SHOTSTACK)
                 .map(this::toResponse)
                 .toList();
         return new AccountsOverviewResponse(
@@ -78,6 +79,7 @@ public class AccountsService {
         List<TikTokAccountResponse> tiktokAccounts = safelyFetchTikTokAccounts();
         List<ServiceConnectionResponse> serviceConnections = serviceConnectionRepository.findAllByOrderByProviderKeyAscActiveDescIdDesc().stream()
                 .filter(c -> c.getProviderKey() != ServiceConnectionProvider.N8N)
+                .filter(c -> c.getProviderKey() != ServiceConnectionProvider.SHOTSTACK)
                 .map(this::toResponse)
                 .toList();
         return buildReadiness(tiktokAccounts, serviceConnections);
@@ -230,7 +232,6 @@ public class AccountsService {
         // n8n is no longer a user-managed connection (configured in application.yml).
         for (ServiceConnectionProvider provider : Arrays.asList(
                 ServiceConnectionProvider.GROQ,
-                ServiceConnectionProvider.SHOTSTACK,
                 ServiceConnectionProvider.PEXELS
         )) {
             boolean connected = serviceConnections.stream().anyMatch(connection ->
@@ -299,7 +300,7 @@ public class AccountsService {
             case GROQ -> "Groq";
             case PEXELS -> "Pexels";
             case SUPABASE -> "Supabase";
-            case SHOTSTACK -> "Shotstack";
+            case SHOTSTACK -> "Shotstack (legacy)";
         };
     }
 
@@ -354,9 +355,7 @@ public class AccountsService {
                 }
             }
             case SHOTSTACK -> {
-                if (!"api.shotstack.io".equals(normalizedHost)) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le service SHOTSTACK doit utiliser https://api.shotstack.io, /v1, /stage, /edit/v1 ou /edit/stage.");
-                }
+                throw new ResponseStatusException(HttpStatus.GONE, "Shotstack n'est plus utilise. Le rendu video passe par Remotion.");
             }
             case PEXELS -> {
                 if (!"api.pexels.com".equals(normalizedHost)) {

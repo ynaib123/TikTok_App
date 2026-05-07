@@ -94,7 +94,7 @@ public class TikTokUploadService {
         if (downloadResponse.statusCode() < 200 || downloadResponse.statusCode() >= 300) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
-                    "Impossible de telecharger la video Shotstack."
+                    "Impossible de telecharger la video finale."
             );
         }
 

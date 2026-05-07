@@ -305,24 +305,6 @@ public class VideoOpsController {
         ));
     }
 
-    @PostMapping("/internal/shotstack/render")
-    public ResponseEntity<JsonNode> proxyShotstackRender(
-            @RequestBody(required = false) JsonNode request,
-            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
-    ) {
-        internalAuthService.validateSecret(internalSecret);
-        return ResponseEntity.ok(videoOpsInternalProxyService.proxyShotstackRender(request));
-    }
-
-    @GetMapping("/internal/shotstack/render/{renderId}")
-    public ResponseEntity<JsonNode> proxyShotstackRenderStatus(
-            @PathVariable String renderId,
-            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
-    ) {
-        internalAuthService.validateSecret(internalSecret);
-        return ResponseEntity.ok(videoOpsInternalProxyService.proxyShotstackRenderStatus(renderId));
-    }
-
     @PostMapping("/internal/render-video/render")
     public ResponseEntity<JsonNode> proxyRenderVideo(
             @RequestBody(required = false) JsonNode request,
@@ -338,14 +320,6 @@ public class VideoOpsController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(videoOpsService.triggerMainPipeline(request == null ? new WorkflowTriggerRequest() : request, authentication.getName()));
-    }
-
-    @PostMapping("/workflows/check-shotstack")
-    public ResponseEntity<VideoWorkflowActionResponse> triggerCheckShotstack(
-            @Valid @RequestBody WorkflowTriggerRequest request,
-            Authentication authentication
-    ) {
-        return ResponseEntity.ok(videoOpsService.triggerCheckShotstack(request, authentication.getName()));
     }
 
     @PostMapping("/workflows/render-template")

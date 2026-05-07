@@ -53,7 +53,7 @@ public class ServiceConnectionGatewayService {
             case SUPABASE -> validateSupabase(baseUrl, secretValue);
             case GROQ -> validateGroq(baseUrl, secretValue);
             case PEXELS -> validatePexels(baseUrl, secretValue);
-            case SHOTSTACK -> validateShotstack(baseUrl, secretValue);
+            case SHOTSTACK -> throw unsupportedProvider(provider);
             case N8N -> validateN8n(baseUrl, secretValue, accountIdentifier);
         };
     }
@@ -89,18 +89,6 @@ public class ServiceConnectionGatewayService {
                 .GET()
                 .build();
         return execute(providerMessage("Pexels"), request, 200, 299);
-    }
-
-    private ServiceConnectionValidationResult validateShotstack(String baseUrl, String secretValue) {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(normalizeShotstackEditBaseUrl(baseUrl) + "/render"))
-                .timeout(Duration.ofSeconds(20))
-                .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .header("x-api-key", secretValue)
-                .POST(HttpRequest.BodyPublishers.ofString("{}"))
-                .build();
-        return executeShotstack(providerMessage("Shotstack"), request);
     }
 
     private ServiceConnectionValidationResult validateN8n(String baseUrl, String secretValue, String accountIdentifier) {
@@ -166,30 +154,6 @@ public class ServiceConnectionGatewayService {
         }
     }
 
-    private ServiceConnectionValidationResult executeShotstack(String providerName, HttpRequest request) {
-        try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return new ServiceConnectionValidationResult(
-                        ServiceConnectionValidationStatus.VALID,
-                        providerName + " a repondu " + response.statusCode() + "."
-                );
-            }
-            if (response.statusCode() == 400 || response.statusCode() == 422) {
-                return new ServiceConnectionValidationResult(
-                        ServiceConnectionValidationStatus.VALID,
-                        providerName + " a accepte la cle API et l'URL. Le payload de test est volontairement incomplet (" + response.statusCode() + ")."
-                );
-            }
-            throw invalid(providerName, response.statusCode(), response.body());
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, providerName + " ne repond pas.", exception);
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Impossible de contacter " + providerName + ".", exception);
-        }
-    }
-
     private ResponseStatusException invalid(String providerName, int statusCode, String body) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("provider", providerName);
@@ -219,21 +183,15 @@ public class ServiceConnectionGatewayService {
         return normalized + "/openai/v1";
     }
 
-    private String normalizeShotstackEditBaseUrl(String rawBaseUrl) {
-        String normalized = stripTrailingSlash(rawBaseUrl);
-        if (normalized.endsWith("/edit/v1") || normalized.endsWith("/edit/stage")) {
-            return normalized;
-        }
-        if (normalized.endsWith("/v1") || normalized.endsWith("/stage")) {
-            return normalized.startsWith("https://api.shotstack.io/edit/")
-                    ? normalized
-                    : normalized.replace("https://api.shotstack.io", "https://api.shotstack.io/edit");
-        }
-        return normalized + "/edit/v1";
-    }
-
     private String providerMessage(String providerName) {
         return providerName;
+    }
+
+    private ResponseStatusException unsupportedProvider(ServiceConnectionProvider provider) {
+        return new ResponseStatusException(
+                HttpStatus.GONE,
+                "Le service " + provider.name() + " n'est plus utilise. Le rendu video passe par Remotion."
+        );
     }
 
     private ServiceConnectionValidationResult executeN8nHealthcheck(String baseUrl) {

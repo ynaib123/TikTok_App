@@ -34,8 +34,7 @@ $headers = @{ 'X-N8N-API-KEY' = $apiKey }
 
 $targets = @(
     @{ id = 'q8OpzbRoQe8W8TzY'; name = 'idea-script-generation-fused' },
-    @{ id = 'SAn6Iepn4rCpkHJg'; name = 'render-professional-quality' },
-    @{ id = 'FVCRU7rTMuMCR1J3'; name = 'check-shotstack-fixed' },
+    @{ id = 'renderRemotion01'; name = 'render-template-video-remotion' },
     @{ id = 'ql0Tg97q1cZ12aee'; name = 'init-publish-tiktok-fixed' }
 )
 

@@ -344,7 +344,7 @@ function CreationStep(p: StepBodyProps) {
         {!p.isJourneyReady ? (
           <div className="journey-empty">
             <strong>Comptes incomplets</strong>
-            <p>Connecte TikTok, Groq, Shotstack et Pexels dans Accounts avant de generer.</p>
+            <p>Connecte TikTok, Groq et Pexels dans Accounts avant de generer.</p>
             <button type="button" className="journey-btn is-ghost" onClick={() => p.navigate('/accounts')}>
               Ouvrir Accounts
             </button>

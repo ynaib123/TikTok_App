@@ -119,8 +119,8 @@ class VideoOpsSecurityIntegrationTest {
                         null
                 )
         )));
-        when(videoOpsService.triggerCheckShotstack(any(), eq("admin@tiktokapp.local"))).thenReturn(
-                new VideoWorkflowActionResponse(7L, 42L, "CHECK_SHOTSTACK", "ACCEPTED", "ok", false)
+        when(videoOpsService.triggerRenderTemplate(any(), eq("admin@tiktokapp.local"))).thenReturn(
+                new VideoWorkflowActionResponse(7L, 42L, "RENDER_TEMPLATE_VIDEO", "ACCEPTED", "ok", false)
         );
         when(videoOpsService.completeWorkflowRun(eq(99L), any(), any())).thenReturn(
                 new VideoWorkflowRunDetailResponse(
@@ -160,7 +160,7 @@ class VideoOpsSecurityIntegrationTest {
                 )
         );
         when(accountsService.fetchReadiness()).thenReturn(
-                new AccountsReadinessResponse(false, 1, List.of("Shotstack"))
+                new AccountsReadinessResponse(false, 1, List.of("Pexels"))
         );
         when(tikTokInitPublishContextService.buildContext(any())).thenReturn(
                 new TikTokInitPublishContextResponse(
@@ -192,16 +192,6 @@ class VideoOpsSecurityIntegrationTest {
         when(videoOpsInternalProxyService.proxyPexelsVideoSearch(anyString(), any(), anyString())).thenReturn(
                 objectMapper.readTree("""
                         {"videos":[{"id":1}]}
-                        """)
-        );
-        when(videoOpsInternalProxyService.proxyShotstackRender(any())).thenReturn(
-                objectMapper.readTree("""
-                        {"response":{"id":"render-demo"}}
-                        """)
-        );
-        when(videoOpsInternalProxyService.proxyShotstackRenderStatus(eq("render-demo"))).thenReturn(
-                objectMapper.readTree("""
-                        {"response":{"status":"done"}}
                         """)
         );
         when(videoOpsDataService.createContentIdea(any())).thenReturn(
@@ -292,12 +282,12 @@ class VideoOpsSecurityIntegrationTest {
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ready").value(false))
-                .andExpect(jsonPath("$.missingItems[0]").value("Shotstack"));
+                .andExpect(jsonPath("$.missingItems[0]").value("Pexels"));
     }
 
     @Test
     void allowsProtectedPostRoutesWithoutCsrfWhenRouteIsExplicitlyIgnored() throws Exception {
-        mockMvc.perform(post("/api/video-ops/workflows/check-shotstack")
+        mockMvc.perform(post("/api/video-ops/workflows/render-template")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"contentIdeaId\":42,\"topic\":\"Idea\"}"))
@@ -307,7 +297,7 @@ class VideoOpsSecurityIntegrationTest {
 
     @Test
     void allowsProtectedPostRoutesWithAuthAndCsrf() throws Exception {
-        mockMvc.perform(post("/api/video-ops/workflows/check-shotstack")
+        mockMvc.perform(post("/api/video-ops/workflows/render-template")
                         .header("Authorization", "Bearer " + accessToken)
                         .header(csrfHeaderName, csrfToken)
                         .cookie(csrfCookie)
@@ -315,9 +305,9 @@ class VideoOpsSecurityIntegrationTest {
                         .content("{\"contentIdeaId\":42,\"topic\":\"Idea\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.runId").value(7))
-                .andExpect(jsonPath("$.workflowType").value("CHECK_SHOTSTACK"));
+                .andExpect(jsonPath("$.workflowType").value("RENDER_TEMPLATE_VIDEO"));
 
-        verify(videoOpsService).triggerCheckShotstack(any(), eq("admin@tiktokapp.local"));
+        verify(videoOpsService).triggerRenderTemplate(any(), eq("admin@tiktokapp.local"));
     }
 
     @Test
@@ -476,20 +466,4 @@ class VideoOpsSecurityIntegrationTest {
                 .andExpect(jsonPath("$.videos[0].id").value(1));
     }
 
-    @Test
-    void acceptsInternalShotstackProxyRequestsWithInternalSecret() throws Exception {
-        mockMvc.perform(post("/api/video-ops/internal/shotstack/render")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret")
-                        .content("""
-                                {"timeline":{},"output":{"format":"mp4"}}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.id").value("render-demo"));
-
-        mockMvc.perform(get("/api/video-ops/internal/shotstack/render/render-demo")
-                        .header("X-Video-Ops-Internal-Secret", "internal-test-secret"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.status").value("done"));
-    }
 }

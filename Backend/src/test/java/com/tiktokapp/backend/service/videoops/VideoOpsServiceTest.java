@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -143,39 +144,9 @@ class VideoOpsServiceTest {
     }
 
     @Test
-    void checkShotstackMarksRunSucceededWhenRenderIsAlreadyReady() {
+    void checkShotstackIsGoneAfterRemotionMigration() {
         VideoOpsProperties properties = new VideoOpsProperties();
         properties.setIdempotencyWindowSeconds(120);
-
-        doAnswer(invocation -> {
-            VideoWorkflowRun run = invocation.getArgument(0);
-            if (run.getId() == null) {
-                ReflectionTestUtils.setField(run, "id", 12L);
-            }
-            if (run.getCreatedAt() == null) {
-                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
-            }
-            return run;
-        }).when(runPersistenceHelper).saveAndCommit(any(VideoWorkflowRun.class));
-
-        doAnswer(invocation -> {
-            VideoWorkflowRun run = invocation.getArgument(0);
-            if (run.getId() == null) {
-                ReflectionTestUtils.setField(run, "id", 12L);
-            }
-            if (run.getCreatedAt() == null) {
-                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
-            }
-            return run;
-        }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
-
-        when(contentIdeaGateway.fetchContentIdeaById(55L))
-                .thenReturn(new ObjectMapper().valueToTree(java.util.List.of(Map.of(
-                        "id", 55,
-                        "shotstack_render_id", "render-123",
-                        "shotstack_status", "done",
-                        "shotstack_url", "https://cdn.example.com/video.mp4"
-                ))));
 
         VideoOpsService service = new VideoOpsService(
                 contentIdeaGateway,
@@ -200,11 +171,10 @@ class VideoOpsServiceTest {
         request.setTopic("Idea");
         request.setSource("test");
 
-        VideoWorkflowActionResponse response = service.triggerCheckShotstack(request, "admin@tiktokapp.local");
-
-        assertTrue(!response.isReused());
-        assertEquals(12L, response.getRunId());
-        assertEquals("SUCCEEDED", response.getStatus());
+        assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> service.triggerCheckShotstack(request, "admin@tiktokapp.local")
+        );
         verify(n8nWorkflowGateway, never()).trigger(any(), any());
     }
 
@@ -299,7 +269,7 @@ class VideoOpsServiceTest {
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
         request.setStatus("rendering_requested");
-        request.setMessage("Render demande a Shotstack.");
+        request.setMessage("Render demande a Remotion.");
         request.setResponsePayload("{\"contentIdeaId\":19,\"shotstackRenderId\":\"render-xyz\"}");
 
         VideoWorkflowRunDetailResponse response = callbackService.completeRun(77L, request);
