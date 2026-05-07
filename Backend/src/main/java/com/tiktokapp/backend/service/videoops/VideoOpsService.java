@@ -589,9 +589,12 @@ public class VideoOpsService {
         String caption = trimToNull(request.getCaption());
         String keyword = trimToNull(request.getKeyword());
         String tiktokAccountOpenId = trimToNull(request.getTiktokAccountOpenId());
+        String templateId = trimToNull(request.getTemplateId());
+        String qualityProfile = trimToNull(request.getQualityProfile());
 
         if (workflowType == VideoWorkflowType.RENDER_TEMPLATE_VIDEO && contentIdeaId != null
-                && (isBlank(topic) || isBlank(script) || isBlank(caption) || isBlank(keyword))) {
+                && (isBlank(topic) || isBlank(script) || isBlank(caption) || isBlank(keyword)
+                        || isBlank(templateId) || isBlank(qualityProfile))) {
             JsonNode rows = contentIdeaGateway.fetchContentIdeaById(contentIdeaId);
             if (!rows.isArray() || rows.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable.");
@@ -613,6 +616,23 @@ public class VideoOpsService {
             if (isBlank(tiktokAccountOpenId)) {
                 tiktokAccountOpenId = trimToNull(text(idea, "tiktok_account_open_id", ""));
             }
+            if (isBlank(templateId)) {
+                templateId = trimToNull(text(idea, "template_id", ""));
+            }
+            if (isBlank(qualityProfile)) {
+                qualityProfile = trimToNull(text(idea, "quality_profile", ""));
+            }
+        }
+
+        if (workflowType == VideoWorkflowType.RENDER_TEMPLATE_VIDEO) {
+            if (isBlank(templateId)) templateId = "tiktok-pro-vertical";
+            if (isBlank(qualityProfile)) qualityProfile = "premium";
+            if (contentIdeaId != null) {
+                Map<String, Object> patch = new LinkedHashMap<>();
+                patch.put("template_id", templateId);
+                patch.put("quality_profile", qualityProfile);
+                contentIdeaGateway.updateContentIdea(contentIdeaId, patch);
+            }
         }
 
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -624,6 +644,8 @@ public class VideoOpsService {
         payload.put("caption", caption);
         payload.put("keyword", keyword);
         payload.put("tiktokAccountOpenId", tiktokAccountOpenId);
+        payload.put("templateId", templateId);
+        payload.put("qualityProfile", qualityProfile);
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);

@@ -19,6 +19,10 @@ public class WorkflowTriggerRequest {
     private String source;
     private String tiktokAccountOpenId;
     private Boolean force;
+    @Size(max = 120)
+    private String templateId;
+    @Size(max = 32)
+    private String qualityProfile;
 
     public Long getContentIdeaId() {
         return contentIdeaId;
@@ -98,5 +102,21 @@ public class WorkflowTriggerRequest {
 
     public void setForce(Boolean force) {
         this.force = force;
+    }
+
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(String templateId) {
+        this.templateId = templateId;
+    }
+
+    public String getQualityProfile() {
+        return qualityProfile;
+    }
+
+    public void setQualityProfile(String qualityProfile) {
+        this.qualityProfile = qualityProfile;
     }
 }

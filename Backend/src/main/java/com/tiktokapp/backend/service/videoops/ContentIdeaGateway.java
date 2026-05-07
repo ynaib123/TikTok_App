@@ -152,6 +152,9 @@ public class ContentIdeaGateway {
                 case "render_status" -> idea.setRenderStatus(v);
                 case "tiktok_account_open_id" -> idea.setTiktokAccountOpenId(v);
                 case "template_id" -> idea.setTemplateId(v);
+                case "quality_profile" -> idea.setQualityProfile(v);
+                case "render_engine" -> idea.setRenderEngine(v);
+                case "thumbnail_url" -> idea.setThumbnailUrl(v);
                 case "tiktok_publish_id" -> idea.setTiktokPublishId(v);
                 case "tiktok_upload_url" -> idea.setTiktokUploadUrl(v);
                 case "tiktok_upload_status" -> idea.setTiktokUploadStatus(v);
@@ -201,6 +204,9 @@ public class ContentIdeaGateway {
         map.put("render_status", orEmpty(idea.getRenderStatus()));
         map.put("tiktok_account_open_id", orEmpty(idea.getTiktokAccountOpenId()));
         map.put("template_id", orEmpty(idea.getTemplateId()));
+        map.put("quality_profile", orEmpty(idea.getQualityProfile()));
+        map.put("render_engine", orEmpty(idea.getRenderEngine()));
+        map.put("thumbnail_url", orEmpty(idea.getThumbnailUrl()));
         map.put("tiktok_publish_id", orEmpty(idea.getTiktokPublishId()));
         map.put("tiktok_upload_url", orEmpty(idea.getTiktokUploadUrl()));
         map.put("tiktok_upload_status", orEmpty(idea.getTiktokUploadStatus()));

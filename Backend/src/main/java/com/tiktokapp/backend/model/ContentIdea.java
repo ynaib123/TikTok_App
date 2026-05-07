@@ -41,6 +41,12 @@ public class ContentIdea {
     private String tiktokAccountOpenId;
     @Column(name = "template_id")
     private String templateId;
+    @Column(name = "quality_profile")
+    private String qualityProfile;
+    @Column(name = "render_engine")
+    private String renderEngine;
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
     @Column(name = "tiktok_publish_id")
     private String tiktokPublishId;
     @Column(name = "tiktok_upload_url")
@@ -108,6 +114,12 @@ public class ContentIdea {
     public void setTiktokAccountOpenId(String tiktokAccountOpenId) { this.tiktokAccountOpenId = tiktokAccountOpenId; }
     public String getTemplateId() { return templateId; }
     public void setTemplateId(String templateId) { this.templateId = templateId; }
+    public String getQualityProfile() { return qualityProfile; }
+    public void setQualityProfile(String qualityProfile) { this.qualityProfile = qualityProfile; }
+    public String getRenderEngine() { return renderEngine; }
+    public void setRenderEngine(String renderEngine) { this.renderEngine = renderEngine; }
+    public String getThumbnailUrl() { return thumbnailUrl; }
+    public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
     public String getTiktokPublishId() { return tiktokPublishId; }
     public void setTiktokPublishId(String tiktokPublishId) { this.tiktokPublishId = tiktokPublishId; }
     public String getTiktokUploadUrl() { return tiktokUploadUrl; }

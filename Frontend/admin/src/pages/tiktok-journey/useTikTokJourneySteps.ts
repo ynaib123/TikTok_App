@@ -150,6 +150,8 @@ export function useCreationStep({
 export interface UseRenderStepOptions {
   scriptedIdea: ContentIdea | null
   selectedGeneratedIdea: ContentIdea | null
+  selectedTemplateId: string | null
+  selectedQualityProfile: string | null
   goToStep: (step: string) => void
   triggerCheckShotstackWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
   triggerRenderTemplateWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
@@ -171,6 +173,8 @@ export interface UseRenderStepOptions {
 export function useRenderStep({
   scriptedIdea,
   selectedGeneratedIdea,
+  selectedTemplateId,
+  selectedQualityProfile,
   goToStep,
   triggerCheckShotstackWorkflow,
   triggerRenderTemplateWorkflow,
@@ -202,6 +206,8 @@ export function useRenderStep({
       script: idea.script,
       caption: idea.caption,
       keyword: idea.keyword,
+      templateId: selectedTemplateId || null,
+      qualityProfile: selectedQualityProfile || null,
     })
     markWorkflowStarted({
       runId: workflowRun?.runId,

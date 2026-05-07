@@ -49,6 +49,8 @@ export interface WorkflowTriggerPayload {
   keyword?: string | null;
   tiktokAccountOpenId?: string | null;
   force?: boolean;
+  templateId?: string | null;
+  qualityProfile?: string | null;
 }
 
 export interface WorkflowTriggerResponse {

@@ -97,6 +97,17 @@ const LIST_SORT_OPTIONS = [
   { value: 'published_first',  label: 'Publiees d abord' },
 ]
 const TIKTOK_CATEGORY_OPTIONS = ['Food', 'Love', 'Sport', 'Fitness', 'Beauty']
+const TIKTOK_TEMPLATE_OPTIONS: Array<{ value: string; label: string; description: string }> = [
+  { value: 'tiktok-pro-vertical', label: 'Pro Vertical', description: 'Hook + script + CTA, palette par categorie.' },
+  { value: 'tiktok-bold-story',   label: 'Bold Story',   description: 'Typographie display, chapitres, CTA degrade.' },
+  { value: 'tiktok-clean-minimal', label: 'Clean Minimal', description: 'Minimaliste, sous-titres bandeau.' },
+]
+const TIKTOK_QUALITY_OPTIONS: Array<{ value: string; label: string; description: string }> = [
+  { value: 'draft',    label: 'Draft',    description: 'Rapide, CRF 28, 96 kbps audio' },
+  { value: 'standard', label: 'Standard', description: 'CRF 24, 128 kbps audio' },
+  { value: 'high',     label: 'High',     description: 'CRF 21, 160 kbps audio' },
+  { value: 'premium',  label: 'Premium',  description: 'Lent, CRF 19, 192 kbps audio' },
+]
 const MAX_IDEA_BATCH_SIZE = 5
 
 /* ── Status helpers (unchanged) ────────────────────────────────────────── */
@@ -188,6 +199,8 @@ export default function TikTokJourneyPage() {
   } = useTikTokWorkflow()
   const { busyActions, isBusy, runAction } = useActionState()
   const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(TIKTOK_TEMPLATE_OPTIONS[0].value)
+  const [selectedQualityProfile, setSelectedQualityProfile] = useState<string>('premium')
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
 
   const currentStepIndex = useMemo(
@@ -352,6 +365,8 @@ export default function TikTokJourneyPage() {
   const { handleRetryInitPublish } = useRenderStep({
     scriptedIdea,
     selectedGeneratedIdea,
+    selectedTemplateId,
+    selectedQualityProfile,
     goToStep,
     triggerCheckShotstackWorkflow,
     triggerRenderTemplateWorkflow,
@@ -748,6 +763,12 @@ export default function TikTokJourneyPage() {
               setGenerationCount={setGenerationCount}
               setOpenListMenu={setOpenListMenu}
               setSelectedGeneratedIdeaId={setSelectedGeneratedIdeaId}
+              selectedTemplateId={selectedTemplateId}
+              setSelectedTemplateId={setSelectedTemplateId}
+              selectedQualityProfile={selectedQualityProfile}
+              setSelectedQualityProfile={setSelectedQualityProfile}
+              templateOptions={TIKTOK_TEMPLATE_OPTIONS}
+              qualityOptions={TIKTOK_QUALITY_OPTIONS}
               successMessage={successMessage}
               tiktokCategoryOptions={TIKTOK_CATEGORY_OPTIONS}
               uploadResult={uploadResult}

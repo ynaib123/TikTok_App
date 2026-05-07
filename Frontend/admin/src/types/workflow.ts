@@ -26,6 +26,15 @@ export type VideoPipelineStage =
 
 export const TERMINAL_RUN_STATUSES: ReadonlySet<VideoWorkflowRunStatus> = new Set(['SUCCEEDED', 'FAILED']);
 
+export type RenderTemplateId =
+  | 'tiktok-pro-vertical'
+  | 'tiktok-bold-story'
+  | 'tiktok-clean-minimal';
+
+export type RenderQualityProfile = 'draft' | 'standard' | 'high' | 'premium';
+
+export type RenderEngine = 'shotstack' | 'remotion';
+
 export interface ContentIdea {
   id: number;
   category: string | null;
@@ -41,6 +50,10 @@ export interface ContentIdea {
   tiktokAccountOpenId: string | null;
   pipelineStatus: string | null;
   lastError: string | null;
+  templateId?: RenderTemplateId | string | null;
+  qualityProfile?: RenderQualityProfile | string | null;
+  renderEngine?: RenderEngine | string | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface WorkflowRun {
@@ -85,6 +98,10 @@ export interface ManualAction {
   shotstackStatus: string | null;
   pipelineStatus: string | null;
   lastError: string | null;
+  templateId?: RenderTemplateId | string | null;
+  qualityProfile?: RenderQualityProfile | string | null;
+  renderEngine?: RenderEngine | string | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface WorkflowStatusEntry {

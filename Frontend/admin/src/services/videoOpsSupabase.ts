@@ -51,6 +51,10 @@ function normalizeContentIdea(rawIdea: unknown = {}): ContentIdea {
     tiktokAccountOpenId: typeof raw.tiktokAccountOpenId === 'string' ? raw.tiktokAccountOpenId : null,
     pipelineStatus: typeof raw.pipelineStatus === 'string' ? raw.pipelineStatus : null,
     lastError: typeof raw.lastError === 'string' ? raw.lastError : null,
+    templateId: typeof raw.templateId === 'string' ? raw.templateId : null,
+    qualityProfile: typeof raw.qualityProfile === 'string' ? raw.qualityProfile : null,
+    renderEngine: typeof raw.renderEngine === 'string' ? raw.renderEngine : null,
+    thumbnailUrl: typeof raw.thumbnailUrl === 'string' ? raw.thumbnailUrl : null,
   }
 }
 

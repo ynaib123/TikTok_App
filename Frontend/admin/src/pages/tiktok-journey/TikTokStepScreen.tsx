@@ -15,6 +15,12 @@ interface JourneyManualAction {
   uploadUrl?: string | null
 }
 
+interface JourneyOptionDescriptor {
+  value: string
+  label: string
+  description: string
+}
+
 interface TikTokStepScreenProps {
   steps: StepDescriptor[]
   currentStepIndex: number
@@ -64,6 +70,12 @@ interface TikTokStepScreenProps {
   setGenerationCount: (value: string | number) => void
   setOpenListMenu: (value: string | null | ((current: string | null) => string | null)) => void
   setSelectedGeneratedIdeaId: (value: number) => void
+  selectedTemplateId: string
+  setSelectedTemplateId: (value: string) => void
+  selectedQualityProfile: string
+  setSelectedQualityProfile: (value: string) => void
+  templateOptions: JourneyOptionDescriptor[]
+  qualityOptions: JourneyOptionDescriptor[]
   successMessage: string | null
   tiktokCategoryOptions: string[]
   uploadResult: unknown
@@ -270,6 +282,42 @@ function CreationStep(p: StepBodyProps) {
             </div>
           </div>
 
+          <div className="journey-step-row">
+            <label htmlFor="journey-template-select">Template video</label>
+            <select
+              id="journey-template-select"
+              className="journey-step-select"
+              value={p.selectedTemplateId}
+              onChange={(event) => p.setSelectedTemplateId(event.target.value)}
+              disabled={p.isBusy || !p.isJourneyReady}
+            >
+              {p.templateOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <span className="journey-step-row-hint">
+              {p.templateOptions.find((option) => option.value === p.selectedTemplateId)?.description}
+            </span>
+          </div>
+
+          <div className="journey-step-row">
+            <label htmlFor="journey-quality-select">Qualite de rendu</label>
+            <select
+              id="journey-quality-select"
+              className="journey-step-select"
+              value={p.selectedQualityProfile}
+              onChange={(event) => p.setSelectedQualityProfile(event.target.value)}
+              disabled={p.isBusy || !p.isJourneyReady}
+            >
+              {p.qualityOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <span className="journey-step-row-hint">
+              {p.qualityOptions.find((option) => option.value === p.selectedQualityProfile)?.description}
+            </span>
+          </div>
+
           <div className="journey-step-cta journey-step-cta-stack">
             <button
               type="button"
@@ -328,7 +376,17 @@ function CreationStep(p: StepBodyProps) {
 }
 
 function RenderStep(p: StepBodyProps) {
-  const previewUrl = p.manualAction?.shotstackUrl || p.scriptedIdea?.shotstackUrl || p.selectedGeneratedIdea?.shotstackUrl
+  const idea = p.scriptedIdea || p.selectedGeneratedIdea
+  const previewUrl = p.manualAction?.shotstackUrl || idea?.shotstackUrl
+  const renderEngine = idea?.renderEngine
+  const templateId = idea?.templateId
+  const qualityProfile = idea?.qualityProfile
+  const thumbnailUrl = idea?.thumbnailUrl
+  const templateOption = p.templateOptions.find((option) => option.value === templateId)
+  const qualityOption = p.qualityOptions.find((option) => option.value === qualityProfile)
+  const renderingMessage = (p.selectedTemplateId === 'tiktok-pro-vertical' && p.selectedQualityProfile === 'premium')
+    ? 'Le rendu Remotion premium peut prendre plusieurs minutes.'
+    : 'Le rendu video est en cours.'
 
   return (
     <div className="journey-wizard-grid is-video-stage">
@@ -343,6 +401,20 @@ function RenderStep(p: StepBodyProps) {
             </div>
           </div>
         ) : null}
+
+        <div className="journey-wizard-side-card">
+          <span className="journey-wizard-card-label">Rendu</span>
+          <div className="journey-kv-grid">
+            <KV label="Moteur" value={renderEngine ? renderEngine.toUpperCase() : null} />
+            <KV label="Template" value={templateOption?.label || templateId} />
+            <KV label="Qualite" value={qualityOption?.label || qualityProfile} />
+          </div>
+          {thumbnailUrl ? (
+            <div className="journey-thumbnail">
+              <img src={thumbnailUrl} alt="Apercu thumbnail du rendu" />
+            </div>
+          ) : null}
+        </div>
 
         <div className="journey-wizard-side-card">
           <span className="journey-wizard-card-label">Actions</span>
@@ -369,7 +441,7 @@ function RenderStep(p: StepBodyProps) {
             <div className="journey-loading-spinner" />
             <div className="journey-loading-copy">
               <strong>Generation video en cours</strong>
-              <span>Le rendu Shotstack peut prendre quelques minutes.</span>
+              <span>{renderingMessage}</span>
             </div>
           </div>
         ) : (
