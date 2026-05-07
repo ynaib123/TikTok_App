@@ -110,8 +110,15 @@ public class ContentIdeaGateway {
         ContentIdea idea = contentIdeaRepo.findById(contentIdeaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable."));
         applyContentIdeaPatch(idea, payload);
-        contentIdeaRepo.save(idea);
-        return objectMapper.valueToTree(List.of(toMap(idea)));
+        ContentIdea saved = contentIdeaRepo.saveAndFlush(idea);
+        logger.info("video_ops event=content_idea_patch_saved contentIdeaId={} render_engine={} render_status={} pipeline_status={} shotstack_url_set={} thumbnail_url_set={}",
+                contentIdeaId,
+                saved.getRenderEngine(),
+                saved.getRenderStatus(),
+                saved.getPipelineStatus(),
+                saved.getShotstackUrl() != null && !saved.getShotstackUrl().isBlank(),
+                saved.getThumbnailUrl() != null && !saved.getThumbnailUrl().isBlank());
+        return objectMapper.valueToTree(List.of(toMap(saved)));
     }
 
     private String summarizePatch(Map<String, Object> patch) {
