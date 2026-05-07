@@ -6,7 +6,11 @@ Service de rendu video vertical pour la migration `Remotion + FFmpeg`.
 
 ### `GET /health`
 
-Retourne l'etat du service.
+Retourne l'etat du service et la liste des templates.
+
+### `GET /templates`
+
+Liste les templates disponibles avec leur description.
 
 ### `POST /render`
 
@@ -22,9 +26,35 @@ Retourne:
   "engine": "remotion",
   "renderId": "remotion-123-456-...",
   "status": "rendered",
+  "templateId": "tiktok-pro-vertical",
+  "compositionId": "tiktok-pro-vertical",
   "outputUrl": "http://localhost:8090/renders/remotion-123-456.mp4"
 }
 ```
+
+## Templates premium (Phase 4)
+
+`render.templateId` selectionne le template visuel:
+
+- `tiktok-pro-vertical` (defaut): hook badge + lignes script + CTA, palette par categorie.
+- `tiktok-bold-story`: typographie display italique, chapitres numerotes, CTA degrade, sous-titres mot-par-mot.
+- `tiktok-clean-minimal`: minimaliste, capsule discrete, sous-titres bandeau central.
+- `tiktok-pro-vertical-v1`: alias retrocompatible vers `tiktok-pro-vertical`.
+
+Tous les templates respectent les safe zones TikTok officielles, derivees automatiquement de la largeur du rendu (720 ou 1080) et surchargeable via `render.safeZones`.
+
+La palette utilisee est derivee de `idea.category` (puis `idea.visualStyle` en fallback). Categories reconnues: `business`, `finance`, `tech`, `lifestyle`, `fitness`, `food`, `beauty`, `education`, `travel`, `entertainment`. Tout le reste retombe sur la palette par defaut.
+
+## Sous-titres
+
+`render.captionMode` controle le rendu:
+
+- `none`: pas de sous-titres
+- `line`: ligne courante (defaut)
+- `word`: mot courant
+- `karaoke`: tous les mots, mot courant surligne
+
+Les pistes sont prises de `assets.captions[]` quand presentes, sinon le service derive automatiquement des sous-titres en decoupant `idea.script`.
 
 ## Scripts
 
@@ -32,6 +62,7 @@ Retourne:
 - `npm run build`
 - `npm start`
 - `npm run type-check`
+- `node scripts/smoke-templates.mjs` (smoke test selectComposition pour les 3 templates)
 
 ## Variables d'environnement
 

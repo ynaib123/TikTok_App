@@ -1,6 +1,6 @@
 # Video Render Migration Progress
 
-Derniere mise a jour: 2026-05-07
+Derniere mise a jour: 2026-05-07 (Phase 4)
 
 Objectif:
 - migrer progressivement du pipeline actuel `n8n + Shotstack + upload TikTok`
@@ -11,7 +11,7 @@ Statut global:
 - [x] Phase 1 terminee: audit + contrat de rendu
 - [x] Phase 2 terminee: service de rendu Remotion
 - [x] Phase 3 terminee: branchement n8n optionnel vers Remotion
-- [ ] Phase 4 non commencee: templates premium
+- [x] Phase 4 terminee: templates premium
 - [ ] Phase 5 non commencee: finition FFmpeg
 - [ ] Phase 6 non commencee: amelioration backoffice
 - [ ] Phase 7 non commencee: migration complete + nettoyage legacy
@@ -139,13 +139,38 @@ Contrainte importante avant vraie publication TikTok:
 But:
 - augmenter visuellement la qualite percue
 
-Taches restantes:
-- [ ] definir 2 a 3 templates premium
-- [ ] definir une charte typographique
-- [ ] definir les safe zones TikTok
-- [ ] definir les animations d'entree/sortie
-- [ ] definir les regles de sous-titres
-- [ ] ajouter des variations par categorie
+Taches:
+- [x] definir 2 a 3 templates premium
+- [x] definir une charte typographique
+- [x] definir les safe zones TikTok
+- [x] definir les animations d'entree/sortie
+- [x] definir les regles de sous-titres
+- [x] ajouter des variations par categorie
+
+Livrables:
+- [RenderVideo/src/remotion/design/tokens.ts](/C:/TikTok_App/RenderVideo/src/remotion/design/tokens.ts) - charte typographique, safe zones officielles 720/1080, palettes catégorielles
+- [RenderVideo/src/remotion/design/animations.ts](/C:/TikTok_App/RenderVideo/src/remotion/design/animations.ts) - hooks d'animation reutilisables
+- [RenderVideo/src/remotion/design/AnimatedBlock.tsx](/C:/TikTok_App/RenderVideo/src/remotion/design/AnimatedBlock.tsx) - bloc anime unifie
+- [RenderVideo/src/remotion/design/Captions.tsx](/C:/TikTok_App/RenderVideo/src/remotion/design/Captions.tsx) - sous-titres line / word / karaoke
+- [RenderVideo/src/remotion/design/Background.tsx](/C:/TikTok_App/RenderVideo/src/remotion/design/Background.tsx) - background video + scrim partage
+- [RenderVideo/src/remotion/templateRegistry.ts](/C:/TikTok_App/RenderVideo/src/remotion/templateRegistry.ts) - resolution templateId -> compositionId
+- [RenderVideo/src/remotion/TikTokProVertical.tsx](/C:/TikTok_App/RenderVideo/src/remotion/TikTokProVertical.tsx) - template 1 (refactor)
+- [RenderVideo/src/remotion/TikTokBoldStory.tsx](/C:/TikTok_App/RenderVideo/src/remotion/TikTokBoldStory.tsx) - template 2
+- [RenderVideo/src/remotion/TikTokCleanMinimal.tsx](/C:/TikTok_App/RenderVideo/src/remotion/TikTokCleanMinimal.tsx) - template 3
+- [RenderVideo/scripts/smoke-templates.mjs](/C:/TikTok_App/RenderVideo/scripts/smoke-templates.mjs) - smoke test selectComposition
+
+Templates disponibles via `render.templateId`:
+- `tiktok-pro-vertical` (defaut, alias `tiktok-pro-vertical-v1`)
+- `tiktok-bold-story`
+- `tiktok-clean-minimal`
+
+Categories de palette reconnues (derivees de `idea.category` puis `idea.visualStyle`):
+- `business`, `finance`, `tech`, `lifestyle`, `fitness`, `food`, `beauty`, `education`, `travel`, `entertainment`, plus une palette par defaut.
+
+Verifications faites:
+- `npm run type-check` OK
+- `npm run build` OK
+- `node scripts/smoke-templates.mjs`: selectComposition OK pour les 3 compositions (1080x1920 @ 30fps)
 
 ## Phase 5 - Finition FFmpeg
 
@@ -192,4 +217,4 @@ Si une autre session doit reprendre sans contexte:
 3. lire [RenderVideo/README.md](/C:/TikTok_App/RenderVideo/README.md)
 4. verifier que `APP_VIDEO_OPS_N8N_RENDER_PATH` pointe vers le moteur souhaite
 5. pour tester Remotion bout en bout, demarrer `render-video`, backend et n8n puis importer/publier le workflow `render-template-video-remotion.json`
-6. prochaine vraie phase produit: Phase 4, templates premium et sous-titres plus propres
+6. prochaine vraie phase produit: Phase 5 (FFmpeg) ou Phase 6 (UI selecteur de template)

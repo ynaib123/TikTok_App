@@ -6,6 +6,7 @@ import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
 import express from 'express'
 import { asRenderVideoJob, validateContract } from './contracts.js'
+import { listTemplates, resolveCompositionId } from './remotion/templateRegistry.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -99,7 +100,12 @@ app.get('/health', (_request, response) => {
     ok: true,
     service: 'render-video',
     engine: 'remotion',
+    templates: listTemplates(),
   })
+})
+
+app.get('/templates', (_request, response) => {
+  response.json({ ok: true, templates: listTemplates() })
 })
 
 app.post('/render', async (request, response, next) => {
@@ -121,9 +127,10 @@ app.post('/render', async (request, response, next) => {
     const renderJob = await prepareLocalAssets(job, renderId)
 
     const serveUrl = await getBundleLocation()
+    const compositionId = resolveCompositionId(renderJob.render.templateId)
     const composition = await selectComposition({
       serveUrl,
-      id: 'tiktok-pro-vertical',
+      id: compositionId,
       inputProps: { job: renderJob },
     })
 
@@ -140,6 +147,8 @@ app.post('/render', async (request, response, next) => {
       engine: 'remotion',
       renderId,
       status: 'rendered',
+      templateId: renderJob.render.templateId,
+      compositionId,
       outputUrl: `${publicBaseUrl}/renders/${outputFileName}`,
       outputPath,
       width: composition.width,
