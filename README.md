@@ -79,20 +79,11 @@ Puis ouvrir :
 
 Dans la stack Docker principale :
 
-- `frontend` tourne deja avec Vite dans le conteneur et recharge les changements via bind mount
-- `backend` tourne maintenant avec surveillance des fichiers Java / resources et redemarre automatiquement dans le conteneur
-
-Pour le mode dev Docker avec rechargement automatique, utilise plutot :
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-
-Ce mode fait tourner :
-
-- `admin` avec Vite dans le conteneur et hot reload via bind mount
-- `backend` avec redemarrage automatique sur changement de fichiers `src/` ou `pom.xml`
+- `frontend` tourne avec Vite dans le conteneur et recharge les changements via bind mount
+- `backend` tourne avec Spring Boot DevTools : reload du contexte en ~5-10 s sur modification d'un fichier `.java`, sans redemarrer la JVM
 - `n8n` avec montage des workflows locaux
+
+Le `docker-compose.yml` racine est l'unique stack dev/prod-like ; il y a quelques petites bascules par variables d'env (`SPRING_PROFILES_ACTIVE=dev` reduit le boot a ~25 s).
 
 ## Configuration backend video ops
 

@@ -5,13 +5,11 @@ import {
   type Location,
 } from 'react-router-dom'
 
-import {
-  useAccountsFeedback,
-  useAccountsForm,
-  useServiceConnections,
-  useTikTokAccounts,
-} from '../hooks'
-import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useAccountsFeedback } from './useAccountsFeedback'
+import { useAccountsForm } from './useAccountsForm'
+import { useServiceConnections } from './useServiceConnections'
+import { useTikTokAccounts } from './useTikTokAccounts'
+import { useFocusTrap } from './useFocusTrap'
 import {
   SERVICE_CONNECTION_FIELDS,
   SERVICE_PROVIDER_CATEGORY,

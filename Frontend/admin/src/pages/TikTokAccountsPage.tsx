@@ -6,7 +6,7 @@ import { AccountsCategoryTabs } from '../components/accounts/AccountsCategoryTab
 import { AccountsStatsSection } from '../components/accounts/AccountsStatsSection'
 import { AccountsList } from '../components/accounts/AccountsList'
 import { AccountsServiceModal } from '../components/accounts/AccountsServiceModal'
-import { useTikTokAccountsController } from './useTikTokAccountsController'
+import { useTikTokAccountsController } from '../hooks/useTikTokAccountsController'
 import { markAdminRouteReady } from '../services/adminPerformance'
 import '../styles/features/journey.css'
 import '../styles/features/tiktok-step.css'
