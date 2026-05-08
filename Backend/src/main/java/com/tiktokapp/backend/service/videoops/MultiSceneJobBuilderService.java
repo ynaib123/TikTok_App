@@ -8,6 +8,7 @@ import com.tiktokapp.backend.model.ContentIdea;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,12 +72,7 @@ public class MultiSceneJobBuilderService {
         }
         BuildOptions effective = options == null ? BuildOptions.defaults(0, "build-test") : options;
 
-        List<SceneBuilderService.SceneSpec> specs = sceneBuilder.build(
-                idea.getScripts(),
-                idea.getBackgroundKeyword(),
-                idea.getCategory(),
-                effective.durationSec()
-        );
+        List<SceneBuilderService.SceneSpec> specs = buildSceneSpecs(idea, effective.durationSec());
         if (specs.isEmpty()) {
             throw new IllegalStateException("Aucune scène extractible du script — script vide ou invalide.");
         }
@@ -159,6 +155,7 @@ public class MultiSceneJobBuilderService {
             sceneNode.put("text", truncate(spec.text(), 240));
             putNullable(sceneNode, "emotion", truncate(spec.emotion(), 60));
             putNullable(sceneNode, "mediaQuery", truncate(spec.mediaQuery(), 240));
+            addPlannedSceneMetadata(sceneNode, idea.getPlannedScenes(), i);
             ObjectNode media = sceneNode.putObject("media");
             media.put("url", pick.url());
             media.put("provider", pick.provider());
@@ -170,6 +167,87 @@ public class MultiSceneJobBuilderService {
         }
 
         return job;
+    }
+
+    private List<SceneBuilderService.SceneSpec> buildSceneSpecs(ContentIdea idea, double durationSec) {
+        List<SceneBuilderService.SceneSpec> planned = buildFromPlannedScenes(idea.getPlannedScenes(), durationSec);
+        if (!planned.isEmpty()) {
+            return planned;
+        }
+        return sceneBuilder.build(
+                idea.getScripts(),
+                idea.getBackgroundKeyword(),
+                idea.getCategory(),
+                durationSec
+        );
+    }
+
+    private List<SceneBuilderService.SceneSpec> buildFromPlannedScenes(String plannedScenesJson, double totalDurationSec) {
+        if (plannedScenesJson == null || plannedScenesJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            JsonNode root = objectMapper.readTree(plannedScenesJson);
+            if (!root.isArray() || root.isEmpty()) {
+                return List.of();
+            }
+            int count = Math.min(SceneBuilderService.MAX_SCENES, root.size());
+            double evenDuration = Math.max(SceneBuilderService.MIN_SCENE_SEC, totalDurationSec / count);
+            List<SceneBuilderService.SceneSpec> specs = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                JsonNode scene = root.get(i);
+                String text = firstText(scene, "sceneText", "text", "script");
+                if (text.isBlank()) {
+                    continue;
+                }
+                String visualKeyword = firstText(scene, "visualKeyword", "mediaQuery", "keyword");
+                String cameraMood = firstText(scene, "cameraMood", "emotion", "mood");
+                specs.add(new SceneBuilderService.SceneSpec(
+                        i,
+                        round1(Math.min(SceneBuilderService.MAX_SCENE_SEC, evenDuration)),
+                        text,
+                        cameraMood.isBlank() ? inferEmotion(i, count) : cameraMood,
+                        visualKeyword.isBlank() ? nullSafe(text, "professional") : visualKeyword
+                ));
+            }
+            return specs;
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private void addPlannedSceneMetadata(ObjectNode sceneNode, String plannedScenesJson, int index) {
+        if (plannedScenesJson == null || plannedScenesJson.isBlank()) {
+            return;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(plannedScenesJson);
+            if (!root.isArray() || root.size() <= index) {
+                return;
+            }
+            JsonNode planned = root.get(index);
+            putNullable(sceneNode, "cameraMood", truncate(firstText(planned, "cameraMood", "mood"), 80));
+            putNullable(sceneNode, "overlayPriority", truncate(firstText(planned, "overlayPriority", "priority"), 40));
+        } catch (Exception ignored) {
+            // planned_scenes is an enhancement. Rendering still works from script fallback.
+        }
+    }
+
+    private String firstText(JsonNode node, String... names) {
+        if (node == null || node.isNull()) return "";
+        for (String name : names) {
+            JsonNode value = node.get(name);
+            if (value != null && value.isTextual() && !value.asText().isBlank()) {
+                return value.asText().trim();
+            }
+        }
+        return "";
+    }
+
+    private String inferEmotion(int index, int total) {
+        if (index == 0) return "urgent";
+        if (index == total - 1) return "finale";
+        return "energetic";
     }
 
     private void putNullable(ObjectNode node, String field, String value) {
@@ -187,5 +265,9 @@ public class MultiSceneJobBuilderService {
     private String truncate(String value, int maxLength) {
         if (value == null) return null;
         return value.length() <= maxLength ? value : value.substring(0, maxLength).trim();
+    }
+
+    private double round1(double value) {
+        return Math.round(value * 10.0) / 10.0;
     }
 }

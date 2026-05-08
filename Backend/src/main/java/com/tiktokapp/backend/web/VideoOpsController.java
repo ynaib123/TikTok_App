@@ -361,6 +361,8 @@ public class VideoOpsController {
         if (patch.containsKey("topic")) safe.put("topic", patch.get("topic"));
         if (patch.containsKey("script")) safe.put("scripts", patch.get("script"));
         if (patch.containsKey("scripts")) safe.put("scripts", patch.get("scripts"));
+        if (patch.containsKey("plannedScenes")) safe.put("planned_scenes", patch.get("plannedScenes"));
+        if (patch.containsKey("planned_scenes")) safe.put("planned_scenes", patch.get("planned_scenes"));
         if (patch.containsKey("caption")) safe.put("caption", patch.get("caption"));
         if (patch.containsKey("keyword")) safe.put("background_keyword", patch.get("keyword"));
         if (patch.containsKey("backgroundKeyword")) safe.put("background_keyword", patch.get("backgroundKeyword"));

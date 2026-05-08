@@ -14,6 +14,8 @@ export interface RenderVideoScene {
   text?: string | null
   emotion?: string | null
   mediaQuery?: string | null
+  cameraMood?: string | null
+  overlayPriority?: string | null
   media: RenderVideoSceneMedia
 }
 

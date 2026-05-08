@@ -174,6 +174,8 @@ public class ContentIdeaGateway {
                 case "category" -> idea.setCategory(v);
                 case "topic" -> idea.setTopic(v);
                 case "scripts" -> idea.setScripts(v);
+                case "planned_scenes" -> idea.setPlannedScenes(v);
+                case "generation_review" -> idea.setGenerationReview(v);
                 case "script_status" -> idea.setScriptStatus(v);
                 case "caption" -> idea.setCaption(v);
                 case "background_keyword" -> idea.setBackgroundKeyword(v);
@@ -226,6 +228,8 @@ public class ContentIdeaGateway {
         map.put("category", orEmpty(idea.getCategory()));
         map.put("topic", orEmpty(idea.getTopic()));
         map.put("scripts", orEmpty(idea.getScripts()));
+        map.put("planned_scenes", orEmpty(idea.getPlannedScenes()));
+        map.put("generation_review", orEmpty(idea.getGenerationReview()));
         map.put("script_status", orEmpty(idea.getScriptStatus()));
         map.put("caption", orEmpty(idea.getCaption()));
         map.put("background_keyword", orEmpty(idea.getBackgroundKeyword()));

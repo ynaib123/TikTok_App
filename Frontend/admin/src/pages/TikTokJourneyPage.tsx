@@ -420,7 +420,10 @@ export default function TikTokJourneyPage() {
     }
     const patch: ContentIdeaEditPatch = {}
     if (editedTopic !== (idea.topic || '')) patch.topic = editedTopic
-    if (editedScript !== (idea.script || '')) patch.script = editedScript
+    if (editedScript !== (idea.script || '')) {
+      patch.script = editedScript
+      patch.plannedScenes = null
+    }
     if (editedCaption !== (idea.caption || '')) patch.caption = editedCaption
     if (editedKeyword !== (idea.keyword || '')) patch.keyword = editedKeyword
 

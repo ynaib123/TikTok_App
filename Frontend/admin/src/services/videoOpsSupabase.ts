@@ -30,8 +30,33 @@ function asRecord(value: unknown): RawRecord {
   return value && typeof value === 'object' ? value as RawRecord : {}
 }
 
+function parseJsonValue(value: unknown): unknown {
+  if (typeof value !== 'string' || !value.trim()) return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
+function normalizePlannedScenes(value: unknown) {
+  const rawValue = parseJsonValue(value)
+  if (!Array.isArray(rawValue)) return null
+  return rawValue
+    .map((scene) => asRecord(scene))
+    .map((scene) => ({
+      sceneText: String(scene.sceneText || scene.text || '').trim(),
+      visualKeyword: typeof scene.visualKeyword === 'string' ? scene.visualKeyword : null,
+      cameraMood: typeof scene.cameraMood === 'string' ? scene.cameraMood : null,
+      overlayPriority: typeof scene.overlayPriority === 'string' ? scene.overlayPriority : null,
+    }))
+    .filter((scene) => scene.sceneText.length > 0)
+}
+
 function normalizeContentIdea(rawIdea: unknown = {}): ContentIdea {
   const raw = asRecord(rawIdea)
+  const plannedScenes = normalizePlannedScenes(raw.plannedScenes ?? raw.planned_scenes)
+  const generationReview = parseJsonValue(raw.generationReview ?? raw.generation_review)
   return {
     id: Number(raw.id || 0),
     category: typeof raw.category === 'string' ? raw.category : null,
@@ -39,6 +64,8 @@ function normalizeContentIdea(rawIdea: unknown = {}): ContentIdea {
     script: typeof raw.script === 'string'
       ? raw.script
       : (typeof raw.scripts === 'string' ? raw.scripts : null),
+    plannedScenes,
+    generationReview: generationReview && typeof generationReview === 'object' ? generationReview as Record<string, unknown> : null,
     caption: typeof raw.caption === 'string' ? raw.caption : null,
     keyword: typeof raw.keyword === 'string'
       ? raw.keyword
@@ -329,6 +356,7 @@ export async function deleteContentIdea(contentIdeaId: number | string): Promise
 export interface ContentIdeaEditPatch {
   topic?: string | null
   script?: string | null
+  plannedScenes?: unknown
   caption?: string | null
   keyword?: string | null
 }

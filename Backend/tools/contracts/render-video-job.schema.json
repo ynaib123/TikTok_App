@@ -442,6 +442,20 @@
                 ],
                 "maxLength": 240
               },
+              "cameraMood": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 80
+              },
+              "overlayPriority": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 40
+              },
               "media": {
                 "type": "object",
                 "additionalProperties": false,

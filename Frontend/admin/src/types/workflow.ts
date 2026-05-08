@@ -36,11 +36,20 @@ export type RenderQualityProfile = 'draft' | 'standard' | 'high' | 'premium';
 
 export type RenderEngine = 'shotstack' | 'remotion';
 
+export interface PlannedScene {
+  sceneText: string;
+  visualKeyword?: string | null;
+  cameraMood?: string | null;
+  overlayPriority?: string | null;
+}
+
 export interface ContentIdea {
   id: number;
   category: string | null;
   topic: string | null;
   script: string | null;
+  plannedScenes?: PlannedScene[] | null;
+  generationReview?: Record<string, unknown> | null;
   caption: string | null;
   keyword: string | null;
   shotstackStatus: string | null;

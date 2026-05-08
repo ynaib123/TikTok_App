@@ -105,6 +105,42 @@ class MultiSceneJobBuilderServiceTest {
     }
 
     @Test
+    void prefersPlannedScenesWhenAvailable() throws Exception {
+        ContentIdea idea = new ContentIdea();
+        idea.setId(9L);
+        idea.setCategory("food");
+        idea.setBackgroundKeyword("fallback");
+        idea.setScripts("Script fallback. Deuxieme fallback.");
+        idea.setPlannedScenes("""
+                [
+                  {"sceneText":"Scene planifiee un","visualKeyword":"chef pasta","cameraMood":"macro food","overlayPriority":"hook"},
+                  {"sceneText":"Scene planifiee deux","visualKeyword":"plate reveal","cameraMood":"top shot","overlayPriority":"body"}
+                ]
+                """);
+
+        JsonNode pexelsResponse = objectMapper.readTree("""
+                {
+                  "videos": [{
+                    "id": 1,
+                    "video_files": [{"link": "https://pexels/planned.mp4", "width": 1080, "height": 1920, "file_type": "video/mp4"}]
+                  }]
+                }
+                """);
+        when(proxyService.proxyPexelsVideoSearch(any(), anyInt(), any())).thenReturn(pexelsResponse);
+
+        MultiSceneJobBuilderService.BuildResult result = service.build(idea, MultiSceneJobBuilderService.BuildOptions.defaults(0L, "test"));
+        JsonNode firstScene = result.renderJob().get("assets").get("scenes").get(0);
+
+        assertAll(
+                () -> assertEquals(2, result.renderJob().get("assets").get("scenes").size()),
+                () -> assertEquals("Scene planifiee un", firstScene.get("text").asText()),
+                () -> assertEquals("chef pasta", firstScene.get("mediaQuery").asText()),
+                () -> assertEquals("macro food", firstScene.get("cameraMood").asText()),
+                () -> assertEquals("hook", firstScene.get("overlayPriority").asText())
+        );
+    }
+
+    @Test
     void throwsWhenScriptIsBlank() {
         ContentIdea idea = new ContentIdea();
         idea.setScripts("");

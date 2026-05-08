@@ -270,6 +270,13 @@ function splitScriptIntoScenes(script: string): string[] {
     .filter((s) => s.length > 0)
 }
 
+function getIdeaSceneTexts(idea: ContentIdea | null, fallbackScript: string): string[] {
+  const planned = Array.isArray(idea?.plannedScenes)
+    ? idea.plannedScenes.map((scene) => String(scene?.sceneText || '').trim()).filter(Boolean)
+    : []
+  return planned.length > 0 ? planned : splitScriptIntoScenes(fallbackScript)
+}
+
 function normalizeSceneCount(scenes: string[], count: number): string[] {
   const targetCount = Math.min(10, Math.max(1, Number(count) || 1))
   const normalized = scenes.map((scene) => scene.trim()).filter((scene) => scene.length > 0)
@@ -305,18 +312,19 @@ function CreationStep(p: StepBodyProps) {
   //     mise a jour externe → resync. Sinon c est un edit utilisateur, on
   //     conserve le tableau.
   const ideaIdForScenes = (p.scriptedIdea || p.selectedGeneratedIdea)?.id ?? null
-  const [sceneArray, setSceneArray] = useState<string[]>(() => normalizeSceneCount(splitScriptIntoScenes(p.editedScript), p.generationSceneCount))
+  const currentIdeaForScenes = p.scriptedIdea || p.selectedGeneratedIdea
+  const [sceneArray, setSceneArray] = useState<string[]>(() => normalizeSceneCount(getIdeaSceneTexts(currentIdeaForScenes, p.editedScript), p.generationSceneCount))
   useEffect(() => {
     const localJoined = joinScenes(sceneArray)
     if (p.editedScript !== localJoined) {
-      const next = normalizeSceneCount(splitScriptIntoScenes(p.editedScript), p.generationSceneCount)
+      const next = normalizeSceneCount(getIdeaSceneTexts(currentIdeaForScenes, p.editedScript), p.generationSceneCount)
       setSceneArray(next)
       if (p.editedScript && p.editedScript !== joinScenes(next)) {
         p.setEditedScript(joinScenes(next))
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ideaIdForScenes, p.editedScript, p.generationSceneCount])
+  }, [ideaIdForScenes, p.editedScript, p.generationSceneCount, currentIdeaForScenes?.plannedScenes])
 
   const updateScene = (index: number, value: string) => {
     const next = [...sceneArray]

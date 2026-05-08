@@ -14,6 +14,10 @@ public class ContentIdea {
     private String category;
     private String topic;
     private String scripts;
+    @Column(name = "planned_scenes", columnDefinition = "text")
+    private String plannedScenes;
+    @Column(name = "generation_review", columnDefinition = "text")
+    private String generationReview;
     @Column(name = "script_status")
     private String scriptStatus;
     private String caption;
@@ -84,6 +88,10 @@ public class ContentIdea {
     public void setTopic(String topic) { this.topic = topic; }
     public String getScripts() { return scripts; }
     public void setScripts(String scripts) { this.scripts = scripts; }
+    public String getPlannedScenes() { return plannedScenes; }
+    public void setPlannedScenes(String plannedScenes) { this.plannedScenes = plannedScenes; }
+    public String getGenerationReview() { return generationReview; }
+    public void setGenerationReview(String generationReview) { this.generationReview = generationReview; }
     public String getScriptStatus() { return scriptStatus; }
     public void setScriptStatus(String scriptStatus) { this.scriptStatus = scriptStatus; }
     public String getCaption() { return caption; }
