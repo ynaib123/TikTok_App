@@ -126,6 +126,8 @@ const TIKTOK_LANGUAGE_OPTIONS: Array<{ value: string; label: string; description
   { value: 'ary', label: 'Darija marocaine', description: 'Dialecte marocain, style naturel.' },
 ]
 const TIKTOK_SCENE_COUNT_OPTIONS: Array<{ value: number; label: string; description: string }> = [
+  { value: 1,  label: '1 scene',   description: '~3s, format flash.' },
+  { value: 2,  label: '2 scenes',  description: '~6s, format tres court.' },
   { value: 3,  label: '3 scenes',  description: '~9s, format ultra-court.' },
   { value: 4,  label: '4 scenes',  description: '~12s, sweet spot TikTok.' },
   { value: 5,  label: '5 scenes',  description: '~15s, retention optimale.' },
@@ -233,7 +235,7 @@ export default function TikTokJourneyPage() {
   const [generationDurationTarget, setGenerationDurationTarget] = useState<string>('medium')
   const [generationLanguage, setGenerationLanguage] = useState<string>('fr')
   const [generationInspirationRef, setGenerationInspirationRef] = useState<string>('')
-  const [generationSceneCount, setGenerationSceneCount] = useState<number>(4)
+  const [generationSceneCount, setGenerationSceneCount] = useState<number>(1)
   // ID du workflow_run de rendu en cours, pour permettre au RenderStep de poller
   // l'avancement (/api/video-ops/render-video/progress/:id).
   const [currentRenderRunId, setCurrentRenderRunId] = useState<number | null>(null)
