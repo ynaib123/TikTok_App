@@ -6,6 +6,8 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public class WorkflowTriggerRequest {
 
     private Long contentIdeaId;
@@ -48,6 +50,11 @@ public class WorkflowTriggerRequest {
     @Min(1)
     @Max(10)
     private Integer sceneCount;
+
+    // URLs Pexels (ou autres) explicitement choisies par l'user dans l'étape
+    // "Médias" du parcours TikTok. Une URL par scène, dans l'ordre des scènes.
+    // Si null/vide, le scene-builder fait son auto-pick comme avant.
+    private List<String> selectedSceneMediaUrls;
 
     public Long getContentIdeaId() {
         return contentIdeaId;
@@ -179,4 +186,7 @@ public class WorkflowTriggerRequest {
 
     public Integer getSceneCount() { return sceneCount; }
     public void setSceneCount(Integer sceneCount) { this.sceneCount = sceneCount; }
+
+    public List<String> getSelectedSceneMediaUrls() { return selectedSceneMediaUrls; }
+    public void setSelectedSceneMediaUrls(List<String> selectedSceneMediaUrls) { this.selectedSceneMediaUrls = selectedSceneMediaUrls; }
 }

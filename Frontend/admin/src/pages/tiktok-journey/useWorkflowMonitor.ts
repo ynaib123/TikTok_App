@@ -255,7 +255,11 @@ export function useWorkflowMonitor({
     ideaId: number | string,
     checkRenderStatus: (() => Promise<unknown>) | null = null,
   ): Promise<ContentIdea> => {
-    const timeoutAt = Date.now() + 180_000
+    // Le rendu Remotion (compositing Chromium frame-by-frame + ffmpeg encode)
+    // peut prendre 10-25 min selon la durée vidéo et le nombre de scènes.
+    // Le timeout doit dépasser largement le pire cas pour éviter que la
+    // barre de progression côté UI disparaisse pendant que n8n rend encore.
+    const timeoutAt = Date.now() + 25 * 60_000
 
     while (Date.now() < timeoutAt) {
       try {

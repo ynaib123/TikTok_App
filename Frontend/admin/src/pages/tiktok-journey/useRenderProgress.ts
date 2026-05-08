@@ -8,6 +8,7 @@ export interface UseRenderProgressResult {
   status: RenderProgress['status']
   outputUrl: string | null
   error: string | null
+  startedAt: number | null // epoch ms du démarrage du rendu côté RenderVideo
 }
 
 /**
@@ -20,6 +21,7 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
   const [status, setStatus] = useState<RenderProgress['status']>('unknown')
   const [outputUrl, setOutputUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
   const cancelRef = useRef(false)
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
       setStatus('unknown')
       setOutputUrl(null)
       setError(null)
+      setStartedAt(null)
       return () => {
         cancelRef.current = true
       }
@@ -44,6 +47,7 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
           setStatus(result.status)
           setOutputUrl(result.outputUrl)
           setError(result.error)
+          setStartedAt(result.startedAt)
           if (result.status === 'done' || result.status === 'error') {
             return
           }
@@ -61,5 +65,5 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
     }
   }, [runId, enabled])
 
-  return { progress, status, outputUrl, error }
+  return { progress, status, outputUrl, error, startedAt }
 }

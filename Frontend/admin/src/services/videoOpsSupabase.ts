@@ -151,36 +151,14 @@ export async function fetchRecentContentIdeas({
 
 export async function fetchContentIdeaByIdFromPages(
   contentIdeaId: number | string,
-  { size = BULK_CONTENT_IDEAS_PAGE_SIZE }: { size?: number } = {},
+  _options: { size?: number } = {},
 ): Promise<ContentIdea | null> {
   if (!contentIdeaId) {
     throw new Error('Le contentIdeaId est obligatoire.')
   }
 
-  const firstPage = await fetchContentIdeasPage({
-    page: 0,
-    size,
-    sort: DEFAULT_CONTENT_IDEAS_SORT,
-  })
-  const firstMatch = firstPage.content.find((idea) => Number(idea?.id) === Number(contentIdeaId))
-  if (firstMatch) {
-    return firstMatch
-  }
-
-  const totalPages = Number(firstPage?.page?.totalPages ?? 0)
-  for (let nextPage = 1; nextPage < totalPages; nextPage += 1) {
-    const responsePage = await fetchContentIdeasPage({
-      page: nextPage,
-      size,
-      sort: DEFAULT_CONTENT_IDEAS_SORT,
-    })
-    const pageMatch = responsePage.content.find((idea) => Number(idea?.id) === Number(contentIdeaId))
-    if (pageMatch) {
-      return pageMatch
-    }
-  }
-
-  return null
+  const response = await apiGet(`/video-ops/content-ideas/${contentIdeaId}`)
+  return normalizeContentIdea(response)
 }
 
 export async function fetchContentIdeas(): Promise<ContentIdea[]> {
@@ -384,7 +362,7 @@ export interface RenderProgress {
   ok: boolean
   runId: number
   progress: number
-  status: 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error' | 'unknown'
+  status: 'preparing' | 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error' | 'unknown'
   startedAt: number | null
   updatedAt: number | null
   outputUrl: string | null
@@ -393,6 +371,41 @@ export interface RenderProgress {
 
 export async function fetchRenderVideoProgress(workflowRunId: number | string): Promise<RenderProgress> {
   return apiGet(`/video-ops/render-video/progress/${workflowRunId}`)
+}
+
+export interface PexelsVideoFile {
+  link: string
+  width: number
+  height: number
+  fps?: number
+  file_type?: string
+}
+
+export interface PexelsVideo {
+  id: number
+  width: number
+  height: number
+  duration: number
+  image: string
+  user?: { name?: string }
+  video_files: PexelsVideoFile[]
+  video_pictures?: Array<{ picture: string }>
+}
+
+export interface PexelsSearchResponse {
+  videos: PexelsVideo[]
+  total_results?: number
+  page?: number
+  per_page?: number
+}
+
+export async function searchPexelsVideos(
+  query: string,
+  perPage: number = 12,
+  orientation: string = 'portrait',
+): Promise<PexelsSearchResponse> {
+  const qs = new URLSearchParams({ query, perPage: String(perPage), orientation })
+  return apiGet(`/video-ops/pexels/videos/search?${qs.toString()}`)
 }
 
 export async function triggerPublishTikTokWorkflow(

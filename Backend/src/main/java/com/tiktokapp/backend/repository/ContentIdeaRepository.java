@@ -17,6 +17,16 @@ public interface ContentIdeaRepository extends JpaRepository<ContentIdea, Long> 
 
     Page<ContentIdea> findAllBy(Pageable pageable);
 
+    @Query("""
+            SELECT c FROM ContentIdea c
+            WHERE c.shotstackUrl IS NOT NULL
+               OR c.tiktokUploadUrl IS NOT NULL
+               OR c.finalVideoStatus = 'ready'
+               OR c.publishStatus IN ('uploaded', 'uploading', 'published')
+            ORDER BY c.id DESC
+            """)
+    List<ContentIdea> findManualActionCandidates(Pageable pageable);
+
     @Query("SELECT c FROM ContentIdea c WHERE c.shotstackRenderId IS NOT NULL AND c.finalVideoStatus = 'processing'")
     List<ContentIdea> findPendingRenders();
 

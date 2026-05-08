@@ -1,11 +1,14 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
 import express from 'express'
 import { asRenderVideoJob, validateContract } from './contracts.js'
+import type { RenderVideoJob, RenderVideoScene } from './renderJob.js'
 import { postProcess } from './postProcess.js'
 import { isR2Enabled } from './r2Storage.js'
 import { listTemplates, resolveCompositionId } from './remotion/templateRegistry.js'
@@ -18,6 +21,9 @@ const port = Number(process.env.PORT || 8090)
 const outputDir = path.resolve(process.env.RENDER_VIDEO_OUTPUT_DIR || path.join(process.cwd(), 'renders'))
 const publicBaseUrl = (process.env.RENDER_VIDEO_PUBLIC_BASE_URL || `http://localhost:${port}`).replace(/\/+$/, '')
 const localBaseUrl = `http://127.0.0.1:${port}`
+const backendBaseUrl = (process.env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\/+$/, '')
+const backendInternalSecret = process.env.APP_VIDEO_OPS_INTERNAL_API_SECRET || ''
+const workflowCallbackSecret = process.env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || ''
 
 fs.mkdirSync(outputDir, { recursive: true })
 
@@ -63,24 +69,95 @@ async function downloadRemoteAsset(url: string, outputPath: string) {
     throw new Error(`Failed to download render asset (${response.status})`)
   }
 
-  const bytes = Buffer.from(await response.arrayBuffer())
-  if (bytes.length === 0) {
+  await pipeline(
+    Readable.fromWeb(response.body as any),
+    fs.createWriteStream(outputPath),
+  )
+
+  const stats = fs.statSync(outputPath)
+  if (stats.size === 0) {
     throw new Error('Downloaded render asset is empty')
   }
-
-  fs.writeFileSync(outputPath, bytes)
 }
 
-async function prepareLocalAssets<T extends { assets: { backgroundVideo: { url: string } } }>(job: T, renderId: string): Promise<T> {
-  const backgroundUrl = job.assets.backgroundVideo.url
-  if (!isRemoteUrl(backgroundUrl)) return job
+async function mapWithConcurrency<T, R>(
+  values: T[],
+  limit: number,
+  mapper: (value: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(values.length)
+  let nextIndex = 0
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, values.length)) }, async () => {
+    while (nextIndex < values.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await mapper(values[index], index)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
 
+async function prepareLocalAssets(job: RenderVideoJob, renderId: string): Promise<RenderVideoJob> {
   const assetsDir = path.join(outputDir, 'assets')
   fs.mkdirSync(assetsDir, { recursive: true })
 
-  const assetFileName = `${renderId}-background.mp4`
-  const localAssetPath = path.join(assetsDir, assetFileName)
-  await downloadRemoteAsset(backgroundUrl, localAssetPath)
+  const runId = Number(job.workflowRunId) || 0
+
+  // Cache deduplication: une URL distante ne se télécharge qu'une fois même
+  // si plusieurs scènes la réutilisent (cas Pexels qui se répète).
+  const downloadCache = new Map<string, Promise<string>>()
+  const downloadOnce = async (url: string, suffix: string): Promise<string> => {
+    if (!isRemoteUrl(url)) return url
+    const cached = downloadCache.get(url)
+    if (cached) return cached
+    const fileName = `${renderId}-${suffix}.mp4`
+    const filePath = path.join(assetsDir, fileName)
+    const downloadPromise = (async () => {
+      await downloadRemoteAsset(url, filePath)
+      return `${localBaseUrl}/renders/assets/${fileName}`
+    })()
+    downloadCache.set(url, downloadPromise)
+    return downloadPromise
+  }
+
+  const scenes: RenderVideoScene[] = Array.isArray(job.assets.scenes) ? job.assets.scenes : []
+  const totalAssets = scenes.length + (isRemoteUrl(job.assets.backgroundVideo.url) ? 1 : 0)
+  let downloaded = 0
+  const updateDownloadProgress = () => {
+    if (runId <= 0 || totalAssets <= 0) return
+    // Phase préparation = 0..0.10 du total. Reste pour render + post-process + upload.
+    const fraction = Math.min(1, downloaded / totalAssets)
+    setProgress(runId, { progress: Math.max(0, Math.min(0.10, fraction * 0.10)), status: 'preparing' })
+  }
+  updateDownloadProgress()
+
+  const backgroundUrl = job.assets.backgroundVideo.url
+  let nextBackgroundUrl = backgroundUrl
+  if (isRemoteUrl(backgroundUrl)) {
+    nextBackgroundUrl = await downloadOnce(backgroundUrl, 'background')
+    downloaded += 1
+    updateDownloadProgress()
+  }
+
+  let nextScenes: RenderVideoScene[] | undefined
+  if (scenes.length > 0) {
+    nextScenes = await mapWithConcurrency(scenes, 3, async (scene) => {
+      const sceneUrl = scene.media?.url
+      if (!sceneUrl) {
+        return scene
+      }
+      const localUrl = await downloadOnce(sceneUrl, `scene-${scene.index}`)
+      if (isRemoteUrl(sceneUrl)) {
+        downloaded += 1
+        updateDownloadProgress()
+      }
+      return {
+        ...scene,
+        media: { ...scene.media, url: localUrl },
+      }
+    })
+  }
 
   return {
     ...job,
@@ -88,8 +165,9 @@ async function prepareLocalAssets<T extends { assets: { backgroundVideo: { url: 
       ...job.assets,
       backgroundVideo: {
         ...job.assets.backgroundVideo,
-        url: `${localBaseUrl}/renders/assets/${assetFileName}`,
+        url: nextBackgroundUrl,
       },
+      ...(nextScenes ? { scenes: nextScenes } : {}),
     },
   }
 }
@@ -100,7 +178,7 @@ app.use('/renders', express.static(outputDir))
 // Suivi de progression keyed par workflowRunId. Permet aux clients HTTP de
 // poller l'avancement d'un rendu en cours (le POST /render reste bloquant
 // pendant plusieurs minutes).
-type ProgressStatus = 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error'
+type ProgressStatus = 'preparing' | 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error'
 interface ProgressEntry {
   progress: number // 0..1
   status: ProgressStatus
@@ -171,6 +249,99 @@ app.get('/templates', (_request, response) => {
   response.json({ ok: true, templates: listTemplates() })
 })
 
+async function postBackendJson(pathname: string, body: unknown, headers: Record<string, string> = {}) {
+  if (!backendBaseUrl) {
+    throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL is not configured')
+  }
+  const payload = JSON.stringify(body)
+  const response = await fetch(`${backendBaseUrl}${pathname}`, {
+    method: pathname.includes('/internal/') ? 'PATCH' : 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: payload,
+  })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(`Backend request failed ${response.status}: ${text.slice(0, 400)}`)
+  }
+  return response
+}
+
+async function completeWorkflowFromRender(job: RenderVideoJob, render: Record<string, unknown>, status: 'SUCCEEDED' | 'FAILED', message: string) {
+  if (!backendBaseUrl || !workflowCallbackSecret || !job.workflowRunId) return
+  const responsePayload = status === 'SUCCEEDED'
+    ? { contentIdeaId: job.contentIdeaId, renderId: render.renderId, outputUrl: render.outputUrl, engine: 'remotion' }
+    : { contentIdeaId: job.contentIdeaId, error: message }
+  await postBackendJson(`/api/video-ops/workflow-runs/${job.workflowRunId}/complete`, {
+    status,
+    message,
+    responsePayload: JSON.stringify(responsePayload),
+  }, {
+    'X-Video-Ops-Callback-Secret': workflowCallbackSecret,
+    ...(job.workflowRunId ? { 'X-Idempotency-Key': `RENDER_TEMPLATE_VIDEO:${job.contentIdeaId}` } : {}),
+  })
+}
+
+async function updateRenderedIdea(job: RenderVideoJob, render: Record<string, unknown>) {
+  if (!backendInternalSecret || !job.contentIdeaId) return
+  await postBackendJson(`/api/video-ops/internal/content-ideas/${job.contentIdeaId}`, {
+    shotstack_render_id: render.renderId,
+    shotstack_status: 'done',
+    shotstack_url: render.outputUrl,
+    thumbnail_url: render.thumbnailUrl || null,
+    final_video_status: 'ready',
+    render_status: 'remotion_rendered',
+    pipeline_status: 'render_ready',
+    render_engine: 'remotion',
+    quality_profile: render.qualityProfile || job.render.qualityProfile,
+    template_id: job.render.templateId,
+  }, {
+    'X-Video-Ops-Internal-Secret': backendInternalSecret,
+  })
+}
+
+app.post('/render-async', async (request, response) => {
+  const validation = validateContract(request.body)
+  if (!validation.ok) {
+    response.status(400).json({ ok: false, error: 'INVALID_RENDER_JOB', details: validation.errors })
+    return
+  }
+
+  const job = asRenderVideoJob(request.body)
+  const runId = Number(job.workflowRunId) || 0
+  setProgress(runId, { progress: 0, status: 'preparing' })
+
+  void (async () => {
+    try {
+      const renderResponse = await fetch(`${localBaseUrl}/render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(job),
+      })
+      const render = await renderResponse.json() as Record<string, unknown>
+      if (!renderResponse.ok || render.ok === false) {
+        throw new Error(String(render.message || render.error || `Render failed with ${renderResponse.status}`))
+      }
+      await updateRenderedIdea(job, render)
+      await completeWorkflowFromRender(job, render, 'SUCCEEDED', 'Remotion render completed.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setProgress(runId, { status: 'error', error: message })
+      await completeWorkflowFromRender(job, { error: message }, 'FAILED', message).catch(() => undefined)
+    }
+  })()
+
+  response.status(202).json({
+    ok: true,
+    status: 'accepted',
+    engine: 'remotion',
+    workflowRunId: job.workflowRunId,
+    contentIdeaId: job.contentIdeaId,
+  })
+})
+
 app.post('/render', async (request, response, next) => {
   try {
     const validation = validateContract(request.body)
@@ -186,7 +357,7 @@ app.post('/render', async (request, response, next) => {
     const job = asRenderVideoJob(request.body)
     const renderId = createRenderId(job.contentIdeaId, job.workflowRunId)
     const runId = Number(job.workflowRunId) || 0
-    setProgress(runId, { progress: 0, status: 'rendering' })
+    setProgress(runId, { progress: 0, status: 'preparing' })
     const rawFileName = `${renderId}.raw.mp4`
     const finalFileName = `${renderId}.mp4`
     const thumbnailFileName = `${renderId}.jpg`
@@ -194,6 +365,7 @@ app.post('/render', async (request, response, next) => {
     const finalPath = path.join(outputDir, finalFileName)
     const thumbnailPath = path.join(outputDir, thumbnailFileName)
     const renderJob = await prepareLocalAssets(job, renderId)
+    setProgress(runId, { progress: 0.10, status: 'rendering' })
 
     const serveUrl = await getBundleLocation()
     const compositionId = resolveCompositionId(renderJob.render.templateId)
@@ -203,15 +375,24 @@ app.post('/render', async (request, response, next) => {
       inputProps: { job: renderJob },
     })
 
+    // L'intermédiaire `rawPath` est ré-encodé par `postProcess` avec le profil
+    // qualité voulu (crf/preset selon `qualityProfile`). On encode donc ici en
+    // ultrarapide / quasi-lossless pour maximiser le throughput Remotion.
+    // `concurrency` = nb de pages Chromium parallèles (1 par cœur dispo).
     await renderMedia({
       composition,
       serveUrl,
       codec: 'h264',
       outputLocation: rawPath,
       inputProps: { job: renderJob },
+      x264Preset: 'ultrafast',
+      crf: 28,
+      concurrency: null,
       onProgress: ({ progress }) => {
-        // Phase rendu = 0..0.85 du total. Post-process + upload prennent les 0.15 restants.
-        setProgress(runId, { progress: Math.max(0, Math.min(0.85, progress * 0.85)), status: 'rendering' })
+        // Phase rendu = 0.10..0.85 du total (les 0..0.10 sont consommés par
+        // `prepareLocalAssets`). Post-process + upload prennent les 0.15 restants.
+        const mapped = 0.10 + Math.max(0, Math.min(1, progress)) * 0.75
+        setProgress(runId, { progress: mapped, status: 'rendering' })
       },
     })
 

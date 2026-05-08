@@ -29,6 +29,7 @@ import com.tiktokapp.backend.model.VideoWorkflowType;
 import com.tiktokapp.backend.model.ContentIdea;
 import com.tiktokapp.backend.repository.ContentIdeaRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import com.tiktokapp.backend.repository.VideoPipelineEventRepository;
 import com.tiktokapp.backend.repository.VideoPipelineStateRepository;
@@ -171,6 +172,14 @@ public class VideoOpsService {
     }
 
     @Transactional(readOnly = true)
+    public VideoContentIdeaResponse fetchContentIdea(long contentIdeaId) {
+        ContentIdea idea = contentIdeaRepository.findById(contentIdeaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "contentIdea introuvable."));
+        VideoPipelineState state = pipelineStateRepository.findById(contentIdeaId).orElse(null);
+        return toVideoContentIdeaResponse(idea, state);
+    }
+
+    @Transactional(readOnly = true)
     public List<TikTokAccountResponse> fetchTikTokAccounts() {
         JsonNode rows = contentIdeaGateway.fetchTikTokAccounts();
         List<TikTokAccountResponse> accounts = new ArrayList<>();
@@ -273,13 +282,15 @@ public class VideoOpsService {
 
     @Transactional(readOnly = true)
     public List<VideoManualActionResponse> fetchManualActions() {
-        return fetchContentIdeas().stream()
-                .filter(item -> !item.getShotstackUrl().isBlank()
-                        || !item.getUploadUrl().isBlank()
-                        || "ready".equalsIgnoreCase(item.getFinalVideoStatus())
-                        || "uploaded".equalsIgnoreCase(item.getTiktokStatus())
-                        || "uploading".equalsIgnoreCase(item.getTiktokStatus())
-                        || "published".equalsIgnoreCase(item.getTiktokStatus()))
+        List<ContentIdea> candidates = contentIdeaRepository.findManualActionCandidates(PageRequest.of(0, 100));
+        List<Long> contentIdeaIds = candidates.stream()
+                .map(ContentIdea::getId)
+                .toList();
+        Map<Long, VideoPipelineState> stateByIdeaId = pipelineStateRepository.findByContentIdeaIdIn(contentIdeaIds).stream()
+                .collect(Collectors.toMap(VideoPipelineState::getContentIdeaId, state -> state));
+
+        return candidates.stream()
+                .map(idea -> toVideoContentIdeaResponse(idea, stateByIdeaId.get(idea.getId())))
                 .map(item -> new VideoManualActionResponse(
                         item.getId(),
                         item.getTopic(),
@@ -556,8 +567,8 @@ public class VideoOpsService {
         }
 
         if (workflowType == VideoWorkflowType.RENDER_TEMPLATE_VIDEO) {
-            templateId = "tiktok-scene-sequence";
-            if (isBlank(qualityProfile)) qualityProfile = "premium";
+            if (isBlank(templateId)) templateId = "tiktok-scene-sequence";
+            if (isBlank(qualityProfile)) qualityProfile = "high";
             if (contentIdeaId != null) {
                 Map<String, Object> patch = new LinkedHashMap<>();
                 patch.put("template_id", templateId);
@@ -588,6 +599,7 @@ public class VideoOpsService {
         payload.put("temperature", request.getTemperature());
         payload.put("inspirationRef", trimToNull(request.getInspirationRef()));
         payload.put("sceneCount", request.getSceneCount());
+        payload.put("selectedSceneMediaUrls", request.getSelectedSceneMediaUrls());
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);

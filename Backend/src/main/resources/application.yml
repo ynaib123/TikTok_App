@@ -139,6 +139,9 @@ resilience4j:
     instances:
       n8n:
         baseConfig: default
+        # Webhook n8n avec responseMode=responseNode: tout retry re-POST
+        # le webhook et lance une 2e exécution dupliquée. Trigger best-effort.
+        maxAttempts: 1
       tiktok:
         baseConfig: default
         maxAttempts: 2

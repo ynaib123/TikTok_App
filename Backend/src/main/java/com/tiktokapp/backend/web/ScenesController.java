@@ -53,7 +53,8 @@ public class ScenesController {
             String qualityProfile,
             String captionMode,
             String hook,
-            String cta
+            String cta,
+            java.util.List<String> selectedMediaUrls
     ) {}
 
     @PostMapping("/build/{contentIdeaId}")
@@ -104,7 +105,8 @@ public class ScenesController {
                 request.captionMode() == null || request.captionMode().isBlank()
                         ? defaults.captionMode() : request.captionMode(),
                 request.hook(),
-                request.cta()
+                request.cta(),
+                request.selectedMediaUrls()
         );
     }
 }

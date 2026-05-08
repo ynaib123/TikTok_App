@@ -47,7 +47,12 @@ public class MultiSceneJobBuilderService {
             String qualityProfile,
             String captionMode,
             String hook,
-            String cta
+            String cta,
+            // URLs Pexels explicitement choisies par l'user (étape Médias). Une URL
+            // par scène, dans l'ordre. Si non vide, on saute la recherche Pexels
+            // et on les utilise directement. Tailles inconnues = on défaut à
+            // 1080x1920 (suffisant pour le contrat 1.1.0).
+            List<String> selectedMediaUrls
     ) {
         public static BuildOptions defaults(long workflowRunId, String source) {
             return new BuildOptions(
@@ -60,6 +65,7 @@ public class MultiSceneJobBuilderService {
                     15.0,
                     "high",
                     "none",
+                    null,
                     null,
                     null
             );
@@ -78,8 +84,43 @@ public class MultiSceneJobBuilderService {
             throw new IllegalStateException("Aucune scène extractible du script — script vide ou invalide.");
         }
 
-        List<String> queries = specs.stream().map(SceneBuilderService.SceneSpec::mediaQuery).toList();
-        List<Optional<PexelsMultiSearchService.MediaPick>> picks = pexelsMulti.fetchForQueries(queries);
+        // Si l'user a choisi explicitement les URLs (étape Médias du parcours
+        // TikTok), on saute la recherche Pexels. Une URL par scène; les URLs
+        // surnuméraires sont ignorées, les manquantes complétées par fallback
+        // auto via Pexels search sur la query de la scène.
+        List<Optional<PexelsMultiSearchService.MediaPick>> picks;
+        List<String> selected = effective.selectedMediaUrls();
+        if (selected != null && !selected.isEmpty()) {
+            picks = new ArrayList<>(specs.size());
+            List<String> missingQueries = new ArrayList<>();
+            List<Integer> missingIndexes = new ArrayList<>();
+            for (int i = 0; i < specs.size(); i++) {
+                String url = i < selected.size() ? selected.get(i) : null;
+                if (url == null || url.isBlank()) {
+                    picks.add(Optional.empty());
+                    missingQueries.add(specs.get(i).mediaQuery());
+                    missingIndexes.add(i);
+                } else {
+                    picks.add(Optional.of(new PexelsMultiSearchService.MediaPick(
+                            specs.get(i).mediaQuery(),
+                            url.trim(),
+                            1080,
+                            1920,
+                            0,
+                            "pexels"
+                    )));
+                }
+            }
+            if (!missingQueries.isEmpty()) {
+                List<Optional<PexelsMultiSearchService.MediaPick>> fillers = pexelsMulti.fetchForQueries(missingQueries);
+                for (int j = 0; j < missingIndexes.size(); j++) {
+                    picks.set(missingIndexes.get(j), fillers.get(j));
+                }
+            }
+        } else {
+            List<String> queries = specs.stream().map(SceneBuilderService.SceneSpec::mediaQuery).toList();
+            picks = pexelsMulti.fetchForQueries(queries);
+        }
 
         // Validation: il faut au moins un media réussi pour pouvoir rendre la vidéo.
         boolean anyMedia = picks.stream().anyMatch(Optional::isPresent);

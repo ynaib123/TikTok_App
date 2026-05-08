@@ -20,6 +20,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class VideoOpsInternalProxyService {
@@ -30,6 +34,9 @@ public class VideoOpsInternalProxyService {
     private final ObjectMapper objectMapper;
     private final VideoOpsProperties properties;
     private final HttpClient httpClient;
+    private final Map<String, CachedJson> pexelsSearchCache = new ConcurrentHashMap<>();
+
+    private record CachedJson(JsonNode payload, Instant expiresAt) {}
 
     public VideoOpsInternalProxyService(
             ServiceConnectionResolver connectionResolver,
@@ -74,6 +81,16 @@ public class VideoOpsInternalProxyService {
         String baseUrl = normalizeBaseUrl(pexels.baseUrl(), "https://api.pexels.com");
         int normalizedPerPage = perPage == null ? 5 : Math.max(1, Math.min(80, perPage));
         String normalizedOrientation = trimToNull(orientation) == null ? "portrait" : orientation.trim();
+        String cacheKey = String.join("|",
+                baseUrl,
+                String.valueOf(query).trim().toLowerCase(Locale.ROOT),
+                String.valueOf(normalizedPerPage),
+                normalizedOrientation.toLowerCase(Locale.ROOT)
+        );
+        CachedJson cached = pexelsSearchCache.get(cacheKey);
+        if (cached != null && cached.expiresAt().isAfter(Instant.now())) {
+            return cached.payload().deepCopy();
+        }
         String url = baseUrl
                 + "/videos/search?query=" + encode(query)
                 + "&per_page=" + normalizedPerPage
@@ -84,7 +101,13 @@ public class VideoOpsInternalProxyService {
                 .header("Authorization", pexels.secretValue())
                 .GET()
                 .build();
-        return sendJson(request, "Pexels");
+        JsonNode payload = sendJson(request, "Pexels");
+        pexelsSearchCache.put(cacheKey, new CachedJson(payload.deepCopy(), Instant.now().plusSeconds(10 * 60)));
+        if (pexelsSearchCache.size() > 200) {
+            Instant now = Instant.now();
+            pexelsSearchCache.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
+        }
+        return payload;
     }
 
     @CircuitBreaker(name = "renderVideo", fallbackMethod = "proxyRenderVideoFallback")
@@ -93,7 +116,21 @@ public class VideoOpsInternalProxyService {
         String baseUrl = normalizeBaseUrl(properties.getRenderVideo().getBaseUrl(), "http://localhost:8090");
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/render"))
-                .timeout(Duration.ofMinutes(10))
+                // Le rendu Remotion (compositing Chromium frame-by-frame + ffmpeg)
+                // peut dépasser 10 min sous contention CPU. On laisse 25 min pour
+                // couvrir le pire cas avant de déclarer le service indisponible.
+                .timeout(Duration.ofMinutes(25))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(toJson(requestBody)))
+                .build();
+        return sendJson(request, "RenderVideo");
+    }
+
+    public JsonNode proxyRenderVideoAsync(JsonNode requestBody) {
+        String baseUrl = normalizeBaseUrl(properties.getRenderVideo().getBaseUrl(), "http://localhost:8090");
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/render-async"))
+                .timeout(Duration.ofSeconds(20))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(toJson(requestBody)))
                 .build();

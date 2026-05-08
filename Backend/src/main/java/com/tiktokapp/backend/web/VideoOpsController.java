@@ -129,6 +129,13 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.fetchContentIdeaStatus(contentIdeaId));
     }
 
+    @GetMapping("/content-ideas/{contentIdeaId}")
+    public ResponseEntity<VideoContentIdeaResponse> getContentIdea(
+            @PathVariable long contentIdeaId
+    ) {
+        return ResponseEntity.ok(videoOpsService.fetchContentIdea(contentIdeaId));
+    }
+
     @GetMapping("/manual-actions")
     public ResponseEntity<List<VideoManualActionResponse>> getManualActions() {
         return ResponseEntity.ok(videoOpsService.fetchManualActions());
@@ -314,11 +321,31 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsInternalProxyService.proxyRenderVideo(request));
     }
 
+    @PostMapping("/internal/render-video/render-async")
+    public ResponseEntity<JsonNode> proxyRenderVideoAsync(
+            @RequestBody(required = false) JsonNode request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyRenderVideoAsync(request));
+    }
+
     @GetMapping("/render-video/progress/{workflowRunId}")
     public ResponseEntity<JsonNode> getRenderVideoProgress(@PathVariable long workflowRunId) {
         // Endpoint admin-auth (pas internal-secret) — appelé par le frontend pour
         // suivre l'avancement d'un rendu en cours.
         return ResponseEntity.ok(videoOpsInternalProxyService.proxyRenderVideoProgress(workflowRunId));
+    }
+
+    @GetMapping("/pexels/videos/search")
+    public ResponseEntity<JsonNode> searchPexelsVideos(
+            @org.springframework.web.bind.annotation.RequestParam("query") String query,
+            @org.springframework.web.bind.annotation.RequestParam(value = "perPage", required = false) Integer perPage,
+            @org.springframework.web.bind.annotation.RequestParam(value = "orientation", required = false) String orientation
+    ) {
+        // Endpoint admin-auth pour la galerie de sélection de médias dans
+        // l'étape "Médias" du parcours TikTok. Frontend uniquement.
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyPexelsVideoSearch(query, perPage, orientation));
     }
 
     @PostMapping("/workflows/main-pipeline")

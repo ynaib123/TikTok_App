@@ -77,9 +77,11 @@ type PendingExitTarget =
 /* ── Step definitions (kept identical to original) ─────────────────────── */
 
 const STEPS = [
-  { id: 'creation',     label: 'Création', sub: 'Générer une idée + script' },
-  { id: 'init-publish', label: 'Vidéo',    sub: 'Rendre la vidéo Remotion' },
-  { id: 'upload',       label: 'Publication', sub: 'Publier sur TikTok' },
+  { id: 'creation', label: 'Creation', sub: 'Generer une idee + script' },
+  { id: 'template-style', label: 'Template', sub: 'Choisir le style video' },
+  { id: 'template', label: 'Medias', sub: 'Choisir les videos par scene' },
+  { id: 'init-publish', label: 'Video', sub: 'Rendre la video Remotion' },
+  { id: 'upload', label: 'Publication', sub: 'Publier sur TikTok' },
 ]
 const TIKTOK_BASE_ROUTE = '/tiktok'
 const TIKTOK_STEP_ROUTES = STEPS.map((step) => `${TIKTOK_BASE_ROUTE}/${step.id}`)
@@ -109,7 +111,7 @@ const TIKTOK_QUALITY_OPTIONS: Array<{ value: string; label: string; description:
   { value: 'draft',    label: 'Draft',    description: 'Rapide, CRF 28, 96 kbps audio' },
   { value: 'standard', label: 'Standard', description: 'CRF 24, 128 kbps audio' },
   { value: 'high',     label: 'High',     description: 'CRF 21, 160 kbps audio' },
-  { value: 'premium',  label: 'Premium',  description: 'Lent, CRF 19, 192 kbps audio' },
+  { value: 'premium',  label: 'Premium',  description: 'Export final lent, CRF 19, 192 kbps audio' },
 ]
 const TIKTOK_DURATION_TARGET_OPTIONS: Array<{ value: string; label: string; description: string }> = [
   { value: 'short',  label: 'Courte (~10s)',  description: '2-3 phrases punchy.' },
@@ -233,10 +235,10 @@ export default function TikTokJourneyPage() {
   const { busyActions, isBusy, runAction } = useActionState()
   const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(TIKTOK_SEQUENCE_TEMPLATE_ID)
-  const [selectedQualityProfile, setSelectedQualityProfile] = useState<string>('premium')
+  const [selectedQualityProfile, setSelectedQualityProfile] = useState<string>('high')
   const [videoDurationSec, setVideoDurationSec] = useState<number>(MIN_VIDEO_DURATION_SEC)
   // Paramètres de génération idée + script (étape 1).
-  const [generationTopic, setGenerationTopic] = useState<string>('')
+  const [generationTopic, setGenerationTopic] = useState<string>('')
   const [generationDurationTarget, setGenerationDurationTarget] = useState<string>('medium')
   const [generationLanguage, setGenerationLanguage] = useState<string>('fr')
   const [generationInspirationRef, setGenerationInspirationRef] = useState<string>('')
@@ -248,6 +250,9 @@ export default function TikTokJourneyPage() {
   // ID du workflow_run de rendu en cours, pour permettre au RenderStep de poller
   // l'avancement (/api/video-ops/render-video/progress/:id).
   const [currentRenderRunId, setCurrentRenderRunId] = useState<number | null>(null)
+  // URLs Pexels choisies par l user dans l étape "Médias" — une URL par scène
+  // dans l ordre. Reset à chaque nouvelle idée.
+  const [selectedSceneMediaUrls, setSelectedSceneMediaUrls] = useState<string[]>([])
   // Edits en cours sur l idée générée (l utilisateur peut modifier avant de
   // passer à l étape vidéo). On les sauvegarde via PATCH au moment du Suivant.
   const [editedTopic, setEditedTopic] = useState<string>('')
@@ -381,7 +386,7 @@ export default function TikTokJourneyPage() {
 
   const { handleGenerateIdea } = useCreationStep({
     generationCategory,
-    generationTopic,
+    generationTopic,
     generationDurationTarget,
     generationLanguage,
     generationInspirationRef,
@@ -420,10 +425,10 @@ export default function TikTokJourneyPage() {
     }
   }
 
-  // Étape 1 → étape 2 sans déclencher le rendu vidéo. Le rendu se déclenche
-  // explicitement depuis l'étape 2 une fois le template/qualité choisis. On
-  // sauvegarde d abord les edits utilisateur sur topic/script/caption/keyword.
-  const handleGoToRenderStep = async () => {
+  // Étape 1 → étape 2 (Template). On sauvegarde d'abord les edits utilisateur
+  // sur topic/script/caption/keyword. Le rendu se déclenchera plus tard depuis
+  // l'étape 3 (Vidéo) une fois le template/qualité choisis.
+  const handleGoToTemplateStep = async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
       showError('Genere une idee avant de passer a l etape suivante.')
@@ -455,6 +460,17 @@ export default function TikTokJourneyPage() {
         return
       }
     }
+    goToStep('template-style')
+  }
+
+  // Etape Template → étape Vidéo. Pas de side-effect, juste la navigation.
+  // Le templateId est déjà persisté dans selectedTemplateId (state local) et
+  // sera envoyé au workflow quand l'user lancera le rendu.
+  const handleValidateTemplate = () => {
+    goToStep('template')
+  }
+
+  const handleValidateMedia = () => {
     goToStep('init-publish')
   }
 
@@ -465,6 +481,7 @@ export default function TikTokJourneyPage() {
     selectedQualityProfile,
     videoDurationSec,
     generationSceneCount,
+    selectedSceneMediaUrls,
     goToStep,
     triggerRenderTemplateWorkflow,
     fetchContentIdeaById: fetchContentIdeaByIdFromPages,
@@ -863,7 +880,9 @@ export default function TikTokJourneyPage() {
               handleRetryInitPublish={safeHandleRetryInitPublish}
               handleUploadVideo={handleUploadVideo}
               handleValidateCreation={handleValidateCreation}
-              handleGoToRenderStep={handleGoToRenderStep}
+              handleGoToTemplateStep={handleGoToTemplateStep}
+              handleValidateTemplate={handleValidateTemplate}
+              handleValidateMedia={handleValidateMedia}
               handleValidateInitPublish={handleValidateInitPublish}
               handleValidateUpload={handleValidateUpload}
               hasConnectedTikTokAccount={hasConnectedTikTokAccount}
@@ -899,6 +918,8 @@ export default function TikTokJourneyPage() {
               tiktokCategoryOptions={TIKTOK_CATEGORY_OPTIONS}
               uploadResult={uploadResult}
               currentRenderRunId={currentRenderRunId}
+              selectedSceneMediaUrls={selectedSceneMediaUrls}
+              setSelectedSceneMediaUrls={setSelectedSceneMediaUrls}
               editedTopic={editedTopic}
               setEditedTopic={setEditedTopic}
               editedScript={editedScript}
@@ -908,13 +929,13 @@ export default function TikTokJourneyPage() {
               editedKeyword={editedKeyword}
               setEditedKeyword={setEditedKeyword}
               generationTopic={generationTopic}
-              setGenerationTopic={setGenerationTopic}
+              setGenerationTopic={setGenerationTopic}
               generationDurationTarget={generationDurationTarget}
               setGenerationDurationTarget={setGenerationDurationTarget}
               generationLanguage={generationLanguage}
               setGenerationLanguage={setGenerationLanguage}
               generationInspirationRef={generationInspirationRef}
-              setGenerationInspirationRef={setGenerationInspirationRef}
+              setGenerationInspirationRef={setGenerationInspirationRef}
               durationTargetOptions={TIKTOK_DURATION_TARGET_OPTIONS}
               languageOptions={TIKTOK_LANGUAGE_OPTIONS}
               sceneCountOptions={TIKTOK_SCENE_COUNT_OPTIONS}
