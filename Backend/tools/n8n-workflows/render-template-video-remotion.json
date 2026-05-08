@@ -14,18 +14,24 @@
         "name": "Webhook: Render Remotion",
         "type": "n8n-nodes-base.webhook",
         "typeVersion": 2.1,
-        "position": [0, 0],
+        "position": [
+          0,
+          0
+        ],
         "webhookId": "26ec0a5e-4183-499f-9b4a-f12aa3baf745"
       },
       {
         "parameters": {
-          "jsCode": "const body = $json.body || $json;\nconst contentIdeaId = Number(body.contentIdeaId || 0);\nconst workflowRunId = Number(body.workflowRunId || 0);\nconst idempotencyKey = String(body.idempotencyKey || '').trim() || null;\nconst topic = String(body.topic || '').trim();\nconst script = String(body.script || '').trim();\nconst caption = String(body.caption || '').trim();\nconst keyword = String(body.keyword || topic || '').trim();\nconst category = String(body.category || '').trim() || null;\nconst tiktokAccountOpenId = String(body.tiktokAccountOpenId || '').trim() || null;\nconst source = String(body.source || 'n8n-render-remotion').trim();\n\nconst ALLOWED_TEMPLATES = ['tiktok-scene-sequence', 'tiktok-pro-vertical', 'tiktok-pro-vertical-v1', 'tiktok-bold-story', 'tiktok-clean-minimal'];\nconst ALLOWED_QUALITIES = ['draft', 'standard', 'high', 'premium'];\nconst rawTemplateId = String(body.templateId || '').trim();\nconst rawQualityProfile = String(body.qualityProfile || '').trim();\nconst templateId = ALLOWED_TEMPLATES.includes(rawTemplateId) ? rawTemplateId : 'tiktok-scene-sequence';\nconst qualityProfile = ALLOWED_QUALITIES.includes(rawQualityProfile) ? rawQualityProfile : 'high';\n\nif (!contentIdeaId || contentIdeaId <= 0) throw new Error('contentIdeaId invalide');\nif (!workflowRunId || workflowRunId <= 0) throw new Error('workflowRunId invalide');\nif (!topic) throw new Error('topic manquant');\nif (!script) throw new Error('script manquant');\nif (!caption) throw new Error('caption manquante');\nif (!keyword) throw new Error('keyword manquant');\n\nconst hook = String(body.hook || script.split(/[.!?\\n]/)[0] || topic).trim().slice(0, 120);\nconst cta = String(body.cta || '').trim() || null;\nconst durationSec = Math.min(30, Math.max(8, Number(body.durationSec || 12)));\n\nreturn [{ json: { contentIdeaId, workflowRunId, idempotencyKey, topic, script, caption, keyword, category, tiktokAccountOpenId, source, hook, cta, templateId, qualityProfile, durationSec } }];"
+          "jsCode": "const body = $json.body || $json;\nconst contentIdeaId = Number(body.contentIdeaId || 0);\nconst workflowRunId = Number(body.workflowRunId || 0);\nconst idempotencyKey = String(body.idempotencyKey || '').trim() || null;\nconst topic = String(body.topic || '').trim();\nconst script = String(body.script || '').trim();\nconst caption = String(body.caption || '').trim();\nconst keyword = String(body.keyword || topic || '').trim();\nconst category = String(body.category || '').trim() || null;\nconst tiktokAccountOpenId = String(body.tiktokAccountOpenId || '').trim() || null;\nconst source = String(body.source || 'n8n-render-remotion').trim();\n\nconst ALLOWED_QUALITIES = ['draft', 'standard', 'high', 'premium'];\nconst rawQualityProfile = String(body.qualityProfile || '').trim();\nconst templateId = 'tiktok-scene-sequence';\nconst qualityProfile = ALLOWED_QUALITIES.includes(rawQualityProfile) ? rawQualityProfile : 'high';\nconst sceneCountInput = Number(body.sceneCount || 1);\nconst sceneCount = Number.isInteger(sceneCountInput) ? Math.min(10, Math.max(1, sceneCountInput)) : 1;\nconst minDurationSec = Math.max(15, sceneCount * 3);\nconst requestedDurationSec = Number(body.durationSec || minDurationSec);\nconst durationSec = Math.min(60, Math.max(minDurationSec, Number.isFinite(requestedDurationSec) ? requestedDurationSec : minDurationSec));\n\nif (!contentIdeaId || contentIdeaId <= 0) throw new Error('contentIdeaId invalide');\nif (!workflowRunId || workflowRunId <= 0) throw new Error('workflowRunId invalide');\nif (!topic) throw new Error('topic manquant');\nif (!script) throw new Error('script manquant');\nif (!caption) throw new Error('caption manquante');\nif (!keyword) throw new Error('keyword manquant');\n\nconst hook = String(body.hook || script.split(/[.!?\\n]/)[0] || topic).trim().slice(0, 120);\nconst cta = String(body.cta || '').trim() || null;\n\nreturn [{ json: { contentIdeaId, workflowRunId, idempotencyKey, topic, script, caption, keyword, category, tiktokAccountOpenId, source, hook, cta, templateId, qualityProfile, durationSec, sceneCount } }];"
         },
         "id": "validate-input",
         "name": "Validate Input",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [240, 0]
+        "position": [
+          240,
+          0
+        ]
       },
       {
         "parameters": {
@@ -34,8 +40,14 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Content-Type", "value": "application/json" },
-              { "name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}" }
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
             ]
           },
           "sendBody": true,
@@ -54,7 +66,10 @@
         "name": "HTTP: Build Scene Job",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.4,
-        "position": [480, 0]
+        "position": [
+          480,
+          0
+        ]
       },
       {
         "parameters": {
@@ -64,7 +79,10 @@
         "name": "Build Render Job",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [720, 0]
+        "position": [
+          720,
+          0
+        ]
       },
       {
         "parameters": {
@@ -73,8 +91,14 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Content-Type", "value": "application/json" },
-              { "name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}" }
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
             ]
           },
           "sendBody": true,
@@ -88,7 +112,10 @@
         "name": "HTTP: Update Preparing",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.4,
-        "position": [960, 0]
+        "position": [
+          960,
+          0
+        ]
       },
       {
         "parameters": {
@@ -97,8 +124,14 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Content-Type", "value": "application/json" },
-              { "name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}" }
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
             ]
           },
           "sendBody": true,
@@ -112,7 +145,10 @@
         "name": "HTTP: RenderVideo Render",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.4,
-        "position": [1200, 0]
+        "position": [
+          1200,
+          0
+        ]
       },
       {
         "parameters": {
@@ -121,8 +157,14 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Content-Type", "value": "application/json" },
-              { "name": "X-Video-Ops-Internal-Secret", "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}" }
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{ $env.APP_VIDEO_OPS_INTERNAL_API_SECRET }}"
+              }
             ]
           },
           "sendBody": true,
@@ -136,7 +178,10 @@
         "name": "HTTP: Update Rendered",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.4,
-        "position": [1440, 0]
+        "position": [
+          1440,
+          0
+        ]
       },
       {
         "parameters": {
@@ -146,7 +191,10 @@
         "name": "Callback: Success",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [1680, 0]
+        "position": [
+          1680,
+          0
+        ]
       },
       {
         "parameters": {
@@ -160,7 +208,10 @@
         "name": "Respond: Success",
         "type": "n8n-nodes-base.respondToWebhook",
         "typeVersion": 1.5,
-        "position": [1920, 0]
+        "position": [
+          1920,
+          0
+        ]
       },
       {
         "parameters": {
@@ -174,33 +225,100 @@
         "name": "Respond: Error",
         "type": "n8n-nodes-base.respondToWebhook",
         "typeVersion": 1.5,
-        "position": [1920, 220]
+        "position": [
+          1920,
+          220
+        ]
       }
     ],
     "connections": {
       "Webhook: Render Remotion": {
-        "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Validate Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Validate Input": {
-        "main": [[{ "node": "HTTP: Build Scene Job", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "HTTP: Build Scene Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "HTTP: Build Scene Job": {
-        "main": [[{ "node": "Build Render Job", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Build Render Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Build Render Job": {
-        "main": [[{ "node": "HTTP: Update Preparing", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "HTTP: Update Preparing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "HTTP: Update Preparing": {
-        "main": [[{ "node": "HTTP: RenderVideo Render", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "HTTP: RenderVideo Render",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "HTTP: RenderVideo Render": {
-        "main": [[{ "node": "HTTP: Update Rendered", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "HTTP: Update Rendered",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "HTTP: Update Rendered": {
-        "main": [[{ "node": "Respond: Success", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Respond: Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Respond: Success": {
-        "main": [[{ "node": "Callback: Success", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Callback: Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "settings": {

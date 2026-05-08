@@ -556,7 +556,7 @@ public class VideoOpsService {
         }
 
         if (workflowType == VideoWorkflowType.RENDER_TEMPLATE_VIDEO) {
-            if (isBlank(templateId)) templateId = "tiktok-pro-vertical";
+            templateId = "tiktok-scene-sequence";
             if (isBlank(qualityProfile)) qualityProfile = "premium";
             if (contentIdeaId != null) {
                 Map<String, Object> patch = new LinkedHashMap<>();
@@ -577,6 +577,7 @@ public class VideoOpsService {
         payload.put("tiktokAccountOpenId", tiktokAccountOpenId);
         payload.put("templateId", templateId);
         payload.put("qualityProfile", qualityProfile);
+        payload.put("durationSec", request.getDurationSec());
         // Paramètres de génération idée + script (étape 1).
         payload.put("hookStyle", trimToNull(request.getHookStyle()));
         payload.put("scriptFormat", trimToNull(request.getScriptFormat()));

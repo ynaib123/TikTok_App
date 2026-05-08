@@ -20,8 +20,8 @@ public class SceneBuilderService {
 
     public static final int MIN_SCENES = 2;
     public static final int MAX_SCENES = 10;
-    public static final double MIN_SCENE_SEC = 1.5;
-    public static final double MAX_SCENE_SEC = 6.0;
+    public static final double MIN_SCENE_SEC = 3.0;
+    public static final double MAX_SCENE_SEC = 60.0;
 
     private static final Pattern SENTENCE_BOUNDARY = Pattern.compile("[.!?\\n]+");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");

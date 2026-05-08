@@ -57,7 +57,7 @@ public class MultiSceneJobBuilderService {
                     1080,
                     1920,
                     30,
-                    12.0,
+                    15.0,
                     "high",
                     "none",
                     null,
@@ -71,8 +71,9 @@ public class MultiSceneJobBuilderService {
             throw new IllegalArgumentException("ContentIdea required");
         }
         BuildOptions effective = options == null ? BuildOptions.defaults(0, "build-test") : options;
+        double targetDurationSec = Math.min(60.0, Math.max(15.0, effective.durationSec()));
 
-        List<SceneBuilderService.SceneSpec> specs = buildSceneSpecs(idea, effective.durationSec());
+        List<SceneBuilderService.SceneSpec> specs = buildSceneSpecs(idea, targetDurationSec);
         if (specs.isEmpty()) {
             throw new IllegalStateException("Aucune scène extractible du script — script vide ou invalide.");
         }
@@ -86,7 +87,10 @@ public class MultiSceneJobBuilderService {
             throw new IllegalStateException("Aucun clip Pexels trouvé pour aucune des scènes.");
         }
 
-        ObjectNode job = assemble(idea, specs, picks, effective);
+        double renderDurationSec = Math.max(targetDurationSec, specs.stream()
+                .mapToDouble(SceneBuilderService.SceneSpec::durationSec)
+                .sum());
+        ObjectNode job = assemble(idea, specs, picks, effective, renderDurationSec);
         return new BuildResult(job, specs, picks);
     }
 
@@ -100,7 +104,8 @@ public class MultiSceneJobBuilderService {
             ContentIdea idea,
             List<SceneBuilderService.SceneSpec> specs,
             List<Optional<PexelsMultiSearchService.MediaPick>> picks,
-            BuildOptions opts
+            BuildOptions opts,
+            double renderDurationSec
     ) {
         ObjectNode job = objectMapper.createObjectNode();
         job.put("contractVersion", CONTRACT_VERSION);
@@ -125,7 +130,7 @@ public class MultiSceneJobBuilderService {
         renderNode.put("width", opts.width());
         renderNode.put("height", opts.height());
         renderNode.put("fps", opts.fps());
-        renderNode.put("durationSec", opts.durationSec());
+        renderNode.put("durationSec", round1(renderDurationSec));
         renderNode.put("qualityProfile", opts.qualityProfile());
         renderNode.put("captionMode", opts.captionMode());
         renderNode.put("sceneStrategy", "timed-scenes");

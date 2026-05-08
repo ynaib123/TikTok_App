@@ -82,6 +82,10 @@ interface TikTokStepScreenProps {
   setSelectedTemplateId: (value: string) => void
   selectedQualityProfile: string
   setSelectedQualityProfile: (value: string) => void
+  videoDurationSec: number
+  setVideoDurationSec: (value: number) => void
+  minVideoDurationSec: number
+  maxVideoDurationSec: number
   templateOptions: JourneyOptionDescriptor[]
   qualityOptions: JourneyOptionDescriptor[]
   successMessage: string | null
@@ -611,20 +615,6 @@ function RenderStep(p: StepBodyProps) {
 
           <div className="journey-step-row-grid">
             <div className="journey-step-row">
-              <label htmlFor="journey-template-select">Template</label>
-              <select
-                id="journey-template-select"
-                className="journey-step-select"
-                value={p.selectedTemplateId}
-                onChange={(event) => p.setSelectedTemplateId(event.target.value)}
-                disabled={p.isBusy}
-              >
-                {p.templateOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="journey-step-row">
               <label htmlFor="journey-quality-select">Qualite</label>
               <select
                 id="journey-quality-select"
@@ -638,9 +628,28 @@ function RenderStep(p: StepBodyProps) {
                 ))}
               </select>
             </div>
+            <div className="journey-step-row">
+              <label htmlFor="journey-video-duration">Duree</label>
+              <input
+                id="journey-video-duration"
+                className="journey-step-select"
+                type="number"
+                min={p.minVideoDurationSec}
+                max={p.maxVideoDurationSec}
+                step={1}
+                value={p.videoDurationSec}
+                onChange={(event) => {
+                  const next = Number(event.target.value)
+                  if (Number.isFinite(next)) {
+                    p.setVideoDurationSec(Math.min(p.maxVideoDurationSec, Math.max(p.minVideoDurationSec, next)))
+                  }
+                }}
+                disabled={p.isBusy}
+              />
+            </div>
           </div>
           <span className="journey-step-row-hint">
-            {p.templateOptions.find((option) => option.value === p.selectedTemplateId)?.description}
+            {p.generationSceneCount} sequence{p.generationSceneCount === 1 ? '' : 's'} video Pexels, environ {(p.videoDurationSec / Math.max(1, p.generationSceneCount)).toFixed(1)}s par sequence.
           </span>
 
           {renderEngine ? (

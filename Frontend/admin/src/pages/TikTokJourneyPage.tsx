@@ -125,6 +125,10 @@ const TIKTOK_LANGUAGE_OPTIONS: Array<{ value: string; label: string; description
   { value: 'ar', label: 'Arabe',     description: 'Arabe standard moderne.' },
   { value: 'ary', label: 'Darija marocaine', description: 'Dialecte marocain, style naturel.' },
 ]
+const TIKTOK_SEQUENCE_TEMPLATE_ID = 'tiktok-scene-sequence'
+const MIN_VIDEO_DURATION_SEC = 15
+const MAX_VIDEO_DURATION_SEC = 60
+const MIN_SCENE_DURATION_SEC = 3
 const TIKTOK_SCENE_COUNT_OPTIONS: Array<{ value: number; label: string; description: string }> = [
   { value: 1,  label: '1 scene',   description: '~3s, format flash.' },
   { value: 2,  label: '2 scenes',  description: '~6s, format tres court.' },
@@ -228,14 +232,19 @@ export default function TikTokJourneyPage() {
   } = useTikTokWorkflow()
   const { busyActions, isBusy, runAction } = useActionState()
   const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(TIKTOK_TEMPLATE_OPTIONS[0].value)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(TIKTOK_SEQUENCE_TEMPLATE_ID)
   const [selectedQualityProfile, setSelectedQualityProfile] = useState<string>('premium')
+  const [videoDurationSec, setVideoDurationSec] = useState<number>(MIN_VIDEO_DURATION_SEC)
   // Paramètres de génération idée + script (étape 1).
   const [generationTopic, setGenerationTopic] = useState<string>('')
   const [generationDurationTarget, setGenerationDurationTarget] = useState<string>('medium')
   const [generationLanguage, setGenerationLanguage] = useState<string>('fr')
   const [generationInspirationRef, setGenerationInspirationRef] = useState<string>('')
   const [generationSceneCount, setGenerationSceneCount] = useState<number>(1)
+  const minVideoDurationSec = Math.min(MAX_VIDEO_DURATION_SEC, Math.max(MIN_VIDEO_DURATION_SEC, generationSceneCount * MIN_SCENE_DURATION_SEC))
+  useEffect(() => {
+    setVideoDurationSec((current) => Math.min(MAX_VIDEO_DURATION_SEC, Math.max(minVideoDurationSec, current)))
+  }, [minVideoDurationSec])
   // ID du workflow_run de rendu en cours, pour permettre au RenderStep de poller
   // l'avancement (/api/video-ops/render-video/progress/:id).
   const [currentRenderRunId, setCurrentRenderRunId] = useState<number | null>(null)
@@ -454,6 +463,7 @@ export default function TikTokJourneyPage() {
     selectedGeneratedIdea,
     selectedTemplateId,
     selectedQualityProfile,
+    videoDurationSec,
     generationSceneCount,
     goToStep,
     triggerRenderTemplateWorkflow,
@@ -879,6 +889,10 @@ export default function TikTokJourneyPage() {
               setSelectedTemplateId={setSelectedTemplateId}
               selectedQualityProfile={selectedQualityProfile}
               setSelectedQualityProfile={setSelectedQualityProfile}
+              videoDurationSec={videoDurationSec}
+              setVideoDurationSec={setVideoDurationSec}
+              minVideoDurationSec={minVideoDurationSec}
+              maxVideoDurationSec={MAX_VIDEO_DURATION_SEC}
               templateOptions={TIKTOK_TEMPLATE_OPTIONS}
               qualityOptions={TIKTOK_QUALITY_OPTIONS}
               successMessage={successMessage}

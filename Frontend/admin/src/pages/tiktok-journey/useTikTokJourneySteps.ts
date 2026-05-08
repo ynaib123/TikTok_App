@@ -172,6 +172,7 @@ export interface UseRenderStepOptions {
   selectedGeneratedIdea: ContentIdea | null
   selectedTemplateId: string | null
   selectedQualityProfile: string | null
+  videoDurationSec?: number | null
   generationSceneCount?: number | null
   goToStep: (step: string) => void
   triggerRenderTemplateWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
@@ -196,6 +197,7 @@ export function useRenderStep({
   selectedGeneratedIdea,
   selectedTemplateId,
   selectedQualityProfile,
+  videoDurationSec,
   generationSceneCount,
   goToStep,
   triggerRenderTemplateWorkflow,
@@ -230,6 +232,7 @@ export function useRenderStep({
       keyword: idea.keyword,
       templateId: selectedTemplateId || null,
       qualityProfile: selectedQualityProfile || null,
+      durationSec: typeof videoDurationSec === 'number' && videoDurationSec > 0 ? videoDurationSec : null,
       sceneCount: typeof generationSceneCount === 'number' && generationSceneCount > 0 ? generationSceneCount : null,
     })
     if (setCurrentRenderRunId && workflowRun?.runId) {

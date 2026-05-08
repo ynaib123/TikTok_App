@@ -1,6 +1,8 @@
 package com.tiktokapp.backend.dto.videoops;
 
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
@@ -23,6 +25,9 @@ public class WorkflowTriggerRequest {
     private String templateId;
     @Size(max = 32)
     private String qualityProfile;
+    @DecimalMin("15")
+    @DecimalMax("60")
+    private Double durationSec;
 
     // Paramètres de génération idée + script (étape 1 du parcours TikTok).
     @Size(max = 32)
@@ -138,6 +143,14 @@ public class WorkflowTriggerRequest {
 
     public void setQualityProfile(String qualityProfile) {
         this.qualityProfile = qualityProfile;
+    }
+
+    public Double getDurationSec() {
+        return durationSec;
+    }
+
+    public void setDurationSec(Double durationSec) {
+        this.durationSec = durationSec;
     }
 
     public String getHookStyle() { return hookStyle; }
