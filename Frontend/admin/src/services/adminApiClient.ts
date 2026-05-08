@@ -252,6 +252,17 @@ export async function apiPut<T = unknown>(
   }, requestOptions)
 }
 
+export async function apiPatch<T = unknown>(
+  endpoint: string,
+  data: unknown,
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }, requestOptions)
+}
+
 export async function apiDelete<T = unknown>(
   endpoint: string,
   requestOptions: AdminRequestOptions = {},

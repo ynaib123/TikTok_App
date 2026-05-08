@@ -51,6 +51,12 @@ export interface WorkflowTriggerPayload {
   force?: boolean;
   templateId?: string | null;
   qualityProfile?: string | null;
+  // Paramètres de génération idée + script (étape 1).
+  durationTarget?: string | null;
+  language?: string | null;
+  inspirationRef?: string | null;
+  sceneCount?: number | null;
+  durationSec?: number | null;
 }
 
 export interface WorkflowTriggerResponse {

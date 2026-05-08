@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from './adminApiClient'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './adminApiClient'
 import type {
   AccountsOverview,
   AccountsReadiness,
@@ -326,6 +326,20 @@ export async function deleteContentIdea(contentIdeaId: number | string): Promise
   await apiDelete(`/video-ops/content-ideas/${contentIdeaId}`)
 }
 
+export interface ContentIdeaEditPatch {
+  topic?: string | null
+  script?: string | null
+  caption?: string | null
+  keyword?: string | null
+}
+
+export async function updateContentIdeaContent(
+  contentIdeaId: number | string,
+  patch: ContentIdeaEditPatch,
+): Promise<unknown> {
+  return apiPatch(`/video-ops/content-ideas/${contentIdeaId}`, patch)
+}
+
 export async function triggerMainContentPipeline(
   payload: WorkflowTriggerPayload = {},
 ): Promise<WorkflowTriggerResponse> {
@@ -336,6 +350,21 @@ export async function triggerRenderTemplateWorkflow(
   payload: WorkflowTriggerPayload = {},
 ): Promise<WorkflowTriggerResponse> {
   return apiPost('/video-ops/workflows/render-template', payload)
+}
+
+export interface RenderProgress {
+  ok: boolean
+  runId: number
+  progress: number
+  status: 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error' | 'unknown'
+  startedAt: number | null
+  updatedAt: number | null
+  outputUrl: string | null
+  error: string | null
+}
+
+export async function fetchRenderVideoProgress(workflowRunId: number | string): Promise<RenderProgress> {
+  return apiGet(`/video-ops/render-video/progress/${workflowRunId}`)
 }
 
 export async function triggerPublishTikTokWorkflow(

@@ -1,5 +1,24 @@
+export interface RenderVideoSceneMedia {
+  url: string
+  provider?: string | null
+  license?: string | null
+  width?: number | null
+  height?: number | null
+  durationSec?: number | null
+  qualityScore?: number | null
+}
+
+export interface RenderVideoScene {
+  index: number
+  durationSec: number
+  text?: string | null
+  emotion?: string | null
+  mediaQuery?: string | null
+  media: RenderVideoSceneMedia
+}
+
 export interface RenderVideoJob {
-  contractVersion: '1.0.0'
+  contractVersion: '1.0.0' | '1.1.0'
   workflowRunId: number
   contentIdeaId: number
   source: string
@@ -66,6 +85,7 @@ export interface RenderVideoJob {
       startMs?: number | null
       endMs?: number | null
     }>
+    scenes?: RenderVideoScene[]
   }
   publication?: {
     title?: string | null

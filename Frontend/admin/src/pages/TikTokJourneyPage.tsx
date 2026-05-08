@@ -30,7 +30,9 @@ import {
   fetchManualActions,
   fetchWorkflowRun,
   markPublishComplete,
+  updateContentIdeaContent,
   uploadTikTokMedia,
+  type ContentIdeaEditPatch,
 } from '../services/videoOpsSupabase'
 import { markAdminRouteReady } from '../services/adminPerformance'
 import TikTokLibraryView from './tiktok-journey/TikTokLibraryView'
@@ -47,6 +49,7 @@ import {
   clearJourneyWorkspace,
   saveJourneyWorkspace,
 } from './tiktok-journey/journeyWorkspace'
+import { mergeIdeasById } from './tiktok-journey/journeyHelpers'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
@@ -97,15 +100,40 @@ const LIST_SORT_OPTIONS = [
 ]
 const TIKTOK_CATEGORY_OPTIONS = ['Food', 'Love', 'Sport', 'Fitness', 'Beauty']
 const TIKTOK_TEMPLATE_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  { value: 'tiktok-pro-vertical', label: 'Pro Vertical', description: 'Hook + script + CTA, palette par categorie.' },
-  { value: 'tiktok-bold-story',   label: 'Bold Story',   description: 'Typographie display, chapitres, CTA degrade.' },
-  { value: 'tiktok-clean-minimal', label: 'Clean Minimal', description: 'Minimaliste, sous-titres bandeau.' },
+  { value: 'tiktok-scene-sequence', label: 'Scene Sequence (multi-clips)', description: 'Multi-scenes Pexels, hook centre big, typo uppercase pro, crossfade.' },
+  { value: 'tiktok-pro-vertical', label: 'Pro Vertical', description: 'Mono-fond, badge hook, segments script, CTA pill.' },
+  { value: 'tiktok-bold-story',   label: 'Bold Story',   description: 'Mono-fond, chapitres numerotes (01/02), CTA degrade.' },
+  { value: 'tiktok-clean-minimal', label: 'Clean Minimal', description: 'Mono-fond, hook pill blanche, typo reguliere, fleche CTA.' },
 ]
 const TIKTOK_QUALITY_OPTIONS: Array<{ value: string; label: string; description: string }> = [
   { value: 'draft',    label: 'Draft',    description: 'Rapide, CRF 28, 96 kbps audio' },
   { value: 'standard', label: 'Standard', description: 'CRF 24, 128 kbps audio' },
   { value: 'high',     label: 'High',     description: 'CRF 21, 160 kbps audio' },
   { value: 'premium',  label: 'Premium',  description: 'Lent, CRF 19, 192 kbps audio' },
+]
+const TIKTOK_DURATION_TARGET_OPTIONS: Array<{ value: string; label: string; description: string }> = [
+  { value: 'short',  label: 'Courte (~10s)',  description: '2-3 phrases punchy.' },
+  { value: 'medium', label: 'Moyenne (~15s)', description: '3-4 phrases. Sweet spot TikTok.' },
+  { value: 'long',   label: 'Longue (~25s)',  description: '5-6 phrases, plus d info.' },
+]
+const TIKTOK_LANGUAGE_OPTIONS: Array<{ value: string; label: string; description: string }> = [
+  { value: 'fr', label: 'Francais',  description: 'Marche FR.' },
+  { value: 'en', label: 'English',   description: 'Marche EN/global.' },
+  { value: 'es', label: 'Espanol',   description: 'Marche ES/LATAM.' },
+  { value: 'it', label: 'Italiano',  description: 'Marche IT.' },
+  { value: 'de', label: 'Deutsch',   description: 'Marche DE.' },
+  { value: 'ar', label: 'Arabe',     description: 'Arabe standard moderne.' },
+  { value: 'ary', label: 'Darija marocaine', description: 'Dialecte marocain, style naturel.' },
+]
+const TIKTOK_SCENE_COUNT_OPTIONS: Array<{ value: number; label: string; description: string }> = [
+  { value: 3,  label: '3 scenes',  description: '~9s, format ultra-court.' },
+  { value: 4,  label: '4 scenes',  description: '~12s, sweet spot TikTok.' },
+  { value: 5,  label: '5 scenes',  description: '~15s, retention optimale.' },
+  { value: 6,  label: '6 scenes',  description: '~18s, format etoffe.' },
+  { value: 7,  label: '7 scenes',  description: '~21s, contenu dense.' },
+  { value: 8,  label: '8 scenes',  description: '~24s, storytelling complet.' },
+  { value: 9,  label: '9 scenes',  description: '~27s.' },
+  { value: 10, label: '10 scenes', description: '~30s, max recommande.' },
 ]
 const MAX_IDEA_BATCH_SIZE = 5
 
@@ -200,6 +228,21 @@ export default function TikTokJourneyPage() {
   const [generationCategory, setGenerationCategory] = useState(TIKTOK_CATEGORY_OPTIONS[0])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(TIKTOK_TEMPLATE_OPTIONS[0].value)
   const [selectedQualityProfile, setSelectedQualityProfile] = useState<string>('premium')
+  // Paramètres de génération idée + script (étape 1).
+  const [generationTopic, setGenerationTopic] = useState<string>('')
+  const [generationDurationTarget, setGenerationDurationTarget] = useState<string>('medium')
+  const [generationLanguage, setGenerationLanguage] = useState<string>('fr')
+  const [generationInspirationRef, setGenerationInspirationRef] = useState<string>('')
+  const [generationSceneCount, setGenerationSceneCount] = useState<number>(4)
+  // ID du workflow_run de rendu en cours, pour permettre au RenderStep de poller
+  // l'avancement (/api/video-ops/render-video/progress/:id).
+  const [currentRenderRunId, setCurrentRenderRunId] = useState<number | null>(null)
+  // Edits en cours sur l idée générée (l utilisateur peut modifier avant de
+  // passer à l étape vidéo). On les sauvegarde via PATCH au moment du Suivant.
+  const [editedTopic, setEditedTopic] = useState<string>('')
+  const [editedScript, setEditedScript] = useState<string>('')
+  const [editedCaption, setEditedCaption] = useState<string>('')
+  const [editedKeyword, setEditedKeyword] = useState<string>('')
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
 
   const currentStepIndex = useMemo(
@@ -327,6 +370,11 @@ export default function TikTokJourneyPage() {
 
   const { handleGenerateIdea } = useCreationStep({
     generationCategory,
+    generationTopic,
+    generationDurationTarget,
+    generationLanguage,
+    generationInspirationRef,
+    generationSceneCount,
     connectedTikTokAccount,
     fetchRecentContentIdeas,
     triggerMainContentPipeline,
@@ -361,11 +409,47 @@ export default function TikTokJourneyPage() {
     }
   }
 
+  // Étape 1 → étape 2 sans déclencher le rendu vidéo. Le rendu se déclenche
+  // explicitement depuis l'étape 2 une fois le template/qualité choisis. On
+  // sauvegarde d abord les edits utilisateur sur topic/script/caption/keyword.
+  const handleGoToRenderStep = async () => {
+    const idea = scriptedIdea || selectedGeneratedIdea
+    if (!idea?.id) {
+      showError('Genere une idee avant de passer a l etape suivante.')
+      return
+    }
+    const patch: ContentIdeaEditPatch = {}
+    if (editedTopic !== (idea.topic || '')) patch.topic = editedTopic
+    if (editedScript !== (idea.script || '')) patch.script = editedScript
+    if (editedCaption !== (idea.caption || '')) patch.caption = editedCaption
+    if (editedKeyword !== (idea.keyword || '')) patch.keyword = editedKeyword
+
+    if (Object.keys(patch).length > 0) {
+      try {
+        await updateContentIdeaContent(idea.id, patch)
+        const merged: ContentIdea = {
+          ...idea,
+          topic: editedTopic,
+          script: editedScript,
+          caption: editedCaption,
+          keyword: editedKeyword,
+        }
+        setScriptedIdea(merged)
+        setGeneratedIdeas((current) => mergeIdeasById(current, [merged]))
+      } catch (error) {
+        showError(getErrorMessage(error, "Impossible d enregistrer les modifications."))
+        return
+      }
+    }
+    goToStep('init-publish')
+  }
+
   const { handleRetryInitPublish } = useRenderStep({
     scriptedIdea,
     selectedGeneratedIdea,
     selectedTemplateId,
     selectedQualityProfile,
+    generationSceneCount,
     goToStep,
     triggerRenderTemplateWorkflow,
     fetchContentIdeaById: fetchContentIdeaByIdFromPages,
@@ -381,6 +465,7 @@ export default function TikTokJourneyPage() {
     runAction,
     markWorkflowStarted: workflowMonitor.markWorkflowStarted,
     markWorkflowFinished: workflowMonitor.markWorkflowFinished,
+    setCurrentRenderRunId,
   })
 
   const { handlePrepareAndUploadVideo, handlePrepareUpload, handleUploadVideo } = useUploadStep({
@@ -407,6 +492,29 @@ export default function TikTokJourneyPage() {
 
   const activeIdea = scriptedIdea || selectedGeneratedIdea
   const currentStep = isFlowRoute ? STEPS[currentStepIndex] : STEPS[0]
+
+  // Synchronise les inputs editables sur l idee active. Le pipeline cree d
+  // abord la idee (topic seul), puis enrichit avec script/caption/hook/keyword
+  // quelques secondes plus tard via un PATCH. On re-sync quand:
+  //   - l ID change (nouvelle idee selectionnee)
+  //   - le script passe de vide a rempli (etape script_ready terminee)
+  // Sinon les valeurs editees par l utilisateur ne sont pas ecrasees.
+  const lastSyncRef = useRef<{ id: number | null; hadScript: boolean }>({ id: null, hadScript: false })
+  useEffect(() => {
+    if (!activeIdea?.id) return
+    const hasScript = Boolean(String(activeIdea.script || '').trim())
+    const isNewIdea = activeIdea.id !== lastSyncRef.current.id
+    const scriptJustArrived = hasScript && !lastSyncRef.current.hadScript && lastSyncRef.current.id === activeIdea.id
+    if (isNewIdea || scriptJustArrived) {
+      setEditedTopic(activeIdea.topic || '')
+      setEditedScript(activeIdea.script || '')
+      setEditedCaption(activeIdea.caption || '')
+      setEditedKeyword(activeIdea.keyword || '')
+      lastSyncRef.current = { id: activeIdea.id, hadScript: hasScript }
+    } else if (lastSyncRef.current.id !== activeIdea.id) {
+      lastSyncRef.current = { id: activeIdea.id, hadScript: hasScript }
+    }
+  }, [activeIdea?.id, activeIdea?.topic, activeIdea?.script, activeIdea?.caption, activeIdea?.keyword])
 
   const openLeaveConfirm = (target: PendingExitTarget = { kind: 'library' }) => {
     pendingExitTargetRef.current = target
@@ -740,6 +848,7 @@ export default function TikTokJourneyPage() {
               handleRetryInitPublish={safeHandleRetryInitPublish}
               handleUploadVideo={handleUploadVideo}
               handleValidateCreation={handleValidateCreation}
+              handleGoToRenderStep={handleGoToRenderStep}
               handleValidateInitPublish={handleValidateInitPublish}
               handleValidateUpload={handleValidateUpload}
               hasConnectedTikTokAccount={hasConnectedTikTokAccount}
@@ -770,6 +879,28 @@ export default function TikTokJourneyPage() {
               successMessage={successMessage}
               tiktokCategoryOptions={TIKTOK_CATEGORY_OPTIONS}
               uploadResult={uploadResult}
+              currentRenderRunId={currentRenderRunId}
+              editedTopic={editedTopic}
+              setEditedTopic={setEditedTopic}
+              editedScript={editedScript}
+              setEditedScript={setEditedScript}
+              editedCaption={editedCaption}
+              setEditedCaption={setEditedCaption}
+              editedKeyword={editedKeyword}
+              setEditedKeyword={setEditedKeyword}
+              generationTopic={generationTopic}
+              setGenerationTopic={setGenerationTopic}
+              generationDurationTarget={generationDurationTarget}
+              setGenerationDurationTarget={setGenerationDurationTarget}
+              generationLanguage={generationLanguage}
+              setGenerationLanguage={setGenerationLanguage}
+              generationInspirationRef={generationInspirationRef}
+              setGenerationInspirationRef={setGenerationInspirationRef}
+              durationTargetOptions={TIKTOK_DURATION_TARGET_OPTIONS}
+              languageOptions={TIKTOK_LANGUAGE_OPTIONS}
+              sceneCountOptions={TIKTOK_SCENE_COUNT_OPTIONS}
+              generationSceneCount={generationSceneCount}
+              setGenerationSceneCount={setGenerationSceneCount}
             />
           )}
         </div>

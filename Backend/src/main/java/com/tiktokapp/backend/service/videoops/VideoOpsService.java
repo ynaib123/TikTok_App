@@ -577,6 +577,16 @@ public class VideoOpsService {
         payload.put("tiktokAccountOpenId", tiktokAccountOpenId);
         payload.put("templateId", templateId);
         payload.put("qualityProfile", qualityProfile);
+        // Paramètres de génération idée + script (étape 1).
+        payload.put("hookStyle", trimToNull(request.getHookStyle()));
+        payload.put("scriptFormat", trimToNull(request.getScriptFormat()));
+        payload.put("tone", trimToNull(request.getTone()));
+        payload.put("audience", trimToNull(request.getAudience()));
+        payload.put("durationTarget", trimToNull(request.getDurationTarget()));
+        payload.put("language", trimToNull(request.getLanguage()));
+        payload.put("temperature", request.getTemperature());
+        payload.put("inspirationRef", trimToNull(request.getInspirationRef()));
+        payload.put("sceneCount", request.getSceneCount());
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);

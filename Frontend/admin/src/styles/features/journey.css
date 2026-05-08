@@ -10,11 +10,54 @@
 
 /* ----- Layout shell ------------------------------------------------------- */
 
+/* Sur le parcours (mode flow), on verrouille la page à la hauteur exacte de
+   la viewport pour qu'aucun scroll vertical ne soit possible. La distribution
+   se fait en flex/grid à l'intérieur. Le sélecteur :has scope le verrou
+   uniquement quand le wizard est rendu (pas sur la liste). */
+.admin-page-tiktok:has(.journey-wizard) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-page-tiktok:has(.journey-wizard) .admin-console-page {
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.admin-page-tiktok:has(.journey-wizard) .video-ops-shell.journey-shell {
+  height: calc(100vh - var(--admin-nav-height) - 48px - 8px);
+  overflow: hidden;
+}
+
 .journey-shell {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
   width: 100%;
+}
+
+/* Wizard prend toute la hauteur du shell, puis son main remplit l'espace
+   restant après la barre des étapes. Le grid intérieur ne déborde pas. */
+.journey-wizard {
+  height: 100%;
+  min-height: 0;
+}
+
+.journey-wizard-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.journey-wizard-main > .journey-wizard-grid {
+  height: 100%;
+  min-height: 0;
+}
+
+.journey-wizard-main > .journey-wizard-grid > .journey-wizard-grid-side {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .journey-page-head {
@@ -369,8 +412,10 @@
 .journey-wizard {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   width: 100%;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 /* ----- Top progress stepper --------------------------------------------- */
@@ -379,7 +424,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 14px;
+  padding: 4px 12px;
   background: var(--admin-panel-surface);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-md);
@@ -526,10 +571,11 @@
 .journey-wizard-main {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
+  padding-top: 0;
 }
 
 .journey-wizard-grid-main,
@@ -542,7 +588,7 @@
 .journey-wizard-grid {
   display: grid;
   grid-template-columns: minmax(260px, 0.92fr) minmax(0, 1.6fr);
-  gap: 10px;
+  gap: 8px;
   align-items: start;
 }
 
@@ -559,22 +605,24 @@
 }
 
 .journey-wizard-grid-main {
-  padding: 18px 20px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 
 .journey-wizard-grid-main.is-video-stage {
-  /* Fenêtre 9:16 adaptative: prend la hauteur dispo, max 540px de large.
-     Le video lui-même est en object-fit: contain (pas de rognage). */
-  width: min(540px, calc((100vh - 200px) * 9 / 16));
-  min-width: min(540px, calc((100vh - 200px) * 9 / 16));
+  /* Fenêtre 9:16 adaptative: la hauteur disponible est calculée en retirant
+     le chrome (header + footer + breathing room) pour que la page tienne sans
+     scroll vertical. Plafonnée à 400px de large pour laisser place au sidebar
+     côté gauche. Le video lui-même est en object-fit: contain. */
+  width: min(400px, calc((100vh - 200px) * 9 / 16));
+  min-width: min(400px, calc((100vh - 200px) * 9 / 16));
   aspect-ratio: 9 / 16;
   justify-self: end;
   align-items: flex-end;
-  padding: 10px;
+  padding: 8px;
   overflow: hidden;
 }
 
@@ -592,11 +640,192 @@
   }
 }
 
+/* Row horizontale dans l aside (utilisée à l étape Publication pour mettre
+   Paramètres + Données côte à côte 40/60 au lieu d un stack vertical). */
+.journey-wizard-side-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.journey-wizard-side-row > .journey-wizard-side-card {
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.journey-wizard-side-row > .journey-wizard-side-card.is-narrow {
+  flex: 0 0 40%;
+}
+
+.journey-wizard-side-row > .journey-wizard-side-card.is-wide {
+  flex: 0 0 calc(60% - 8px);
+}
+
+@media (max-width: 960px) {
+  .journey-wizard-side-row {
+    flex-direction: column;
+  }
+  .journey-wizard-side-row > .journey-wizard-side-card.is-narrow,
+  .journey-wizard-side-row > .journey-wizard-side-card.is-wide {
+    flex: 1 1 auto;
+  }
+}
+
 .journey-wizard-side-card {
-  padding: 12px 14px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+/* Quand la card s étire (height locked), le contenu suit l agrandissement.
+   - Cards Paramètres (qui contiennent au moins un row-grid): rows distribuées
+     verticalement via space-between, donc plus la card est grande, plus les
+     gaps grandissent.
+   - Cards Données (KV grid): le grid prend flex: 1 et distribue ses rows. */
+.journey-wizard-side-card:has(.journey-step-row-grid) {
+  justify-content: space-between;
+}
+
+.journey-wizard-side-card > .journey-kv-grid {
+  flex: 1 1 auto;
+  align-content: space-around;
+}
+
+/* Données en mode édition (inputs/textarea contrôlés). Le formulaire prend
+   toute la hauteur disponible, et le textarea Script grandit pour utiliser
+   l'espace restant — utile vu que le script est le champ le plus long. */
+.journey-data-form {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.journey-data-form-grow {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.journey-data-textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+}
+
+/* Liste des scènes éditables (étape 1, card Données) */
+.journey-scenes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+}
+
+.journey-scenes-head label {
+  font-size: 11px;
+  color: var(--admin-text-soft);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.journey-scene-add {
+  padding: 3px 8px !important;
+  font-size: 10px !important;
+  text-transform: none !important;
+  letter-spacing: 0;
+}
+
+.journey-scenes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.journey-scenes-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.journey-scene-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--admin-panel-surface-2);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+}
+
+.journey-scene-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.journey-scene-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--admin-warm-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.journey-scene-remove {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--admin-text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background var(--admin-motion-fast), color var(--admin-motion-fast);
+}
+
+.journey-scene-remove:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff5050;
+}
+
+.journey-scene-remove:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.journey-scene-textarea {
+  resize: none;
+  min-height: 36px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  background: var(--admin-panel-surface) !important;
+}
+
+.journey-wizard-side-card > .journey-empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.journey-wizard-side-card > .journey-loading {
+  flex: 1 1 auto;
+  justify-content: center;
 }
 
 .journey-wizard-side-card-head {
@@ -632,13 +861,14 @@
 }
 
 .journey-wizard-card-label {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--admin-text-dim);
   font-weight: 500;
   align-self: flex-start;
   text-align: left;
+  margin-bottom: 2px;
 }
 
 .journey-step-cta-stack {
@@ -650,6 +880,13 @@
 .journey-step-cta-stack .journey-btn {
   width: 100%;
   justify-content: center;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.journey-wizard-side-card .journey-btn {
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 @media (max-width: 720px) {
@@ -716,13 +953,16 @@
 .journey-step-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .journey-step-row > label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--admin-text-soft);
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .journey-step-row-inline {
@@ -731,12 +971,126 @@
   align-items: center;
 }
 
+/* Grille 2 colonnes pour mettre les selects courts côte à côte. */
+.journey-step-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .journey-step-row-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tabs pour basculer entre Paramètres standard / avancés sans agrandir la
+   card. Garde la hauteur constante quel que soit le panneau actif. */
+.journey-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--admin-panel-surface-2);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  padding: 2px;
+  margin-bottom: 2px;
+}
+
+.journey-tab {
+  flex: 1;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-soft);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--admin-radius-sm) - 2px);
+  cursor: pointer;
+  transition: background var(--admin-motion-fast), color var(--admin-motion-fast);
+}
+
+.journey-tab:hover:not(.is-active) {
+  color: var(--admin-text);
+}
+
+.journey-tab.is-active {
+  background: var(--admin-warm-strong);
+  color: var(--admin-text-inverse);
+}
+
+.journey-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Style unifié pour selects + inputs + textareas dans les panels paramètres. */
+.journey-step-select {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--admin-text);
+  background: var(--admin-panel-surface-2);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  transition: border-color var(--admin-motion-fast), background var(--admin-motion-fast);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+select.journey-step-select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'><path fill='%238a8a8a' d='M2 4l4 4 4-4z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 22px;
+}
+
+.journey-step-select:hover:not(:disabled) {
+  border-color: var(--admin-border-strong);
+}
+
+.journey-step-select:focus {
+  outline: none;
+  border-color: var(--admin-warm-strong);
+  background: var(--admin-panel-surface);
+}
+
+.journey-step-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+textarea.journey-step-select {
+  resize: vertical;
+  min-height: 64px;
+  background-image: none;
+  padding-right: 10px;
+  line-height: 1.45;
+}
+
+input.journey-step-select {
+  background-image: none;
+  padding-right: 10px;
+}
+
+.journey-step-row-hint {
+  font-size: 10px;
+  color: var(--admin-text-dim);
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
 .journey-step-cta {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 /* ----- Idea picker (creation step) -------------------------------------- */
@@ -953,6 +1307,71 @@
 .journey-loading-copy span {
   font-size: 12px;
   color: var(--admin-text-dim);
+}
+
+/* ----- Render progress bar (étape 2, suivi du rendu vidéo) --------------- */
+
+.journey-render-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+  align-self: center;
+  margin: auto;
+  padding: 24px;
+  background: var(--admin-panel-surface-2);
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-md);
+}
+
+.journey-render-progress-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.journey-render-progress-copy strong {
+  font-size: 13px;
+  color: var(--admin-text);
+  font-weight: 500;
+}
+
+.journey-render-progress-copy span {
+  font-size: 14px;
+  color: var(--admin-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.journey-render-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--admin-border-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.journey-render-progress-fill {
+  height: 100%;
+  background: var(--admin-warm-strong);
+  border-radius: 999px;
+  transition: width 400ms ease-out;
+}
+
+.journey-render-progress-error {
+  font-size: 12px;
+  color: #d33;
+}
+
+.journey-wizard-grid-main.is-video-stage .journey-render-progress {
+  width: 100%;
+  height: 100%;
+  max-width: 360px;
+  align-self: center;
+  justify-self: center;
+  margin: auto;
 }
 
 /* ============================================================================

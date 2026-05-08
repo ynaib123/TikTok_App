@@ -27,6 +27,7 @@ export type VideoPipelineStage =
 export const TERMINAL_RUN_STATUSES: ReadonlySet<VideoWorkflowRunStatus> = new Set(['SUCCEEDED', 'FAILED']);
 
 export type RenderTemplateId =
+  | 'tiktok-scene-sequence'
   | 'tiktok-pro-vertical'
   | 'tiktok-bold-story'
   | 'tiktok-clean-minimal';

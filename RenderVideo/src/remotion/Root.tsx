@@ -1,9 +1,18 @@
 import React from 'react'
-import { Composition } from 'remotion'
+import { Composition, staticFile } from 'remotion'
 import { TikTokProVertical } from './TikTokProVertical.js'
 import { TikTokBoldStory } from './TikTokBoldStory.js'
 import { TikTokCleanMinimal } from './TikTokCleanMinimal.js'
+import { TikTokSceneSequence } from './TikTokSceneSequence.js'
 import type { RenderVideoJob } from '../renderJob.js'
+
+// Clips locaux dans `public/` pour la preview studio. En prod, les URLs viennent
+// du backend (Pexels/R2). Le studio proxifie les video/HEAD requests et certains
+// CDN externes répondent 403 — d'où l'usage de fichiers locaux pour le dev.
+const localClip1 = staticFile('scene1.mp4')
+const localClip2 = staticFile('scene2.mp4')
+const localClip3 = staticFile('scene3.mp4')
+const localClip4 = staticFile('scene4.mp4')
 
 const defaultJob: RenderVideoJob = {
   contractVersion: '1.0.0',
@@ -14,12 +23,12 @@ const defaultJob: RenderVideoJob = {
   idea: {
     category: 'business',
     topic: 'Video TikTok',
-    hook: 'Le hook apparait ici',
-    script: 'Premier message. Deuxieme message. Troisieme message.',
+    hook: '3 leviers que personne ne te dit',
+    script: 'Voici trois leviers. Le premier change tout. Le deuxieme te fait gagner. Le troisieme verrouille.',
     caption: 'Caption TikTok',
     keyword: 'business',
     language: 'fr',
-    cta: 'Publie maintenant',
+    cta: 'Suis pour la suite',
   },
   render: {
     templateId: 'tiktok-pro-vertical',
@@ -27,18 +36,45 @@ const defaultJob: RenderVideoJob = {
     width: 1080,
     height: 1920,
     fps: 30,
-    durationSec: 15,
+    durationSec: 12,
     qualityProfile: 'premium',
-    captionMode: 'line',
+    captionMode: 'none',
     sceneStrategy: 'single-background',
   },
   assets: {
-    backgroundVideo: {
-      url: 'https://videos.pexels.com/video-files/3195394/3195394-uhd_1440_2560_25fps.mp4',
-      provider: 'pexels',
-    },
+    backgroundVideo: { url: localClip1, provider: 'local' },
     captions: [],
     overlays: [],
+    scenes: [
+      {
+        index: 0,
+        durationSec: 3,
+        text: 'Voici trois leviers',
+        emotion: 'urgent',
+        media: { url: localClip1, provider: 'local' },
+      },
+      {
+        index: 1,
+        durationSec: 3,
+        text: 'Le premier change tout',
+        emotion: 'reveal',
+        media: { url: localClip2, provider: 'local' },
+      },
+      {
+        index: 2,
+        durationSec: 3,
+        text: 'Le deuxieme te fait gagner',
+        emotion: 'energetic',
+        media: { url: localClip3, provider: 'local' },
+      },
+      {
+        index: 3,
+        durationSec: 3,
+        text: 'Le troisieme verrouille',
+        emotion: 'finale',
+        media: { url: localClip4, provider: 'local' },
+      },
+    ],
   },
 }
 
@@ -83,6 +119,25 @@ export function RemotionRoot() {
         component={TikTokCleanMinimal}
         defaultProps={{
           job: { ...defaultJob, render: { ...defaultJob.render, templateId: 'tiktok-clean-minimal' } },
+        }}
+        durationInFrames={450}
+        fps={30}
+        width={1080}
+        height={1920}
+        calculateMetadata={calculateMetadata}
+      />
+      <Composition
+        id="tiktok-scene-sequence"
+        component={TikTokSceneSequence}
+        defaultProps={{
+          job: {
+            ...defaultJob,
+            render: {
+              ...defaultJob.render,
+              templateId: 'tiktok-scene-sequence',
+              sceneStrategy: 'timed-scenes',
+            },
+          },
         }}
         durationInFrames={450}
         fps={30}

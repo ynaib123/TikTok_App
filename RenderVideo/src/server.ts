@@ -97,6 +97,66 @@ async function prepareLocalAssets<T extends { assets: { backgroundVideo: { url: 
 app.use(express.json({ limit: '4mb' }))
 app.use('/renders', express.static(outputDir))
 
+// Suivi de progression keyed par workflowRunId. Permet aux clients HTTP de
+// poller l'avancement d'un rendu en cours (le POST /render reste bloquant
+// pendant plusieurs minutes).
+type ProgressStatus = 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error'
+interface ProgressEntry {
+  progress: number // 0..1
+  status: ProgressStatus
+  startedAt: number
+  updatedAt: number
+  outputUrl?: string
+  error?: string
+}
+const progressByRunId = new Map<number, ProgressEntry>()
+const PROGRESS_TTL_MS = 10 * 60 * 1000 // 10 min après fin → purge
+
+function setProgress(runId: number, patch: Partial<ProgressEntry> & { status?: ProgressStatus }) {
+  if (!Number.isFinite(runId) || runId <= 0) return
+  const existing = progressByRunId.get(runId)
+  const now = Date.now()
+  const next: ProgressEntry = {
+    progress: existing?.progress ?? 0,
+    status: existing?.status ?? 'rendering',
+    startedAt: existing?.startedAt ?? now,
+    updatedAt: now,
+    outputUrl: existing?.outputUrl,
+    error: existing?.error,
+    ...patch,
+  }
+  progressByRunId.set(runId, next)
+}
+
+setInterval(() => {
+  const now = Date.now()
+  for (const [runId, entry] of progressByRunId.entries()) {
+    const finished = entry.status === 'done' || entry.status === 'error'
+    if (finished && now - entry.updatedAt > PROGRESS_TTL_MS) {
+      progressByRunId.delete(runId)
+    }
+  }
+}, 60 * 1000).unref()
+
+app.get('/progress/:runId', (request, response) => {
+  const runId = Number(request.params.runId)
+  const entry = progressByRunId.get(runId)
+  if (!entry) {
+    response.json({ ok: true, runId, progress: 0, status: 'unknown', updatedAt: null, outputUrl: null })
+    return
+  }
+  response.json({
+    ok: true,
+    runId,
+    progress: Math.max(0, Math.min(1, entry.progress)),
+    status: entry.status,
+    startedAt: entry.startedAt,
+    updatedAt: entry.updatedAt,
+    outputUrl: entry.outputUrl ?? null,
+    error: entry.error ?? null,
+  })
+})
+
 app.get('/health', (_request, response) => {
   response.json({
     ok: true,
@@ -125,6 +185,8 @@ app.post('/render', async (request, response, next) => {
 
     const job = asRenderVideoJob(request.body)
     const renderId = createRenderId(job.contentIdeaId, job.workflowRunId)
+    const runId = Number(job.workflowRunId) || 0
+    setProgress(runId, { progress: 0, status: 'rendering' })
     const rawFileName = `${renderId}.raw.mp4`
     const finalFileName = `${renderId}.mp4`
     const thumbnailFileName = `${renderId}.jpg`
@@ -147,8 +209,13 @@ app.post('/render', async (request, response, next) => {
       codec: 'h264',
       outputLocation: rawPath,
       inputProps: { job: renderJob },
+      onProgress: ({ progress }) => {
+        // Phase rendu = 0..0.85 du total. Post-process + upload prennent les 0.15 restants.
+        setProgress(runId, { progress: Math.max(0, Math.min(0.85, progress * 0.85)), status: 'rendering' })
+      },
     })
 
+    setProgress(runId, { progress: 0.88, status: 'post-processing' })
     const post = await postProcess({
       inputPath: rawPath,
       outputPath: finalPath,
@@ -158,6 +225,7 @@ app.post('/render', async (request, response, next) => {
       renderId,
       downloadAsset: downloadRemoteAsset,
     })
+    setProgress(runId, { progress: 0.95, status: 'uploading' })
 
     fs.rmSync(rawPath, { force: true })
     fs.rmSync(path.join(outputDir, 'tmp', renderId), { recursive: true, force: true })
@@ -169,6 +237,8 @@ app.post('/render', async (request, response, next) => {
 
     const outputUrl = post.remoteVideoUrl || `${publicBaseUrl}/renders/${finalFileName}`
     const thumbnailUrl = post.remoteThumbnailUrl || `${publicBaseUrl}/renders/${thumbnailFileName}`
+
+    setProgress(runId, { progress: 1, status: 'done', outputUrl })
 
     response.status(201).json({
       ok: true,
@@ -191,6 +261,13 @@ app.post('/render', async (request, response, next) => {
       loudnessNormalized: post.loudnessNormalized,
     })
   } catch (error) {
+    const runId = Number((request.body as { workflowRunId?: number } | undefined)?.workflowRunId) || 0
+    if (runId > 0) {
+      setProgress(runId, {
+        status: 'error',
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
     next(error)
   }
 })

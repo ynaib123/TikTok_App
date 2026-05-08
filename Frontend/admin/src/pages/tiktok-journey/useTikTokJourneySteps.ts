@@ -33,6 +33,11 @@ type SetState<T> = Dispatch<SetStateAction<T>>
 
 export interface UseCreationStepOptions {
   generationCategory: string | null | undefined
+  generationTopic?: string | null
+  generationDurationTarget?: string | null
+  generationLanguage?: string | null
+  generationInspirationRef?: string | null
+  generationSceneCount?: number | null
   connectedTikTokAccount: TikTokAccount | null
   fetchRecentContentIdeas: () => Promise<ContentIdea[]>
   triggerMainContentPipeline: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
@@ -56,6 +61,11 @@ export interface UseCreationStepOptions {
 
 export function useCreationStep({
   generationCategory,
+  generationTopic,
+  generationDurationTarget,
+  generationLanguage,
+  generationInspirationRef,
+  generationSceneCount,
   connectedTikTokAccount,
   fetchRecentContentIdeas,
   triggerMainContentPipeline,
@@ -90,11 +100,21 @@ export function useCreationStep({
     setLastGenerationBaselineId(baselineMaxId)
     setLastGenerationExpectedCount(requestedCount)
 
+    const optionalString = (value: string | null | undefined) => {
+      const trimmed = String(value || '').trim()
+      return trimmed.length > 0 ? trimmed : null
+    }
+
     const workflowResponse = await triggerMainContentPipeline({
       source: `backoffice-tiktok-step-creation-${Date.now()}`,
-      ideaCount: 1,
+      ideaCount: requestedCount,
       category: requestedCategory,
       tiktokAccountOpenId: String(connectedTikTokAccount?.openId || '').trim() || null,
+      topic: optionalString(generationTopic),
+      durationTarget: optionalString(generationDurationTarget),
+      language: optionalString(generationLanguage),
+      inspirationRef: optionalString(generationInspirationRef),
+      sceneCount: typeof generationSceneCount === 'number' && generationSceneCount > 0 ? generationSceneCount : null,
       force: true,
     })
 
@@ -152,6 +172,7 @@ export interface UseRenderStepOptions {
   selectedGeneratedIdea: ContentIdea | null
   selectedTemplateId: string | null
   selectedQualityProfile: string | null
+  generationSceneCount?: number | null
   goToStep: (step: string) => void
   triggerRenderTemplateWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
   fetchContentIdeaById: (ideaId: number | string) => Promise<ContentIdea | null>
@@ -167,6 +188,7 @@ export interface UseRenderStepOptions {
   runAction: RunAction
   markWorkflowStarted: (input: MarkWorkflowInput) => void
   markWorkflowFinished: (input: MarkWorkflowInput) => void
+  setCurrentRenderRunId?: (runId: number | null) => void
 }
 
 export function useRenderStep({
@@ -174,6 +196,7 @@ export function useRenderStep({
   selectedGeneratedIdea,
   selectedTemplateId,
   selectedQualityProfile,
+  generationSceneCount,
   goToStep,
   triggerRenderTemplateWorkflow,
   fetchContentIdeaById,
@@ -189,6 +212,7 @@ export function useRenderStep({
   runAction,
   markWorkflowStarted,
   markWorkflowFinished,
+  setCurrentRenderRunId,
 }: UseRenderStepOptions) {
   const handleValidateScript = async () => runAction('renderVideo', async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
@@ -206,7 +230,11 @@ export function useRenderStep({
       keyword: idea.keyword,
       templateId: selectedTemplateId || null,
       qualityProfile: selectedQualityProfile || null,
+      sceneCount: typeof generationSceneCount === 'number' && generationSceneCount > 0 ? generationSceneCount : null,
     })
+    if (setCurrentRenderRunId && workflowRun?.runId) {
+      setCurrentRenderRunId(Number(workflowRun.runId))
+    }
     markWorkflowStarted({
       runId: workflowRun?.runId,
       workflowType: workflowRun?.workflowType || 'RENDER_TEMPLATE_VIDEO',
@@ -253,7 +281,9 @@ export function useRenderStep({
       message: 'Video prete pour publication.',
     })
     showSuccess('Video prete. Verifie le template avant de passer a la publication.')
+    if (setCurrentRenderRunId) setCurrentRenderRunId(null)
   }).catch((error: unknown) => {
+    if (setCurrentRenderRunId) setCurrentRenderRunId(null)
     showError(error, "L'initialisation publish n'a pas abouti.")
   })
 

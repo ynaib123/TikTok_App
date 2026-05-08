@@ -25,6 +25,11 @@ export const templates: TemplateDescriptor[] = [
     compositionId: 'tiktok-clean-minimal',
     description: 'Minimaliste, ligne par ligne, sous-titres soignés.',
   },
+  {
+    templateId: 'tiktok-scene-sequence',
+    compositionId: 'tiktok-scene-sequence',
+    description: 'Multi-scènes (contrat 1.1.0): un clip Pexels par scène, crossfade, texte par scène.',
+  },
 ]
 
 const DEFAULT_COMPOSITION_ID = 'tiktok-pro-vertical'

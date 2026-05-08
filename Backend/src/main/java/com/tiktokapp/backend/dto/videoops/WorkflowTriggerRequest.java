@@ -24,6 +24,26 @@ public class WorkflowTriggerRequest {
     @Size(max = 32)
     private String qualityProfile;
 
+    // Paramètres de génération idée + script (étape 1 du parcours TikTok).
+    @Size(max = 32)
+    private String hookStyle;
+    @Size(max = 32)
+    private String scriptFormat;
+    @Size(max = 32)
+    private String tone;
+    @Size(max = 32)
+    private String audience;
+    @Size(max = 32)
+    private String durationTarget;
+    @Size(max = 8)
+    private String language;
+    private Double temperature;
+    @Size(max = 1000)
+    private String inspirationRef;
+    @Min(1)
+    @Max(10)
+    private Integer sceneCount;
+
     public Long getContentIdeaId() {
         return contentIdeaId;
     }
@@ -119,4 +139,31 @@ public class WorkflowTriggerRequest {
     public void setQualityProfile(String qualityProfile) {
         this.qualityProfile = qualityProfile;
     }
+
+    public String getHookStyle() { return hookStyle; }
+    public void setHookStyle(String hookStyle) { this.hookStyle = hookStyle; }
+
+    public String getScriptFormat() { return scriptFormat; }
+    public void setScriptFormat(String scriptFormat) { this.scriptFormat = scriptFormat; }
+
+    public String getTone() { return tone; }
+    public void setTone(String tone) { this.tone = tone; }
+
+    public String getAudience() { return audience; }
+    public void setAudience(String audience) { this.audience = audience; }
+
+    public String getDurationTarget() { return durationTarget; }
+    public void setDurationTarget(String durationTarget) { this.durationTarget = durationTarget; }
+
+    public String getLanguage() { return language; }
+    public void setLanguage(String language) { this.language = language; }
+
+    public Double getTemperature() { return temperature; }
+    public void setTemperature(Double temperature) { this.temperature = temperature; }
+
+    public String getInspirationRef() { return inspirationRef; }
+    public void setInspirationRef(String inspirationRef) { this.inspirationRef = inspirationRef; }
+
+    public Integer getSceneCount() { return sceneCount; }
+    public void setSceneCount(Integer sceneCount) { this.sceneCount = sceneCount; }
 }

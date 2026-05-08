@@ -100,6 +100,16 @@ public class VideoOpsInternalProxyService {
         return sendJson(request, "RenderVideo");
     }
 
+    public JsonNode proxyRenderVideoProgress(long workflowRunId) {
+        String baseUrl = normalizeBaseUrl(properties.getRenderVideo().getBaseUrl(), "http://localhost:8090");
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/progress/" + workflowRunId))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+        return sendJson(request, "RenderVideo");
+    }
+
     @SuppressWarnings("unused")
     private JsonNode proxyRenderVideoFallback(JsonNode requestBody, Throwable cause) {
         logger.warn("renderVideo circuit breaker open or retries exhausted: {}", cause.getMessage());

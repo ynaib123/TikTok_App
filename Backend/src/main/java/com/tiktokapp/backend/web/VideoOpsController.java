@@ -314,6 +314,13 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsInternalProxyService.proxyRenderVideo(request));
     }
 
+    @GetMapping("/render-video/progress/{workflowRunId}")
+    public ResponseEntity<JsonNode> getRenderVideoProgress(@PathVariable long workflowRunId) {
+        // Endpoint admin-auth (pas internal-secret) — appelé par le frontend pour
+        // suivre l'avancement d'un rendu en cours.
+        return ResponseEntity.ok(videoOpsInternalProxyService.proxyRenderVideoProgress(workflowRunId));
+    }
+
     @PostMapping("/workflows/main-pipeline")
     public ResponseEntity<VideoWorkflowActionResponse> triggerMainPipeline(
             @Valid @RequestBody(required = false) WorkflowTriggerRequest request,
@@ -336,6 +343,33 @@ public class VideoOpsController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(videoOpsService.triggerInitPublish(request, authentication.getName()));
+    }
+
+    /**
+     * Endpoint admin pour mettre à jour le contenu éditable d une content_idea
+     * (topic, script, caption, keyword) depuis le parcours TikTok côté UI.
+     * Whitelist stricte des champs : on n autorise pas la modif des statuts /
+     * timestamps / urls / ids depuis ici (ils restent gérés par les workflows).
+     */
+    @PatchMapping("/content-ideas/{contentIdeaId}")
+    public ResponseEntity<JsonNode> patchContentIdeaAdmin(
+            @PathVariable long contentIdeaId,
+            @RequestBody Map<String, Object> patch,
+            Authentication authentication
+    ) {
+        Map<String, Object> safe = new LinkedHashMap<>();
+        if (patch.containsKey("topic")) safe.put("topic", patch.get("topic"));
+        if (patch.containsKey("script")) safe.put("scripts", patch.get("script"));
+        if (patch.containsKey("scripts")) safe.put("scripts", patch.get("scripts"));
+        if (patch.containsKey("caption")) safe.put("caption", patch.get("caption"));
+        if (patch.containsKey("keyword")) safe.put("background_keyword", patch.get("keyword"));
+        if (patch.containsKey("backgroundKeyword")) safe.put("background_keyword", patch.get("backgroundKeyword"));
+        if (safe.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aucun champ modifiable fourni.");
+        }
+        logger.info("admin patch content_idea contentIdeaId={} keys={} requestedBy={}",
+                contentIdeaId, safe.keySet(), authentication.getName());
+        return ResponseEntity.ok(videoOpsDataService.patchContentIdea(contentIdeaId, safe));
     }
 
     @PostMapping("/content-ideas/{contentIdeaId}/upload")
