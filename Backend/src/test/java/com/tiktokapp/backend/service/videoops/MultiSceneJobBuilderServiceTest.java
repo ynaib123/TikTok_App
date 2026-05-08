@@ -135,8 +135,7 @@ class MultiSceneJobBuilderServiceTest {
                 () -> assertEquals(2, result.renderJob().get("assets").get("scenes").size()),
                 () -> assertEquals("Scene planifiee un", firstScene.get("text").asText()),
                 () -> assertEquals("chef pasta", firstScene.get("mediaQuery").asText()),
-                () -> assertEquals("macro food", firstScene.get("cameraMood").asText()),
-                () -> assertEquals("hook", firstScene.get("overlayPriority").asText())
+                () -> assertEquals("macro food", firstScene.get("emotion").asText())
         );
     }
 

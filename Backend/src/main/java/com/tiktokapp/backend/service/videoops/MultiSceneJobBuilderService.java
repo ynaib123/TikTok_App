@@ -160,7 +160,6 @@ public class MultiSceneJobBuilderService {
             sceneNode.put("text", truncate(spec.text(), 240));
             putNullable(sceneNode, "emotion", truncate(spec.emotion(), 60));
             putNullable(sceneNode, "mediaQuery", truncate(spec.mediaQuery(), 240));
-            addPlannedSceneMetadata(sceneNode, idea.getPlannedScenes(), i);
             ObjectNode media = sceneNode.putObject("media");
             media.put("url", pick.url());
             media.put("provider", pick.provider());
@@ -218,23 +217,6 @@ public class MultiSceneJobBuilderService {
             return specs;
         } catch (Exception ignored) {
             return List.of();
-        }
-    }
-
-    private void addPlannedSceneMetadata(ObjectNode sceneNode, String plannedScenesJson, int index) {
-        if (plannedScenesJson == null || plannedScenesJson.isBlank()) {
-            return;
-        }
-        try {
-            JsonNode root = objectMapper.readTree(plannedScenesJson);
-            if (!root.isArray() || root.size() <= index) {
-                return;
-            }
-            JsonNode planned = root.get(index);
-            putNullable(sceneNode, "cameraMood", truncate(firstText(planned, "cameraMood", "mood"), 80));
-            putNullable(sceneNode, "overlayPriority", truncate(firstText(planned, "overlayPriority", "priority"), 40));
-        } catch (Exception ignored) {
-            // planned_scenes is an enhancement. Rendering still works from script fallback.
         }
     }
 

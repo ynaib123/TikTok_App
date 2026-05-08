@@ -138,7 +138,12 @@
           "specifyBody": "json",
           "jsonBody": "={{ JSON.stringify($('Build Render Job').item.json.renderJob) }}",
           "options": {
-            "timeout": 600000
+            "timeout": 900000,
+            "retry": {
+              "maxRetries": 2,
+              "delayMultiplier": 2,
+              "initialDelay": 30000
+            }
           }
         },
         "id": "render-video",
