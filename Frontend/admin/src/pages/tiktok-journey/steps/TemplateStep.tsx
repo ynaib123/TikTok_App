@@ -12,20 +12,61 @@ import { Button } from '../../../design-system'
 import { PexelsGallerySkeleton } from './PexelsSkeleton'
 
 /**
- * Step 3 — Pexels media picker.
+ * Step 2 — merged Template + Médias.
  *
- *   Left   : scene-by-scene assignment list. Click a slot to make it the
- *            current one; click a Pexels tile to fill it.
- *   Middle : Pexels gallery for the active idea's keyword.
- *   Right  : TikTok 9:16 carousel previewing each scene paired with its
- *            assigned video and the matching text overlay. Prev / next
- *            arrows + dot indicators keep the carousel in sync with the
- *            assignment list (both share `activeSlot`).
+ *   Left   : grouped style controls (position / typography / appearance).
+ *            Suivant button at the bottom.
+ *   Middle : Pexels keyword search + gallery (2 cards per row) and a compact
+ *            scene strip showing which slot is currently being filled.
+ *   Right  : TikTok 9:16 carousel previewing each scene paired with the
+ *            assigned video, the matching scene text, and the live style
+ *            settings from the left panel. Prev / next arrows + dot
+ *            indicators stay in sync with the active slot.
+ *
+ * The carousel doubles as the scene navigator — picking a scene in the
+ * carousel is the same as picking it in the strip; clicking a Pexels tile
+ * fills that scene and advances to the next one.
  */
 
+const FONT_OPTIONS = [
+  { value: 'Inter', label: 'Inter' },
+  { value: 'Arial', label: 'Arial' },
+  { value: 'Georgia', label: 'Georgia' },
+  { value: 'Impact', label: 'Impact' },
+  { value: 'Poppins, system-ui, sans-serif', label: 'Poppins (system)' },
+]
+
+const FONT_WEIGHT_OPTIONS = [
+  { value: 400, label: 'Regular' },
+  { value: 600, label: 'Semibold' },
+  { value: 800, label: 'Bold' },
+  { value: 900, label: 'Black' },
+]
+
+const SHADOW_OPTIONS: Array<{ value: 'none' | 'soft' | 'strong'; label: string }> = [
+  { value: 'none', label: 'Aucune' },
+  { value: 'soft', label: 'Douce' },
+  { value: 'strong', label: 'Forte' },
+]
+
+const SHADOW_CSS: Record<'none' | 'soft' | 'strong', string> = {
+  none: 'none',
+  soft: '0 1px 6px rgba(0, 0, 0, 0.45)',
+  strong: '0 2px 16px rgba(0, 0, 0, 0.7), 0 0 4px rgba(0, 0, 0, 0.4)',
+}
+
+const STYLE_DEFAULTS = {
+  textX: 50,
+  textY: 48,
+  textColor: '#ffffff',
+  fontFamily: 'Inter',
+  fontSize: 36,
+  fontWeight: 800,
+  uppercase: true,
+  shadow: 'strong' as const,
+}
+
 // Pause + detach src on a <video>, aborting any in-flight metadata fetch.
-// Without this, switching searches or unmounting the step can leave the
-// browser holding onto buffered video data tied to the previous query.
 function releaseVideoElement(video: HTMLVideoElement | null) {
   if (!video) return
   try {
@@ -33,8 +74,15 @@ function releaseVideoElement(video: HTMLVideoElement | null) {
     video.removeAttribute('src')
     video.load()
   } catch {
-    // best-effort cleanup; never throw during unmount
+    // best-effort cleanup
   }
+}
+
+function pickPortraitFile(video: PexelsVideo): string | null {
+  const files = video.video_files || []
+  const portrait = files.filter((f) => f.height > f.width)
+  portrait.sort((a, b) => Math.abs(1080 - a.width) - Math.abs(1080 - b.width))
+  return (portrait[0] || files[0])?.link || null
 }
 
 export default function TemplateStep() {
@@ -43,6 +91,28 @@ export default function TemplateStep() {
   const idea = p.scriptedIdea || p.selectedGeneratedIdea
   const sceneCount = Math.max(1, Math.min(10, p.generationSceneCount || 1))
 
+  // ----- Style controls (live-bound to the carousel preview overlay) -------
+  const [textX, setTextX] = useState(STYLE_DEFAULTS.textX)
+  const [textY, setTextY] = useState(STYLE_DEFAULTS.textY)
+  const [textColor, setTextColor] = useState(STYLE_DEFAULTS.textColor)
+  const [fontFamily, setFontFamily] = useState(STYLE_DEFAULTS.fontFamily)
+  const [fontSize, setFontSize] = useState(STYLE_DEFAULTS.fontSize)
+  const [fontWeight, setFontWeight] = useState<number>(STYLE_DEFAULTS.fontWeight)
+  const [uppercase, setUppercase] = useState<boolean>(STYLE_DEFAULTS.uppercase)
+  const [shadow, setShadow] = useState<'none' | 'soft' | 'strong'>(STYLE_DEFAULTS.shadow)
+
+  const resetStyleDefaults = () => {
+    setTextX(STYLE_DEFAULTS.textX)
+    setTextY(STYLE_DEFAULTS.textY)
+    setTextColor(STYLE_DEFAULTS.textColor)
+    setFontFamily(STYLE_DEFAULTS.fontFamily)
+    setFontSize(STYLE_DEFAULTS.fontSize)
+    setFontWeight(STYLE_DEFAULTS.fontWeight)
+    setUppercase(STYLE_DEFAULTS.uppercase)
+    setShadow(STYLE_DEFAULTS.shadow)
+  }
+
+  // ----- Scene state --------------------------------------------------------
   useEffect(() => {
     p.setSelectedSceneMediaUrls((current) => {
       const next = current.slice(0, sceneCount)
@@ -57,10 +127,8 @@ export default function TemplateStep() {
     if (activeSlot >= sceneCount) setActiveSlot(Math.max(0, sceneCount - 1))
   }, [sceneCount, activeSlot])
 
+  // ----- Pexels search ------------------------------------------------------
   const defaultQuery = String(idea?.keyword || idea?.topic || p.editedKeyword || '').trim() || 'lifestyle'
-  // `query` is the value visible in the search input (controlled).
-  // `committedQuery` is the value React Query actually fetches against — only
-  // updated on submit so each keystroke does not trigger a network call.
   const [query, setQuery] = useState<string>(defaultQuery)
   const [committedQuery, setCommittedQuery] = useState<string>(defaultQuery)
   useEffect(() => {
@@ -91,16 +159,13 @@ export default function TemplateStep() {
   const isSearching = pexelsQuery.isFetching
   const searchError = pexelsQuery.isError ? (pexelsQuery.error?.message || 'Recherche échouée') : null
 
-  // Mirror the React Query result back into the global flow state so workspace
-  // save / leave / resume can reuse the active query string.
+  // Mirror the React Query result into the global flow state for workspace
+  // save / leave / resume.
   useEffect(() => {
     if (!pexelsQuery.data) return
     p.setPexelsCache({ query: trimmedCommittedQuery, videos: pexelsQuery.data.videos })
-    setCarouselIndex(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pexelsQuery.data, trimmedCommittedQuery])
-
-  const [carouselIndex, setCarouselIndex] = useState<number>(0)
 
   // Track every <video> currently rendered in the gallery so we can pause and
   // release them when the search switches or the step unmounts.
@@ -130,13 +195,7 @@ export default function TemplateStep() {
     setCommittedQuery(trimmed)
   }
 
-  const pickPortraitFile = (video: PexelsVideo): string | null => {
-    const files = video.video_files || []
-    const portrait = files.filter((f) => f.height > f.width)
-    portrait.sort((a, b) => Math.abs(1080 - a.width) - Math.abs(1080 - b.width))
-    return (portrait[0] || files[0])?.link || null
-  }
-
+  // ----- Slot assignment helpers -------------------------------------------
   const assignSlot = (slotIndex: number, url: string) => {
     p.setSelectedSceneMediaUrls((current) => {
       const next = [...current]
@@ -144,19 +203,7 @@ export default function TemplateStep() {
       next[slotIndex] = url
       return next
     })
-    if (slotIndex < sceneCount - 1) {
-      setActiveSlot(slotIndex + 1)
-    }
-  }
-
-  const clearSlot = (slotIndex: number) => {
-    p.setSelectedSceneMediaUrls((current) => {
-      const next = [...current]
-      while (next.length < sceneCount) next.push('')
-      next[slotIndex] = ''
-      return next
-    })
-    setActiveSlot(slotIndex)
+    if (slotIndex < sceneCount - 1) setActiveSlot(slotIndex + 1)
   }
 
   const clearVideo = (url: string) => {
@@ -166,8 +213,7 @@ export default function TemplateStep() {
   const filledSlots = p.selectedSceneMediaUrls.filter((u) => Boolean(u && u.trim())).length
   const allFilled = filledSlots === sceneCount
 
-  // Scene text per slot — same source the renderer consumes (planned scenes
-  // when present, otherwise the script split sentence-by-sentence).
+  // ----- Carousel scene texts ----------------------------------------------
   const sceneTexts = useMemo(() => {
     const raw = getIdeaSceneTexts(idea, p.editedScript)
     return normalizeSceneCount(raw, sceneCount)
@@ -180,78 +226,131 @@ export default function TemplateStep() {
   const goNextScene = () => setActiveSlot((index) => (index + 1) % sceneCount)
 
   return (
-    <div className="journey-wizard-grid is-media-stage">
-      <aside className="journey-wizard-grid-side journey-media-side">
-        <div className="journey-wizard-side-card is-wide">
-          <span className="journey-wizard-card-label">{t('media.assignmentLabel')}</span>
-          <div
-            className="journey-media-assignment-list"
-            role="radiogroup"
-            aria-label={t('media.assignmentLabel')}
-          >
-            {Array.from({ length: sceneCount }).map((_, index) => {
-              const selectedUrl = p.selectedSceneMediaUrls[index] || ''
-              const isActive = index === activeSlot
-              return (
-                <div
-                  key={index}
-                  role="radio"
-                  tabIndex={0}
-                  aria-checked={isActive}
-                  aria-label={`Scène ${index + 1}${selectedUrl ? ' (assignée)' : ' (vide)'}`}
-                  className={`journey-media-assignment ${isActive ? 'is-active' : ''} ${selectedUrl ? 'is-filled' : ''}`}
-                  onClick={() => setActiveSlot(index)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      setActiveSlot(index)
-                    }
+    <div className="journey-wizard-grid is-media-stage is-template-merged">
+      {/* ── Left : style parameters + Suivant ─────────────────────────── */}
+      <aside className="journey-wizard-grid-side journey-template-side">
+        <div className="journey-wizard-side-card is-narrow journey-style-card">
+          <div className="journey-style-card-head">
+            <span className="journey-wizard-card-label">Paramètres</span>
+            <button
+              type="button"
+              className="journey-style-reset"
+              onClick={resetStyleDefaults}
+              aria-label="Réinitialiser les paramètres"
+            >
+              Réinitialiser
+            </button>
+          </div>
+
+          <section className="journey-style-section" aria-labelledby="merged-section-position">
+            <h3 id="merged-section-position" className="journey-style-section-title">Position</h3>
+            <div className="journey-style-row">
+              <div className="journey-style-row-head">
+                <label htmlFor="merged-text-y">Verticale</label>
+                <span className="journey-style-row-value">{textY}%</span>
+              </div>
+              <input id="merged-text-y" type="range" min={6} max={94} value={textY} onChange={(e) => setTextY(Number(e.target.value))} />
+            </div>
+            <div className="journey-style-row">
+              <div className="journey-style-row-head">
+                <label htmlFor="merged-text-x">Horizontale</label>
+                <span className="journey-style-row-value">{textX}%</span>
+              </div>
+              <input id="merged-text-x" type="range" min={6} max={94} value={textX} onChange={(e) => setTextX(Number(e.target.value))} />
+            </div>
+          </section>
+
+          <section className="journey-style-section" aria-labelledby="merged-section-typo">
+            <h3 id="merged-section-typo" className="journey-style-section-title">Typographie</h3>
+            <div className="journey-style-row">
+              <div className="journey-style-row-head">
+                <label htmlFor="merged-text-size">Taille</label>
+                <span className="journey-style-row-value">{fontSize}px</span>
+              </div>
+              <input id="merged-text-size" type="range" min={14} max={80} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} />
+            </div>
+            <div className="journey-style-grid-2">
+              <div className="journey-style-row">
+                <label htmlFor="merged-font">Police</label>
+                <select id="merged-font" className="journey-step-select" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}>
+                  {FONT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="journey-style-row">
+                <label htmlFor="merged-font-weight">Graisse</label>
+                <select id="merged-font-weight" className="journey-step-select" value={fontWeight} onChange={(e) => setFontWeight(Number(e.target.value))}>
+                  {FONT_WEIGHT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <label className="journey-style-toggle">
+              <input type="checkbox" checked={uppercase} onChange={(e) => setUppercase(e.target.checked)} />
+              <span>Majuscules</span>
+            </label>
+          </section>
+
+          <section className="journey-style-section" aria-labelledby="merged-section-color">
+            <h3 id="merged-section-color" className="journey-style-section-title">Apparence</h3>
+            <div className="journey-style-row">
+              <div className="journey-style-row-head">
+                <label htmlFor="merged-text-color">Couleur du texte</label>
+                <span className="journey-style-color-value">{textColor.toUpperCase()}</span>
+              </div>
+              <div className="journey-style-color-pair">
+                <input id="merged-text-color" className="journey-color-input" type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+                <input
+                  type="text"
+                  className="journey-step-select journey-style-color-hex"
+                  value={textColor}
+                  onChange={(e) => {
+                    const next = e.target.value.trim()
+                    if (/^#[0-9a-fA-F]{0,6}$/.test(next) || next === '') setTextColor(next)
                   }}
-                >
-                  <span className="journey-media-assignment-thumb">
-                    {selectedUrl ? (
-                      <video src={selectedUrl} muted playsInline preload="metadata" />
-                    ) : (
-                      <span>{t('media.assignmentEmpty')}</span>
-                    )}
-                  </span>
-                  <span className="journey-media-assignment-index">{`Scène ${index + 1}`}</span>
-                  <span className="journey-media-assignment-copy">
-                    {selectedUrl ? t('media.assignmentVideoPicked') : t('media.assignmentVideoPick')}
-                  </span>
-                  {selectedUrl ? (
+                  maxLength={7}
+                  spellCheck={false}
+                  aria-label="Couleur hexadécimale"
+                />
+              </div>
+            </div>
+            <div className="journey-style-row">
+              <label>Ombre du texte</label>
+              <div className="journey-style-segmented" role="radiogroup" aria-label="Ombre du texte">
+                {SHADOW_OPTIONS.map((option) => {
+                  const active = option.value === shadow
+                  return (
                     <button
+                      key={option.value}
                       type="button"
-                      className="journey-media-assignment-clear"
-                      aria-label={t('media.assignmentRemoveAria', { index: index + 1 })}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        clearSlot(index)
-                      }}
+                      role="radio"
+                      aria-checked={active}
+                      className={`journey-style-segmented-item ${active ? 'is-active' : ''}`}
+                      onClick={() => setShadow(option.value)}
                     >
-                      {t('common.remove')}
+                      {option.label}
                     </button>
-                  ) : null}
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+          <div className="journey-step-cta journey-step-cta-stack">
+            <Button
+              variant="primary"
+              onClick={p.handleValidateMedia}
+              disabled={p.isBusy || !idea || !allFilled}
+            >
+              {t('common.next')}
+            </Button>
           </div>
-          <div className="journey-media-assignment-footer">
-            <span>{t('media.scenesReady', { filled: filledSlots, total: sceneCount })}</span>
-            <span>{t('media.activeScene', { index: activeSlot + 1 })}</span>
-          </div>
-        </div>
-        <div className="journey-step-cta journey-step-cta-stack">
-          <Button
-            variant="primary"
-            onClick={p.handleValidateMedia}
-            disabled={p.isBusy || !idea || !allFilled}
-          >
-            {t('common.next')}
-          </Button>
         </div>
       </aside>
 
+      {/* ── Middle : search + gallery (2 cards / row) ─────────────────── */}
       <section className="journey-media-middle">
         <div className="journey-media-gallery-head">
           <div className="journey-media-gallery-title">
@@ -280,11 +379,7 @@ export default function TemplateStep() {
               placeholder={t('media.searchPlaceholder')}
               disabled={isSearching}
             />
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={isSearching || !query.trim()}
-            >
+            <Button type="submit" variant="secondary" disabled={isSearching || !query.trim()}>
               {isSearching ? t('common.searching') : t('common.search')}
             </Button>
           </form>
@@ -296,22 +391,24 @@ export default function TemplateStep() {
             <p>{searchError}</p>
           </div>
         ) : isSearching && videos.length === 0 ? (
-          <PexelsGallerySkeleton tiles={9} />
+          <PexelsGallerySkeleton tiles={8} />
         ) : videos.length === 0 ? (
           <div className="journey-empty">
             <strong>{t('media.noVideoTitle')}</strong>
             <p>{t('media.noVideoSub')}</p>
           </div>
         ) : (
-          <div className="journey-media-grid" role="listbox" aria-label={t('media.galleryLabel')}>
-            {videos.map((video, vIdx) => {
+          <div
+            className="journey-media-grid is-two-cols"
+            role="listbox"
+            aria-label={t('media.galleryLabel')}
+          >
+            {videos.map((video) => {
               const url = pickPortraitFile(video)
               if (!url) return null
               const usedAtIndex = p.selectedSceneMediaUrls.findIndex((u) => u === url)
               const isUsed = usedAtIndex >= 0
-              const isFocused = vIdx === carouselIndex
               const handleSelect = () => {
-                setCarouselIndex(vIdx)
                 if (isUsed) setActiveSlot(usedAtIndex)
                 else assignSlot(activeSlot, url)
               }
@@ -324,7 +421,7 @@ export default function TemplateStep() {
                   aria-label={isUsed
                     ? t('media.assignmentVideoPicked') + ` (${usedAtIndex + 1})`
                     : t('media.assignTo', { index: activeSlot + 1 })}
-                  className={`journey-media-card ${isUsed ? 'is-used' : ''} ${isFocused ? 'is-focused' : ''}`}
+                  className={`journey-media-card ${isUsed ? 'is-used' : ''}`}
                   onClick={handleSelect}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -333,40 +430,42 @@ export default function TemplateStep() {
                     }
                   }}
                 >
-                  <video
-                    ref={registerVideoRef}
-                    src={url}
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                    className="journey-media-card-video"
-                    onMouseEnter={(e) => void (e.currentTarget as HTMLVideoElement).play()}
-                    onMouseLeave={(e) => {
-                      const v = e.currentTarget as HTMLVideoElement
-                      v.pause()
-                      v.currentTime = 0
-                    }}
-                  />
-                  {isUsed ? (
-                    <span className="journey-media-card-badge">Scene {usedAtIndex + 1}</span>
-                  ) : null}
-                  <div className="journey-media-card-actions">
+                  <div className="journey-media-card-frame">
+                    <video
+                      ref={registerVideoRef}
+                      src={url}
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="journey-media-card-video"
+                      onMouseEnter={(e) => void (e.currentTarget as HTMLVideoElement).play()}
+                      onMouseLeave={(e) => {
+                        const v = e.currentTarget as HTMLVideoElement
+                        v.pause()
+                        v.currentTime = 0
+                      }}
+                    />
                     {isUsed ? (
-                      <button
-                        type="button"
-                        className="journey-media-card-action is-danger"
-                        aria-label={t('media.deselectFromScene', { index: usedAtIndex + 1 })}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          clearVideo(url)
-                        }}
-                      >
-                        {t('common.deselect')}
-                      </button>
-                    ) : (
-                      <span className="journey-media-card-action">{t('media.assignTo', { index: activeSlot + 1 })}</span>
-                    )}
+                      <span className="journey-media-card-badge">Scène {usedAtIndex + 1}</span>
+                    ) : null}
+                    <div className="journey-media-card-actions">
+                      {isUsed ? (
+                        <button
+                          type="button"
+                          className="journey-media-card-action is-danger"
+                          aria-label={t('media.deselectFromScene', { index: usedAtIndex + 1 })}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            clearVideo(url)
+                          }}
+                        >
+                          {t('common.deselect')}
+                        </button>
+                      ) : (
+                        <span className="journey-media-card-action">{t('media.assignTo', { index: activeSlot + 1 })}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="journey-media-card-meta">
                     <span>{video.width}×{video.height}</span>
@@ -379,6 +478,7 @@ export default function TemplateStep() {
         )}
       </section>
 
+      {/* ── Right : TikTok 9:16 carousel preview ──────────────────────── */}
       <aside className="journey-media-preview">
         <div className="journey-template-head">
           <span className="journey-wizard-card-label">{t('templateStyle.previewLabel')}</span>
@@ -408,20 +508,20 @@ export default function TemplateStep() {
           <div
             className="journey-template-preview-text"
             style={{
-              left: '50%',
-              top: '48%',
-              color: '#ffffff',
-              fontFamily: 'Inter',
-              textShadow: '0 2px 16px rgba(0, 0, 0, 0.7), 0 0 4px rgba(0, 0, 0, 0.4)',
+              left: `${textX}%`,
+              top: `${textY}%`,
+              color: textColor,
+              fontFamily,
+              textShadow: SHADOW_CSS[shadow],
             }}
             key={activeSlot}
           >
             <strong
               style={{
-                fontSize: '28px',
+                fontSize: `${fontSize}px`,
                 lineHeight: 1.1,
-                fontWeight: 800,
-                textTransform: 'uppercase',
+                fontWeight,
+                textTransform: uppercase ? 'uppercase' : 'none',
               }}
             >
               {currentSceneText || '—'}
@@ -455,20 +555,25 @@ export default function TemplateStep() {
           <div className="journey-media-carousel-dots" role="tablist" aria-label="Scènes">
             {Array.from({ length: sceneCount }).map((_, index) => {
               const isActive = index === activeSlot
+              const isFilled = Boolean(p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim())
               return (
                 <button
                   key={index}
                   type="button"
                   role="tab"
                   aria-selected={isActive}
-                  aria-label={`Aller à la scène ${index + 1}`}
-                  className={`journey-media-carousel-dot ${isActive ? 'is-active' : ''}`}
+                  aria-label={`Aller à la scène ${index + 1}${isFilled ? ' (assignée)' : ' (vide)'}`}
+                  className={`journey-media-carousel-dot ${isActive ? 'is-active' : ''} ${isFilled ? 'is-filled' : ''}`}
                   onClick={() => setActiveSlot(index)}
                 />
               )
             })}
           </div>
         ) : null}
+        <div className="journey-media-assignment-footer">
+          <span>{t('media.scenesReady', { filled: filledSlots, total: sceneCount })}</span>
+          <span>{t('media.activeScene', { index: activeSlot + 1 })}</span>
+        </div>
       </aside>
     </div>
   )

@@ -3172,9 +3172,10 @@ input.journey-step-select {
 .journey-media-grid {
   flex: 1 1 auto;
   display: grid;
-  /* 3 colonnes fixes (la specs user). Sur très petit écran, fallback à 2. */
+  /* 2 colonnes fixes (specs user). Le mode `is-two-cols` reformatte les cards
+     en cards-with-meta-below pour la version fusionnée Template + Médias. */
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
   overflow-y: auto;
   padding: 6px 6px 10px;
   align-content: start;
@@ -3182,7 +3183,116 @@ input.journey-step-select {
 
 @media (max-width: 760px) {
   .journey-media-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Cards 2 par ligne (merged step) ----------------------------------- */
+.journey-media-grid.is-two-cols {
+  gap: 14px;
+}
+
+/* In the merged step the cards are proper containers with a 9:16 video frame
+   and a meta row underneath — no more absolutely-positioned metadata bleeding
+   over neighbouring cards on hover (the overlap the user reported). */
+.journey-media-grid.is-two-cols .journey-media-card {
+  aspect-ratio: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-panel-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 6px 18px -14px rgba(0, 0, 0, 0.7);
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 160ms ease;
+}
+
+.journey-media-grid.is-two-cols .journey-media-card:hover {
+  border-color: var(--admin-warm-border-strong);
+  /* Subtle lift only — no Z-axis offset large enough to cover the neighbour. */
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.55);
+}
+
+.journey-media-grid.is-two-cols .journey-media-card.is-used {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 1px var(--admin-accent) inset, 0 6px 18px -14px rgba(0, 0, 0, 0.7);
+}
+
+.journey-media-grid.is-two-cols .journey-media-card.is-focused {
+  border-color: var(--admin-warm-strong);
+  box-shadow: 0 0 0 2px var(--admin-warm-strong) inset, 0 10px 28px -14px rgba(0, 0, 0, 0.55);
+}
+
+.journey-media-grid.is-two-cols .journey-media-card-frame {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  width: 100%;
+  background: var(--admin-panel-black);
+  overflow: hidden;
+}
+
+.journey-media-grid.is-two-cols .journey-media-card-frame .journey-media-card-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.journey-media-grid.is-two-cols .journey-media-card-frame .journey-media-card-badge {
+  top: 10px;
+  left: 10px;
+}
+
+.journey-media-grid.is-two-cols .journey-media-card-frame .journey-media-card-actions {
+  position: absolute;
+  inset: auto 10px 10px 10px;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.journey-media-grid.is-two-cols .journey-media-card-meta {
+  position: static;
+  inset: auto;
+  background: transparent;
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--admin-border-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The merged Template step keeps the existing is-media-stage 3-column grid
+   shape but tightens spacing and rebalances the columns so the right-hand
+   carousel preview gets a fixed TikTok 9:16 size and the gallery breathes. */
+.journey-wizard-grid.is-media-stage.is-template-merged {
+  grid-template-columns: var(--journey-param-width) minmax(0, 1fr) auto;
+}
+
+.journey-wizard-grid.is-media-stage.is-template-merged > .journey-media-preview {
+  width: min(360px, calc((100vh - 240px) * 9 / 16));
+  padding: 8px 8px 4px;
+  align-self: start;
+}
+
+@media (max-width: 1180px) {
+  .journey-wizard-grid.is-media-stage.is-template-merged {
+    grid-template-columns: var(--journey-param-width) minmax(0, 1fr);
+  }
+  .journey-wizard-grid.is-media-stage.is-template-merged > .journey-media-preview {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .journey-wizard-grid.is-media-stage.is-template-merged {
+    grid-template-columns: 1fr;
   }
 }
 

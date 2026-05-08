@@ -80,8 +80,7 @@ type PendingExitTarget =
 
 const STEPS = [
   { id: 'creation', label: 'Creation', sub: 'Generer une idee + script' },
-  { id: 'template-style', label: 'Template', sub: 'Choisir le style video' },
-  { id: 'template', label: 'Medias', sub: 'Choisir les videos par scene' },
+  { id: 'template', label: 'Template', sub: 'Style + medias par scene' },
   { id: 'init-publish', label: 'Video', sub: 'Rendre la video Remotion' },
   { id: 'upload', label: 'Publication', sub: 'Publier sur TikTok' },
 ]
@@ -271,6 +270,12 @@ export default function TikTokJourneyPage() {
   useEffect(() => {
     if (location.pathname === `${TIKTOK_BASE_ROUTE}/publish`) {
       navigate(`${TIKTOK_BASE_ROUTE}/upload`, { replace: true })
+    }
+    // Backwards compat: the previous template-style step has been merged into
+    // /tiktok/template. Bookmarks / saved workspaces from older sessions land
+    // on the new merged step instead of 404'ing.
+    if (location.pathname === `${TIKTOK_BASE_ROUTE}/template-style`) {
+      navigate(`${TIKTOK_BASE_ROUTE}/template`, { replace: true })
     }
   }, [location.pathname, navigate])
 
@@ -462,14 +467,14 @@ export default function TikTokJourneyPage() {
         return
       }
     }
-    goToStep('template-style')
+    goToStep('template')
   }
 
-  // Etape Template → étape Vidéo. Pas de side-effect, juste la navigation.
-  // Le templateId est déjà persisté dans selectedTemplateId (state local) et
-  // sera envoyé au workflow quand l'user lancera le rendu.
+  // Etape Template (fusion style + médias) → étape Vidéo. Pas de side-effect,
+  // juste la navigation. Les paramètres style et selectedSceneMediaUrls sont
+  // déjà persistés dans le flow state et envoyés au workflow de rendu.
   const handleValidateTemplate = () => {
-    goToStep('template')
+    goToStep('init-publish')
   }
 
   const handleValidateMedia = () => {

@@ -9,7 +9,6 @@ import { JourneyErrorBoundary } from './steps/JourneyErrorBoundary'
 // TikTok publish flow). Lazy-loading keeps the initial library route under
 // budget and only fetches the step the user is actually entering.
 const CreationStep = lazy(() => import('./steps/CreationStep'))
-const TemplateStyleStep = lazy(() => import('./steps/TemplateStyleStep'))
 const TemplateStep = lazy(() => import('./steps/TemplateStep'))
 const RenderStep = lazy(() => import('./steps/RenderStep'))
 const UploadStep = lazy(() => import('./steps/UploadStep'))
@@ -31,7 +30,6 @@ function StepFallback() {
 export default function TikTokStepScreen(props: TikTokStepScreenProps) {
   let body: JSX.Element
   if (props.currentStep.id === 'creation') body = <CreationStep />
-  else if (props.currentStep.id === 'template-style') body = <TemplateStyleStep />
   else if (props.currentStep.id === 'template') body = <TemplateStep />
   else if (props.currentStep.id === 'init-publish') body = <RenderStep />
   else if (props.currentStep.id === 'upload') body = <UploadStep />
