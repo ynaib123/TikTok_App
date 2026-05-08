@@ -3,6 +3,12 @@
     "title": "Loading step",
     "sub": "Preparing the interface..."
   },
+  "steps": {
+    "creation": { "label": "Creation", "sub": "Generate an idea + script" },
+    "template": { "label": "Template", "sub": "Style + media per scene" },
+    "render": { "label": "Video", "sub": "Render the Remotion video" },
+    "upload": { "label": "Publish", "sub": "Publish to TikTok" }
+  },
   "common": {
     "next": "Next →",
     "back": "Back",

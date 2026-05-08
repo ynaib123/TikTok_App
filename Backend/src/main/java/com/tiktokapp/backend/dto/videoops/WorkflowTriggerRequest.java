@@ -4,11 +4,21 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
 public class WorkflowTriggerRequest {
+
+    public static final int TOPIC_MAX = 500;
+    public static final int SCRIPT_MAX = 4000;
+    public static final int CAPTION_MAX = 2200;
+    public static final int KEYWORD_MAX = 240;
+    public static final int SOURCE_MAX = 120;
+    public static final int TIKTOK_ACCOUNT_OPENID_MAX = 190;
+    public static final int SCENE_MEDIA_URL_MAX = 1000;
+    public static final int SCENE_MEDIA_URLS_MAX_COUNT = 10;
 
     private Long contentIdeaId;
     @Size(max = 120)
@@ -16,11 +26,17 @@ public class WorkflowTriggerRequest {
     @Min(1)
     @Max(5)
     private Integer ideaCount;
+    @Size(max = TOPIC_MAX)
     private String topic;
+    @Size(max = SCRIPT_MAX)
     private String script;
+    @Size(max = CAPTION_MAX)
     private String caption;
+    @Size(max = KEYWORD_MAX)
     private String keyword;
+    @Size(max = SOURCE_MAX)
     private String source;
+    @Size(max = TIKTOK_ACCOUNT_OPENID_MAX)
     private String tiktokAccountOpenId;
     private Boolean force;
     @Size(max = 120)
@@ -54,7 +70,15 @@ public class WorkflowTriggerRequest {
     // URLs Pexels (ou autres) explicitement choisies par l'user dans l'étape
     // "Médias" du parcours TikTok. Une URL par scène, dans l'ordre des scènes.
     // Si null/vide, le scene-builder fait son auto-pick comme avant.
-    private List<String> selectedSceneMediaUrls;
+    //
+    // - taille capée à SCENE_MEDIA_URLS_MAX_COUNT pour éviter qu'un payload
+    //   gonflé déclenche une fan-out coûteuse côté n8n / scene-builder.
+    // - chaque URL est limitée à SCENE_MEDIA_URL_MAX caractères et doit
+    //   commencer par http(s) (les autres schemas — file://, javascript:, etc.
+    //   — ne sont jamais des sources légitimes Pexels/CDN).
+    @Size(max = SCENE_MEDIA_URLS_MAX_COUNT,
+            message = "selectedSceneMediaUrls limité à " + SCENE_MEDIA_URLS_MAX_COUNT + " entrées")
+    private List<@Size(max = SCENE_MEDIA_URL_MAX) @Pattern(regexp = "^https?://.+", message = "URL doit commencer par http:// ou https://") String> selectedSceneMediaUrls;
 
     public Long getContentIdeaId() {
         return contentIdeaId;

@@ -316,6 +316,28 @@ export async function fetchWorkflowRun(runId: number | string): Promise<Workflow
   return apiGet(`/video-ops/workflow-runs/${runId}`)
 }
 
+export interface WorkflowRunStatus {
+  id: number
+  workflowType: string | null
+  status: string | null
+  ageMs: number
+  terminal: boolean
+  errorMessage: string | null
+  createdAt: string | null
+  completedAt: string | null
+}
+
+/**
+ * Lightweight status poll. Use this from the frontend (every 5–10s) while a
+ * render / upload is in flight. Returns 404 if the run does not exist.
+ */
+export async function fetchWorkflowRunStatus(runId: number | string): Promise<WorkflowRunStatus> {
+  if (!runId) {
+    throw new Error('Le workflowRunId est obligatoire.')
+  }
+  return apiGet(`/video-ops/workflow-runs/${runId}/status`)
+}
+
 export async function fetchVideoOpsObservability(): Promise<VideoOpsObservability> {
   return apiGet('/video-ops/observability')
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useJourney } from '../JourneyContext'
@@ -10,6 +10,7 @@ import {
 import { getIdeaSceneTexts, normalizeSceneCount } from '../journeyHelpers'
 import { Button } from '../../../design-system'
 import { PexelsGallerySkeleton } from './PexelsSkeleton'
+import { PexelsGalleryGrid } from './PexelsGalleryGrid'
 
 /**
  * Step 2 — merged Template + Médias.
@@ -168,12 +169,14 @@ export default function TemplateStep() {
   }, [pexelsQuery.data, trimmedCommittedQuery])
 
   // Track every <video> currently rendered in the gallery so we can pause and
-  // release them when the search switches or the step unmounts.
+  // release them when the search switches or the step unmounts. The ref
+  // callback is memoized (stable identity) so that PexelsGalleryGrid's React
+  // .memo doesn't trip on a new function on every parent render.
   const videoRefs = useRef<Set<HTMLVideoElement>>(new Set())
-  const registerVideoRef = (node: HTMLVideoElement | null) => {
+  const registerVideoRef = useCallback((node: HTMLVideoElement | null) => {
     if (!node) return
     videoRefs.current.add(node)
-  }
+  }, [])
   useEffect(() => {
     return () => {
       videoRefs.current.forEach(releaseVideoElement)
@@ -196,19 +199,26 @@ export default function TemplateStep() {
   }
 
   // ----- Slot assignment helpers -------------------------------------------
-  const assignSlot = (slotIndex: number, url: string) => {
-    p.setSelectedSceneMediaUrls((current) => {
+  // useCallback so PexelsGalleryGrid (React.memo) doesn't re-render every time
+  // a style slider moves — its props stay referentially stable.
+  const setSelectedSceneMediaUrls = p.setSelectedSceneMediaUrls
+  const assignSlot = useCallback((slotIndex: number, url: string) => {
+    setSelectedSceneMediaUrls((current) => {
       const next = [...current]
       while (next.length < sceneCount) next.push('')
       next[slotIndex] = url
       return next
     })
     if (slotIndex < sceneCount - 1) setActiveSlot(slotIndex + 1)
-  }
+  }, [sceneCount, setSelectedSceneMediaUrls])
 
-  const clearVideo = (url: string) => {
-    p.setSelectedSceneMediaUrls((current) => current.map((value) => (value === url ? '' : value)))
-  }
+  const clearVideo = useCallback((url: string) => {
+    setSelectedSceneMediaUrls((current) => current.map((value) => (value === url ? '' : value)))
+  }, [setSelectedSceneMediaUrls])
+
+  const selectExistingSlot = useCallback((slotIndex: number) => {
+    setActiveSlot(slotIndex)
+  }, [])
 
   const filledSlots = p.selectedSceneMediaUrls.filter((u) => Boolean(u && u.trim())).length
   const allFilled = filledSlots === sceneCount
@@ -398,83 +408,16 @@ export default function TemplateStep() {
             <p>{t('media.noVideoSub')}</p>
           </div>
         ) : (
-          <div
-            className="journey-media-grid is-two-cols"
-            role="listbox"
-            aria-label={t('media.galleryLabel')}
-          >
-            {videos.map((video) => {
-              const url = pickPortraitFile(video)
-              if (!url) return null
-              const usedAtIndex = p.selectedSceneMediaUrls.findIndex((u) => u === url)
-              const isUsed = usedAtIndex >= 0
-              const handleSelect = () => {
-                if (isUsed) setActiveSlot(usedAtIndex)
-                else assignSlot(activeSlot, url)
-              }
-              return (
-                <div
-                  key={video.id}
-                  role="option"
-                  tabIndex={0}
-                  aria-selected={isUsed}
-                  aria-label={isUsed
-                    ? t('media.assignmentVideoPicked') + ` (${usedAtIndex + 1})`
-                    : t('media.assignTo', { index: activeSlot + 1 })}
-                  className={`journey-media-card ${isUsed ? 'is-used' : ''}`}
-                  onClick={handleSelect}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      handleSelect()
-                    }
-                  }}
-                >
-                  <div className="journey-media-card-frame">
-                    <video
-                      ref={registerVideoRef}
-                      src={url}
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                      className="journey-media-card-video"
-                      onMouseEnter={(e) => void (e.currentTarget as HTMLVideoElement).play()}
-                      onMouseLeave={(e) => {
-                        const v = e.currentTarget as HTMLVideoElement
-                        v.pause()
-                        v.currentTime = 0
-                      }}
-                    />
-                    {isUsed ? (
-                      <span className="journey-media-card-badge">Scène {usedAtIndex + 1}</span>
-                    ) : null}
-                    <div className="journey-media-card-actions">
-                      {isUsed ? (
-                        <button
-                          type="button"
-                          className="journey-media-card-action is-danger"
-                          aria-label={t('media.deselectFromScene', { index: usedAtIndex + 1 })}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            clearVideo(url)
-                          }}
-                        >
-                          {t('common.deselect')}
-                        </button>
-                      ) : (
-                        <span className="journey-media-card-action">{t('media.assignTo', { index: activeSlot + 1 })}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="journey-media-card-meta">
-                    <span>{video.width}×{video.height}</span>
-                    <span>{Math.round(video.duration)}s</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <PexelsGalleryGrid
+            videos={videos}
+            selectedSceneMediaUrls={p.selectedSceneMediaUrls}
+            activeSlot={activeSlot}
+            pickPortraitFile={pickPortraitFile}
+            onAssign={assignSlot}
+            onSelectExistingSlot={selectExistingSlot}
+            onClear={clearVideo}
+            registerVideoRef={registerVideoRef}
+          />
         )}
       </section>
 

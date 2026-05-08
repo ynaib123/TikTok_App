@@ -373,6 +373,34 @@ public class VideoOpsService {
         );
     }
 
+    /**
+     * Cheap status snapshot consumed by the frontend to poll an in-flight run
+     * without paying the cost of {@link #fetchWorkflowRun(long)} (which loads
+     * the response payload). Returns {@code 404} if the run does not exist.
+     */
+    @Transactional(readOnly = true)
+    public com.tiktokapp.backend.dto.videoops.VideoWorkflowRunStatusResponse fetchWorkflowRunStatus(long runId) {
+        VideoWorkflowRun run = workflowRunRepository.findById(runId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflowRun introuvable."));
+
+        VideoWorkflowRunStatus status = run.getStatus();
+        boolean terminal = status == VideoWorkflowRunStatus.SUCCEEDED || status == VideoWorkflowRunStatus.FAILED;
+        long ageMs = run.getCreatedAt() == null
+                ? 0L
+                : Math.max(0L, java.time.Duration.between(run.getCreatedAt(), java.time.Instant.now()).toMillis());
+
+        return new com.tiktokapp.backend.dto.videoops.VideoWorkflowRunStatusResponse(
+                run.getId(),
+                run.getWorkflowType() == null ? null : run.getWorkflowType().name(),
+                status == null ? null : status.name(),
+                ageMs,
+                terminal,
+                run.getErrorMessage(),
+                run.getCreatedAt() == null ? null : run.getCreatedAt().toString(),
+                run.getCompletedAt() == null ? null : run.getCompletedAt().toString()
+        );
+    }
+
     @Transactional
     public void deleteContentIdea(long contentIdeaId) {
         if (!contentIdeaRepository.existsById(contentIdeaId)) {

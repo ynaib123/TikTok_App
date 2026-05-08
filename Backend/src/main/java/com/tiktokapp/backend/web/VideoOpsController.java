@@ -275,6 +275,19 @@ public class VideoOpsController {
         return ResponseEntity.ok(videoOpsService.fetchWorkflowRun(runId));
     }
 
+    /**
+     * Lightweight status endpoint for frontend polling of in-flight runs.
+     * Designed to be hit every 5-10s while the user watches a render or upload
+     * progress; returns just the run status + age without the response payload.
+     */
+    @GetMapping("/workflow-runs/{runId}/status")
+    @Timed(value = "video_ops.workflow_run_status", description = "Lightweight workflow run status poll", histogram = true)
+    public ResponseEntity<com.tiktokapp.backend.dto.videoops.VideoWorkflowRunStatusResponse> getWorkflowRunStatus(
+            @PathVariable long runId
+    ) {
+        return ResponseEntity.ok(videoOpsService.fetchWorkflowRunStatus(runId));
+    }
+
     @PostMapping("/internal/alerts/notify")
     public ResponseEntity<Map<String, String>> notifyAlert(
             @Valid @RequestBody AlertNotifyRequest request,
@@ -541,10 +554,20 @@ public class VideoOpsController {
                 callbackSignature,
                 callbackSecret
         );
+        // Strict contract enforcement: a callback that declares an unsupported
+        // contract version is rejected with 412 PRECONDITION_FAILED so n8n
+        // surfaces the version mismatch immediately instead of advancing the
+        // run with a payload the backend may not understand. Missing header is
+        // tolerated for back-compat with legacy / replayed callbacks.
         if (contractVersion != null && !contractVersion.isBlank()
                 && !WorkflowContract.CONTRACT_VERSION.equals(contractVersion.trim())) {
-            logger.warn("Workflow callback runId={} declares contractVersion={} but backend expects {}",
+            logger.warn("Workflow callback runId={} contractVersion={} rejected (backend expects {})",
                     runId, contractVersion, WorkflowContract.CONTRACT_VERSION);
+            throw new ResponseStatusException(
+                    HttpStatus.PRECONDITION_FAILED,
+                    "Workflow contract version " + contractVersion.trim()
+                            + " incompatible avec le backend (" + WorkflowContract.CONTRACT_VERSION + ")."
+            );
         }
         logger.info("Workflow callback received runId={} contractVersion={}", runId,
                 (contractVersion == null || contractVersion.isBlank()) ? "<missing>" : contractVersion);

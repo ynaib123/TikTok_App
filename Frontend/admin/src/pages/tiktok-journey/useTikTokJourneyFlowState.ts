@@ -68,7 +68,7 @@ type JourneyFlowAction =
   | { type: 'ERROR_MESSAGE_SET'; value: string | null }
   | { type: 'SUCCESS_MESSAGE_SET'; value: string | null }
 
-const INITIAL_JOURNEY_FLOW_STATE: JourneyFlowState = {
+export const INITIAL_JOURNEY_FLOW_STATE: JourneyFlowState = {
   generatedIdeas: [],
   selectedGeneratedIdeaId: null,
   generationCount: 1,
@@ -86,7 +86,7 @@ const INITIAL_JOURNEY_FLOW_STATE: JourneyFlowState = {
   isWorkflowInProgress: false,
 }
 
-function journeyFlowReducer(state: JourneyFlowState, action: JourneyFlowAction): JourneyFlowState {
+export function journeyFlowReducer(state: JourneyFlowState, action: JourneyFlowAction): JourneyFlowState {
   switch (action.type) {
     case 'PIPELINE_RESET':
       return {
@@ -473,4 +473,5 @@ export function useTikTokJourneyFlowState({
 export type {
   JourneyFlowAction,
   JourneyFlowState,
+  PexelsCache,
 }

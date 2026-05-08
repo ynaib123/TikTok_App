@@ -5,6 +5,22 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tiktok_app}
     username: ${SPRING_DATASOURCE_USERNAME:tiktok_app}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    # HikariCP — Spring Boot's default pool. Defaults are 10/30s/30s which is
+    # fine for dev but invisible in prod logs. Declaring them here makes the
+    # values reviewable and operations-friendly. Override per env via the
+    # SPRING_DATASOURCE_HIKARI_* variables.
+    hikari:
+      pool-name: tiktok-app-hikari
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MIN_IDLE:5}
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT_MS:10000}
+      validation-timeout: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT_MS:5000}
+      idle-timeout: ${SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${SPRING_DATASOURCE_HIKARI_MAX_LIFETIME_MS:1800000}
+      # Surfaces a stack-trace warning in logs if a connection is held > 30 s
+      # without being returned. Helps catch transactional leaks.
+      leak-detection-threshold: ${SPRING_DATASOURCE_HIKARI_LEAK_DETECTION_MS:30000}
+      auto-commit: false
   jpa:
     hibernate:
       ddl-auto: validate

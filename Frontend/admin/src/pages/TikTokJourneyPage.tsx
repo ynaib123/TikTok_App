@@ -47,9 +47,9 @@ import {
 } from './tiktok-journey/useTikTokJourneySteps'
 import {
   clearJourneyWorkspace,
-  readJourneyWorkspace,
   saveJourneyWorkspace,
 } from './tiktok-journey/journeyWorkspace'
+import { useJourneyWorkspaceRestore } from './tiktok-journey/useJourneyWorkspaceRestore'
 import { mergeIdeasById } from './tiktok-journey/journeyHelpers'
 import { journeyTelemetry } from './tiktok-journey/journeyTelemetry'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
@@ -603,81 +603,21 @@ export default function TikTokJourneyPage() {
     void completeFlowExit(true)
   }
 
-  useEffect(() => {
-    if (!isFlowRoute) return
-
-    const resumeIdeaId = Number(resumeWorkspaceIdeaIdRef.current || 0)
-    if (!resumeIdeaId) return
-
-    let cancelled = false
-
-    const restoreWorkspace = async () => {
-      try {
-        const [idea, manualActions] = await Promise.all([
-          fetchContentIdeaByIdFromPages(resumeIdeaId),
-          fetchManualActions(),
-        ])
-        if (cancelled || !idea?.id) return
-
-        const manualActionRecord = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
-
-        setGeneratedIdeas([idea])
-        setSelectedGeneratedIdeaId(Number(idea.id))
-        setScriptedIdea(idea)
-        setManualAction(manualActionRecord ? { ...manualActionRecord } : {
-          id: Number(idea.id),
-          topic: idea.topic ?? null,
-          shotstackUrl: idea.shotstackUrl || null,
-          uploadUrl: idea.uploadUrl || null,
-          tiktokStatus: idea.tiktokStatus || null,
-          finalVideoStatus: idea.finalVideoStatus || null,
-          shotstackStatus: idea.shotstackStatus || null,
-          pipelineStatus: idea.pipelineStatus || null,
-          lastError: idea.lastError || null,
-        })
-
-        journeyTelemetry.trackWorkspaceResumed({ contentIdeaId: Number(idea.id) || null })
-
-        // Rehydrate the lighter-weight workspace state saved alongside the idea
-        // (Pexels query, selected scene URLs, and any in-flight edits). Videos
-        // themselves are not persisted to localStorage to keep storage small;
-        // TemplateStep refetches them when it sees a non-matching cache.
-        const snapshot = readJourneyWorkspace(resumeIdeaId)
-        if (snapshot && !cancelled) {
-          if (snapshot.pexelsQuery) {
-            flowState.setPexelsCache({ query: snapshot.pexelsQuery, videos: [] })
-          }
-          if (Array.isArray(snapshot.selectedSceneMediaUrls)) {
-            setSelectedSceneMediaUrls(snapshot.selectedSceneMediaUrls.map((u) => String(u || '')))
-          }
-          if (typeof snapshot.editedTopic === 'string') setEditedTopic(snapshot.editedTopic)
-          if (typeof snapshot.editedScript === 'string') setEditedScript(snapshot.editedScript)
-          if (typeof snapshot.editedCaption === 'string') setEditedCaption(snapshot.editedCaption)
-          if (typeof snapshot.editedKeyword === 'string') setEditedKeyword(snapshot.editedKeyword)
-        }
-      } catch {
-        // Resume is best-effort. If it fails, the route still opens normally.
-      } finally {
-        if (!cancelled) {
-          resumeWorkspaceIdeaIdRef.current = null
-          window.history.replaceState({}, document.title, location.pathname)
-        }
-      }
-    }
-
-    void restoreWorkspace()
-
-    return () => {
-      cancelled = true
-    }
-  }, [
+  useJourneyWorkspaceRestore({
     isFlowRoute,
-    location.pathname,
+    locationPathname: location.pathname,
+    resumeIdeaIdRef: resumeWorkspaceIdeaIdRef,
     setGeneratedIdeas,
-    setManualAction,
-    setScriptedIdea,
     setSelectedGeneratedIdeaId,
-  ])
+    setScriptedIdea,
+    setManualAction,
+    setPexelsCache: flowState.setPexelsCache,
+    setSelectedSceneMediaUrls,
+    setEditedTopic,
+    setEditedScript,
+    setEditedCaption,
+    setEditedKeyword,
+  })
 
   useEffect(() => {
     if (!isFlowRoute) return undefined

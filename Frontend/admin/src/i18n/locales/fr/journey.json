@@ -3,6 +3,12 @@
     "title": "Chargement de l'étape",
     "sub": "Préparation de l'interface..."
   },
+  "steps": {
+    "creation": { "label": "Création", "sub": "Générer une idée + script" },
+    "template": { "label": "Template", "sub": "Style + médias par scène" },
+    "render": { "label": "Vidéo", "sub": "Rendre la vidéo Remotion" },
+    "upload": { "label": "Publication", "sub": "Publier sur TikTok" }
+  },
   "common": {
     "next": "Suivant →",
     "back": "Retour",
