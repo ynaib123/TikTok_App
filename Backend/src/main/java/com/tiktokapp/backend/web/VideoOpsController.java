@@ -6,6 +6,8 @@ import com.tiktokapp.backend.dto.videoops.AccountsOverviewResponse;
 import com.tiktokapp.backend.dto.videoops.AlertNotifyRequest;
 import com.tiktokapp.backend.dto.videoops.BatchPublishRequest;
 import com.tiktokapp.backend.dto.videoops.BatchPublishResponse;
+import com.tiktokapp.backend.dto.videoops.BulkDeleteContentIdeasRequest;
+import io.micrometer.core.annotation.Timed;
 import com.tiktokapp.backend.service.alerting.SlackAlertService;
 import com.tiktokapp.backend.service.videoops.BatchPublishService;
 import com.tiktokapp.backend.dto.videoops.AccountsReadinessResponse;
@@ -224,6 +226,7 @@ public class VideoOpsController {
     }
 
     @DeleteMapping("/content-ideas/{contentIdeaId}")
+    @Timed(value = "video_ops.delete_content_idea", description = "Delete a single content idea", histogram = true)
     public ResponseEntity<Void> deleteContentIdea(@PathVariable long contentIdeaId, Authentication authentication) {
         videoOpsService.deleteContentIdea(contentIdeaId);
         auditService.log(
@@ -232,6 +235,34 @@ public class VideoOpsController {
                 "content_idea.deleted",
                 "content_idea",
                 String.valueOf(contentIdeaId),
+                null
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/content-ideas/bulk-delete")
+    @Timed(value = "video_ops.bulk_delete", description = "Bulk delete of content ideas", histogram = true)
+    public ResponseEntity<Void> deleteContentIdeasBulk(
+            @Valid @RequestBody BulkDeleteContentIdeasRequest request,
+            Authentication authentication
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentification requise.");
+        }
+        List<Long> ids = request.getContentIdeaIds();
+        videoOpsService.deleteContentIdeasBulk(ids);
+
+        // Truncate audit payload — large batches would otherwise produce
+        // multi-kilobyte log lines and bloat the audit table.
+        String idsForAudit = ids.size() <= 10
+                ? ids.toString()
+                : ids.subList(0, 10) + "... (+" + (ids.size() - 10) + " more)";
+        auditService.log(
+                null,
+                authentication.getName(),
+                "content_idea.bulk_deleted",
+                "content_idea",
+                "count=" + ids.size() + " ids=" + idsForAudit,
                 null
         );
         return ResponseEntity.noContent().build();

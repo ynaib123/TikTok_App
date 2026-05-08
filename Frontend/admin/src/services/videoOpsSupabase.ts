@@ -331,6 +331,26 @@ export async function deleteContentIdea(contentIdeaId: number | string): Promise
   await apiDelete(`/video-ops/content-ideas/${contentIdeaId}`)
 }
 
+export const BULK_DELETE_MAX_BATCH = 200
+
+export async function deleteContentIdeasBulk(contentIdeaIds: number[]): Promise<void> {
+  if (!contentIdeaIds || contentIdeaIds.length === 0) {
+    return
+  }
+  if (contentIdeaIds.length > BULK_DELETE_MAX_BATCH) {
+    throw new Error(
+      `La suppression en masse est limitée à ${BULK_DELETE_MAX_BATCH} idées par requête.`,
+    )
+  }
+  // Bulk delete is idempotent on the server (DELETE twice on the same id is a
+  // no-op). Retrying on transient 5xx is therefore safe.
+  const { withRetry } = await import('./apiRetry')
+  await withRetry(
+    () => apiPost('/video-ops/content-ideas/bulk-delete', { contentIdeaIds }),
+    { retries: 2 },
+  )
+}
+
 export interface ContentIdeaEditPatch {
   topic?: string | null
   script?: string | null
@@ -339,11 +359,31 @@ export interface ContentIdeaEditPatch {
   keyword?: string | null
 }
 
+export class ContentIdeaPatchValidationError extends Error {
+  readonly issues: Array<{ field: string; message: string }>
+  constructor(issues: Array<{ field: string; message: string }>) {
+    super(issues.map((i) => `${i.field}: ${i.message}`).join('; ') || 'Patch invalide')
+    this.name = 'ContentIdeaPatchValidationError'
+    this.issues = issues
+  }
+}
+
 export async function updateContentIdeaContent(
   contentIdeaId: number | string,
   patch: ContentIdeaEditPatch,
 ): Promise<unknown> {
-  return apiPatch(`/video-ops/content-ideas/${contentIdeaId}`, patch)
+  // Validate at the boundary between the UI and the network: untyped/oversized
+  // values never make it past this call. Schema is imported lazily to avoid a
+  // circular dependency between the shared service layer and the page-level
+  // schemas folder.
+  const { contentIdeaEditPatchSchema, flattenZodIssues } = await import(
+    '../pages/tiktok-journey/journeySchemas'
+  )
+  const parsed = contentIdeaEditPatchSchema.safeParse(patch)
+  if (!parsed.success) {
+    throw new ContentIdeaPatchValidationError(flattenZodIssues(parsed.error))
+  }
+  return apiPatch(`/video-ops/content-ideas/${contentIdeaId}`, parsed.data)
 }
 
 export async function triggerMainContentPipeline(
@@ -405,7 +445,13 @@ export async function searchPexelsVideos(
   orientation: string = 'portrait',
 ): Promise<PexelsSearchResponse> {
   const qs = new URLSearchParams({ query, perPage: String(perPage), orientation })
-  return apiGet(`/video-ops/pexels/videos/search?${qs.toString()}`)
+  // Pexels rate-limits aggressively; transient 429/5xx are common during
+  // bursts. withRetry adds 2 jittered backoff retries on the boundary.
+  const { withRetry } = await import('./apiRetry')
+  return withRetry(() => apiGet<PexelsSearchResponse>(`/video-ops/pexels/videos/search?${qs.toString()}`), {
+    retries: 2,
+    baseDelayMs: 350,
+  })
 }
 
 export async function triggerPublishTikTokWorkflow(

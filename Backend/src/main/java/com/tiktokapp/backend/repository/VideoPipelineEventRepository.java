@@ -14,4 +14,6 @@ public interface VideoPipelineEventRepository extends JpaRepository<VideoPipelin
     List<VideoPipelineEvent> findTop8ByOrderByCreatedAtDesc();
 
     void deleteByContentIdeaId(Long contentIdeaId);
+
+    void deleteByContentIdeaIdIn(List<Long> contentIdeaIds);
 }

@@ -388,6 +388,24 @@ public class VideoOpsService {
         logger.info("video_ops event=content_idea_deleted contentIdeaId={}", contentIdeaId);
     }
 
+    public static final int BULK_DELETE_MAX_BATCH = 200;
+
+    @Transactional
+    public void deleteContentIdeasBulk(List<Long> contentIdeaIds) {
+        if (contentIdeaIds == null || contentIdeaIds.isEmpty()) {
+            return;
+        }
+        if (contentIdeaIds.size() > BULK_DELETE_MAX_BATCH) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "Suppression de plus de " + BULK_DELETE_MAX_BATCH + " idees interdite.");
+        }
+        eventRepository.deleteByContentIdeaIdIn(contentIdeaIds);
+        workflowRunRepository.deleteByContentIdeaIdIn(contentIdeaIds);
+        pipelineStateRepository.deleteAllById(contentIdeaIds);
+        contentIdeaRepository.deleteAllByIdInBatch(contentIdeaIds);
+        logger.info("video_ops event=content_ideas_bulk_deleted count={}", contentIdeaIds.size());
+    }
+
     @Transactional
     public VideoWorkflowActionResponse triggerMainPipeline(WorkflowTriggerRequest request, String requestedByEmail) {
         validateMainPipelineRequest(request);

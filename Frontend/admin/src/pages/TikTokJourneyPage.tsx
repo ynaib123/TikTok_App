@@ -47,9 +47,11 @@ import {
 } from './tiktok-journey/useTikTokJourneySteps'
 import {
   clearJourneyWorkspace,
+  readJourneyWorkspace,
   saveJourneyWorkspace,
 } from './tiktok-journey/journeyWorkspace'
 import { mergeIdeasById } from './tiktok-journey/journeyHelpers'
+import { journeyTelemetry } from './tiktok-journey/journeyTelemetry'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
@@ -564,7 +566,14 @@ export default function TikTokJourneyPage() {
     setIsLeaveConfirmOpen(false)
 
     if (shouldSave && activeIdea?.id && currentStep?.id) {
-      saveJourneyWorkspace(activeIdea.id, currentStep.id)
+      saveJourneyWorkspace(activeIdea.id, currentStep.id, {
+        pexelsQuery: flowState.pexelsCache?.query ?? null,
+        selectedSceneMediaUrls,
+        editedTopic,
+        editedScript,
+        editedCaption,
+        editedKeyword,
+      })
     }
 
     if (pendingTarget?.kind === 'path') {
@@ -621,6 +630,26 @@ export default function TikTokJourneyPage() {
           pipelineStatus: idea.pipelineStatus || null,
           lastError: idea.lastError || null,
         })
+
+        journeyTelemetry.trackWorkspaceResumed({ contentIdeaId: Number(idea.id) || null })
+
+        // Rehydrate the lighter-weight workspace state saved alongside the idea
+        // (Pexels query, selected scene URLs, and any in-flight edits). Videos
+        // themselves are not persisted to localStorage to keep storage small;
+        // TemplateStep refetches them when it sees a non-matching cache.
+        const snapshot = readJourneyWorkspace(resumeIdeaId)
+        if (snapshot && !cancelled) {
+          if (snapshot.pexelsQuery) {
+            flowState.setPexelsCache({ query: snapshot.pexelsQuery, videos: [] })
+          }
+          if (Array.isArray(snapshot.selectedSceneMediaUrls)) {
+            setSelectedSceneMediaUrls(snapshot.selectedSceneMediaUrls.map((u) => String(u || '')))
+          }
+          if (typeof snapshot.editedTopic === 'string') setEditedTopic(snapshot.editedTopic)
+          if (typeof snapshot.editedScript === 'string') setEditedScript(snapshot.editedScript)
+          if (typeof snapshot.editedCaption === 'string') setEditedCaption(snapshot.editedCaption)
+          if (typeof snapshot.editedKeyword === 'string') setEditedKeyword(snapshot.editedKeyword)
+        }
       } catch {
         // Resume is best-effort. If it fails, the route still opens normally.
       } finally {
@@ -941,6 +970,8 @@ export default function TikTokJourneyPage() {
               sceneCountOptions={TIKTOK_SCENE_COUNT_OPTIONS}
               generationSceneCount={generationSceneCount}
               setGenerationSceneCount={setGenerationSceneCount}
+              pexelsCache={flowState.pexelsCache}
+              setPexelsCache={flowState.setPexelsCache}
             />
           )}
         </div>

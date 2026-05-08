@@ -1,9 +1,25 @@
 const JOURNEY_WORKSPACE_STORAGE_KEY = 'tiktok-journey-workspaces-v1'
+const MAX_PEXELS_QUERY_LENGTH = 200
 
 export interface JourneyWorkspaceSnapshot {
   ideaId: number
   stepId: string
   updatedAt: string
+  pexelsQuery?: string | null
+  selectedSceneMediaUrls?: string[] | null
+  editedTopic?: string | null
+  editedScript?: string | null
+  editedCaption?: string | null
+  editedKeyword?: string | null
+}
+
+export interface JourneyWorkspaceExtras {
+  pexelsQuery?: string | null
+  selectedSceneMediaUrls?: string[] | null
+  editedTopic?: string | null
+  editedScript?: string | null
+  editedCaption?: string | null
+  editedKeyword?: string | null
 }
 
 type JourneyWorkspaceMap = Record<string, JourneyWorkspaceSnapshot>
@@ -30,15 +46,31 @@ function writeWorkspaceMap(value: JourneyWorkspaceMap) {
   window.localStorage.setItem(JOURNEY_WORKSPACE_STORAGE_KEY, JSON.stringify(value))
 }
 
-export function saveJourneyWorkspace(ideaId: number | string, stepId: string) {
+export function saveJourneyWorkspace(
+  ideaId: number | string,
+  stepId: string,
+  extras: JourneyWorkspaceExtras = {},
+) {
   const numericIdeaId = Number(ideaId)
   if (!numericIdeaId || !stepId) return
 
   const current = readWorkspaceMap()
+  const trimmedQuery = typeof extras.pexelsQuery === 'string'
+    ? extras.pexelsQuery.trim().slice(0, MAX_PEXELS_QUERY_LENGTH)
+    : null
+  const sceneUrls = Array.isArray(extras.selectedSceneMediaUrls)
+    ? extras.selectedSceneMediaUrls.slice(0, 10).map((u) => String(u || ''))
+    : null
   current[String(numericIdeaId)] = {
     ideaId: numericIdeaId,
     stepId,
     updatedAt: new Date().toISOString(),
+    pexelsQuery: trimmedQuery || null,
+    selectedSceneMediaUrls: sceneUrls,
+    editedTopic: extras.editedTopic ?? null,
+    editedScript: extras.editedScript ?? null,
+    editedCaption: extras.editedCaption ?? null,
+    editedKeyword: extras.editedKeyword ?? null,
   }
   writeWorkspaceMap(current)
 }

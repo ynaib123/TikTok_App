@@ -128,7 +128,7 @@ export interface WorkflowState {
   selectedGeneratedIdeaId: number | null;
   scriptedIdea: ContentIdea | null;
   manualAction: ManualAction | null;
-  uploadResult: unknown;
+  uploadResult: import('./tiktok').UploadTikTokMediaResponse | null;
   errorMessage: string | null;
   successMessage: string | null;
 }

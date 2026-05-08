@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { NavigateFunction } from 'react-router-dom'
-import type { AccountsReadiness, ContentIdea } from '../../types'
+import type { AccountsReadiness, ContentIdea, UploadTikTokMediaResponse } from '../../types'
+import type { PexelsVideo } from '../../services/videoOpsSupabase'
 
 interface JourneyFlowStateArgs {
   accountsReadiness: AccountsReadiness
@@ -23,6 +24,11 @@ interface ManualActionState {
   [key: string]: unknown
 }
 
+interface PexelsCache {
+  query: string
+  videos: PexelsVideo[]
+}
+
 interface JourneyFlowState {
   generatedIdeas: ContentIdea[]
   selectedGeneratedIdeaId: number | null
@@ -31,7 +37,8 @@ interface JourneyFlowState {
   lastGenerationExpectedCount: number
   scriptedIdea: ContentIdea | null
   manualAction: ManualActionState | null
-  uploadResult: unknown
+  uploadResult: UploadTikTokMediaResponse | null
+  pexelsCache: PexelsCache | null
   errorMessage: string | null
   successMessage: string | null
   currentStepIndex: number
@@ -56,7 +63,8 @@ type JourneyFlowAction =
   | { type: 'GENERATION_EXPECTED_COUNT_SET'; value: number }
   | { type: 'SCRIPTED_IDEA_SET'; value: ContentIdea | null }
   | { type: 'MANUAL_ACTION_SET'; value: ManualActionState | null }
-  | { type: 'UPLOAD_RESULT_SET'; value: unknown }
+  | { type: 'UPLOAD_RESULT_SET'; value: UploadTikTokMediaResponse | null }
+  | { type: 'PEXELS_CACHE_SET'; value: PexelsCache | null }
   | { type: 'ERROR_MESSAGE_SET'; value: string | null }
   | { type: 'SUCCESS_MESSAGE_SET'; value: string | null }
 
@@ -69,6 +77,7 @@ const INITIAL_JOURNEY_FLOW_STATE: JourneyFlowState = {
   scriptedIdea: null,
   manualAction: null,
   uploadResult: null,
+  pexelsCache: null,
   errorMessage: null,
   successMessage: null,
   currentStepIndex: -1,
@@ -187,6 +196,11 @@ function journeyFlowReducer(state: JourneyFlowState, action: JourneyFlowAction):
       return {
         ...state,
         uploadResult: action.value,
+      }
+    case 'PEXELS_CACHE_SET':
+      return {
+        ...state,
+        pexelsCache: action.value,
       }
     case 'ERROR_MESSAGE_SET':
       return {
@@ -321,12 +335,19 @@ export function useTikTokJourneyFlowState({
     })
   }, [state.manualAction])
 
-  const setUploadResult = useCallback((value: SetStateAction<unknown>) => {
+  const setUploadResult = useCallback((value: SetStateAction<UploadTikTokMediaResponse | null>) => {
     dispatch({
       type: 'UPLOAD_RESULT_SET',
       value: resolveSetStateAction(value, state.uploadResult),
     })
   }, [state.uploadResult])
+
+  const setPexelsCache = useCallback((value: SetStateAction<PexelsCache | null>) => {
+    dispatch({
+      type: 'PEXELS_CACHE_SET',
+      value: resolveSetStateAction(value, state.pexelsCache),
+    })
+  }, [state.pexelsCache])
 
   const setErrorMessage = useCallback((value: SetStateAction<string | null>) => {
     dispatch({
@@ -424,6 +445,7 @@ export function useTikTokJourneyFlowState({
     lastGenerationBaselineId: state.lastGenerationBaselineId,
     lastGenerationExpectedCount: state.lastGenerationExpectedCount,
     manualAction: state.manualAction,
+    pexelsCache: state.pexelsCache,
     resetFlowState,
     resetGeneratedIdeasState,
     scriptedIdea: state.scriptedIdea,
@@ -435,6 +457,7 @@ export function useTikTokJourneyFlowState({
     setLastGenerationBaselineId,
     setLastGenerationExpectedCount,
     setManualAction,
+    setPexelsCache,
     setScriptedIdea,
     setSelectedGeneratedIdeaId,
     setSuccessMessage,

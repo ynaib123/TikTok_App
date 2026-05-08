@@ -3,6 +3,7 @@ import {
   isRenderReady,
   mergeIdeasById,
 } from './journeyHelpers'
+import { journeyTelemetry } from './journeyTelemetry'
 import type { ContentIdea, ContentIdeaStatus, ManualAction, TikTokAccount, WorkflowRun } from '../../types'
 
 type RunAction = <T>(name: string, fn: () => Promise<T>) => Promise<T>
@@ -89,6 +90,7 @@ export function useCreationStep({
   const handleGenerateIdea = async () => runAction('generateIdea', async () => {
     const requestedCount = 1
     const requestedCategory = String(generationCategory || '').trim()
+    const startedAt = performance.now()
 
     if (!requestedCategory) {
       throw new Error('Renseigne une categorie avant de lancer la generation.')
@@ -149,6 +151,12 @@ export function useCreationStep({
         contentIdeaId: Number(idea.id),
         state: 'succeeded',
         message: 'Idee et script generes.',
+      })
+      journeyTelemetry.trackIdeaGenerated({
+        contentIdeaId: Number(idea.id) || null,
+        category: requestedCategory,
+        sceneCount: typeof generationSceneCount === 'number' ? generationSceneCount : null,
+        durationMs: performance.now() - startedAt,
       })
       showSuccess('Idee et script generes. Tu peux la regenerer ou valider pour passer a la video.')
     } catch (error) {
@@ -224,6 +232,13 @@ export function useRenderStep({
       throw new Error('Aucun resultat script a valider.')
     }
 
+    const renderStartedAt = performance.now()
+    journeyTelemetry.trackRenderStarted({
+      contentIdeaId: Number(idea.id) || null,
+      templateId: selectedTemplateId,
+      qualityProfile: selectedQualityProfile,
+      sceneCount: typeof generationSceneCount === 'number' ? generationSceneCount : null,
+    })
     goToStep('init-publish')
     const workflowRun = await triggerRenderTemplateWorkflow({
       source: 'backoffice-tiktok-step-video-render',
@@ -286,10 +301,19 @@ export function useRenderStep({
       state: 'succeeded',
       message: 'Video prete pour publication.',
     })
+    journeyTelemetry.trackRenderCompleted({
+      contentIdeaId: Number(idea.id) || null,
+      runId: workflowRun?.runId ?? null,
+      durationMs: performance.now() - renderStartedAt,
+    })
     showSuccess('Video prete. Verifie le template avant de passer a la publication.')
     if (setCurrentRenderRunId) setCurrentRenderRunId(null)
   }).catch((error: unknown) => {
     if (setCurrentRenderRunId) setCurrentRenderRunId(null)
+    journeyTelemetry.trackRenderFailed({
+      contentIdeaId: Number((scriptedIdea || selectedGeneratedIdea)?.id) || null,
+      reason: error instanceof Error ? error.message : 'unknown',
+    })
     showError(error, "L'initialisation publish n'a pas abouti.")
   })
 
@@ -370,6 +394,7 @@ export function useUploadStep({
         state: 'succeeded',
         message: 'Publication TikTok terminee.',
       })
+      journeyTelemetry.trackVideoUploaded({ contentIdeaId: Number(idea.id) || null })
       showSuccess('Publication TikTok terminee.')
     } catch (error) {
       const [refreshedIdea, manualActions] = await Promise.all([
@@ -525,6 +550,7 @@ export function usePublishStep({
       state: 'succeeded',
       message: 'Publication finale enregistree.',
     })
+    journeyTelemetry.trackVideoPublished({ contentIdeaId: Number(idea.id) || null })
     showSuccess('Video publiee avec succes.')
     if (typeof navigate === 'function') {
       navigate(`/tiktok/idea/${idea.id}`)

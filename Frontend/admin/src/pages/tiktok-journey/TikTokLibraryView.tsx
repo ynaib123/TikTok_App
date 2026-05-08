@@ -4,17 +4,42 @@
 
 import { useMemo, useState, type Dispatch, type JSX, type SetStateAction } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import AdminToolbarMenuButton from '../../components/AdminToolbarMenuButton'
 import VideoCard from '../../components/video-card/VideoCard'
-import type { ContentIdea } from '../../types'
+import type { ContentIdea, SpringPageResponse } from '../../types'
 import { SelectionProvider, useSelection } from '../../contexts/SelectionContext'
 import BulkDeleteSelectionBar from '../../components/bulk-delete/BulkDeleteSelectionBar'
 import BulkDeleteConfirmModal from '../../components/bulk-delete/BulkDeleteConfirmModal'
 import { useToasts } from '../../contexts/ToastContext'
 import { deleteContentIdea } from '../../services/videoOpsSupabase'
 import { VIDEO_OPS_QUERY_KEYS } from '../../services/videoOpsQueries'
+import { journeyTelemetry } from './journeyTelemetry'
 import '../../components/bulk-delete/bulk-delete.css'
+
+type ContentIdeasInfiniteData = InfiniteData<SpringPageResponse<ContentIdea>, number>
+
+function removeIdsFromContentIdeasCache(
+  cache: ContentIdeasInfiniteData | undefined,
+  idsToRemove: Set<number>,
+): ContentIdeasInfiniteData | undefined {
+  if (!cache) return cache
+  return {
+    ...cache,
+    pages: cache.pages.map((page) => {
+      const filtered = (page.content || []).filter((idea) => !idsToRemove.has(Number(idea.id)))
+      const removed = (page.content?.length ?? 0) - filtered.length
+      return {
+        ...page,
+        content: filtered,
+        page: {
+          ...page.page,
+          totalElements: Math.max(0, (page.page?.totalElements ?? 0) - removed),
+        },
+      }
+    }),
+  }
+}
 
 type Option = { value: string; label: string }
 type IconComponent = () => JSX.Element
@@ -117,30 +142,57 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       return
     }
     setIsDeleting(true)
-    let failures = 0
-    let successes = 0
-    for (const id of ids) {
-      try {
-        await deleteContentIdea(id)
-        successes += 1
-      } catch {
-        failures += 1
-      }
-    }
-    setIsDeleting(false)
-    setConfirmDeleteOpen(false)
+
+    // Optimistic update: snapshot the current cache, remove the deleted ids
+    // immediately, and roll back if the network call fails. This makes the
+    // grid feel responsive even if the bulk delete takes a few seconds for
+    // large batches.
+    const idSet = new Set(ids.map((id) => Number(id)))
+    const previousCache = queryClient.getQueryData<ContentIdeasInfiniteData>(
+      VIDEO_OPS_QUERY_KEYS.contentIdeas,
+    )
+    queryClient.setQueryData<ContentIdeasInfiniteData | undefined>(
+      VIDEO_OPS_QUERY_KEYS.contentIdeas,
+      (cache) => removeIdsFromContentIdeasCache(cache, idSet),
+    )
     selection.clear()
-    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap })
-    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas })
-    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.manualActions })
-    queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
-    queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.observability })
-    if (failures === 0) {
-      toasts.push(`${successes} vidéo${successes > 1 ? 's' : ''} supprimée${successes > 1 ? 's' : ''}`, { variant: 'success' })
-    } else if (successes === 0) {
-      toasts.push(`Échec de la suppression (${failures})`, { variant: 'error' })
-    } else {
-      toasts.push(`${successes} supprimée(s), ${failures} échec(s)`, { variant: 'warning' })
+
+    const startedAt = performance.now()
+    try {
+      const { deleteContentIdeasBulk } = await import('../../services/videoOpsSupabase')
+      await deleteContentIdeasBulk(ids)
+      setIsDeleting(false)
+      setConfirmDeleteOpen(false)
+      journeyTelemetry.trackBulkDelete({
+        count: ids.length,
+        ok: true,
+        durationMs: performance.now() - startedAt,
+      })
+      // Background refresh to reconcile with authoritative server state.
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap })
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas })
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.manualActions })
+      queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.observability })
+      toasts.push(`${ids.length} vidéo${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}`, { variant: 'success' })
+    } catch (error) {
+      setIsDeleting(false)
+      // Rollback to the pre-delete snapshot so the user sees their selection
+      // re-appear in the grid.
+      if (previousCache) {
+        queryClient.setQueryData(VIDEO_OPS_QUERY_KEYS.contentIdeas, previousCache)
+      } else {
+        queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas })
+      }
+      journeyTelemetry.trackBulkDelete({
+        count: ids.length,
+        ok: false,
+        durationMs: performance.now() - startedAt,
+      })
+      toasts.push(
+        `Échec de la suppression: ${error instanceof Error ? error.message : 'erreur inconnue'}`,
+        { variant: 'error' },
+      )
     }
   }
 

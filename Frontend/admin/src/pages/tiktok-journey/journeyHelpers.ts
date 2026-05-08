@@ -152,3 +152,41 @@ export async function raceWorkflowRunAndDatabaseUpdate<W, D>({
 
   return settled
 }
+
+export function splitScriptIntoScenes(script: string): string[] {
+  return String(script || '')
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
+
+export function getIdeaSceneTexts(idea: IdeaLike | null, fallbackScript: string): string[] {
+  const planned = Array.isArray((idea as any)?.plannedScenes)
+    ? (idea as any).plannedScenes.map((scene: any) => String(scene?.sceneText || '').trim()).filter(Boolean)
+    : []
+  return planned.length > 0 ? planned : splitScriptIntoScenes(fallbackScript)
+}
+
+export function normalizeSceneCount(scenes: string[], count: number): string[] {
+  const targetCount = Math.min(10, Math.max(1, Number(count) || 1))
+  const normalized = scenes.map((scene) => scene.trim()).filter((scene) => scene.length > 0)
+  if (normalized.length > targetCount) {
+    return [
+      ...normalized.slice(0, targetCount - 1),
+      normalized.slice(targetCount - 1).join(' '),
+    ]
+  }
+  while (normalized.length < targetCount) normalized.push('')
+  return normalized
+}
+
+export function joinScenes(scenes: string[]): string {
+  return scenes
+    .map((s) => {
+      const t = s.trim()
+      if (!t) return ''
+      return /[.!?]$/.test(t) ? t : t + '.'
+    })
+    .filter(Boolean)
+    .join(' ')
+}

@@ -48,3 +48,10 @@ export interface TikTokInitPublishContextResponse {
   privacyLevelOptions: string[];
   selectedPrivacyLevel: string | null;
 }
+
+export interface UploadTikTokMediaResponse {
+  success: boolean;
+  statusCode: number;
+  uploadedBytes: number;
+  responseBody: string | null;
+}

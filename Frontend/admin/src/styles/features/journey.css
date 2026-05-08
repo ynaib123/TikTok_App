@@ -8,6 +8,65 @@
  * Tokens reused from foundation/core.css — no new colors introduced.
  * ============================================================================ */
 
+/* Skeleton shimmer — used by Pexels gallery and library card placeholders to
+   reserve layout space while React Query is fetching. The animation runs on
+   the background-position of a 3-stop linear-gradient. */
+@keyframes journey-skeleton-shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+.journey-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--admin-panel-surface-2) 0%,
+    var(--admin-surface-overlay) 50%,
+    var(--admin-panel-surface-2) 100%
+  );
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  border-radius: var(--admin-radius-sm);
+  animation: journey-skeleton-shimmer 1.4s linear infinite;
+}
+
+.journey-skeleton-line {
+  height: 12px;
+  margin-top: 8px;
+  width: 80%;
+}
+
+.journey-skeleton-line.is-short {
+  width: 50%;
+}
+
+.journey-media-card.is-skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+.journey-media-card.is-skeleton .journey-media-card-video {
+  height: 220px;
+  border-radius: var(--admin-radius-sm);
+}
+
+/* Semantic status tokens — wired through admin theme variables so they rotate
+   with the active theme (dark/light) instead of being baked into the journey
+   stylesheet. Each token has a hardcoded fallback that matches the previous
+   visual when the parent theme does not define an override. */
+:root {
+  --journey-status-success: var(--admin-success-strong, #5de8b1);
+  --journey-status-success-soft: var(--admin-success-soft, rgba(93, 232, 177, 0.18));
+  --journey-status-info: var(--admin-info-strong, #5db8ff);
+  --journey-status-info-soft: var(--admin-info-soft, rgba(93, 184, 255, 0.24));
+  --journey-status-error: var(--admin-error-strong, #ff8a8a);
+  --journey-status-error-soft: var(--admin-error-soft, rgba(255, 138, 138, 0.24));
+  --journey-status-error-strong: var(--admin-error-stronger, #ff5050);
+  --journey-status-error-bg: var(--admin-error-bg, rgba(255, 80, 80, 0.15));
+  --journey-overlay-strong: var(--admin-overlay-strong, rgba(0, 0, 0, 0.62));
+  --journey-overlay-soft: var(--admin-overlay-soft, rgba(0, 0, 0, 0.5));
+  --journey-stage-bg: var(--admin-panel-black, #000);
+}
+
 /* ----- Layout shell ------------------------------------------------------- */
 
 /* Sur le parcours (mode flow), on verrouille la page à la hauteur exacte de
@@ -194,7 +253,7 @@
   gap: 6px;
 }
 
-.journey-stat-trend.is-up   { color: #5de8b1; }
+.journey-stat-trend.is-up   { color: var(--journey-status-success); }
 .journey-stat-trend.is-warn { color: var(--admin-warm-strong); }
 
 /* ----- Library: hybrid card/table --------------------------------------- */
@@ -274,7 +333,7 @@
   background: var(--admin-text-dim);
 }
 .journey-library-thumb-status.is-published .journey-dot { background: var(--admin-accent); }
-.journey-library-thumb-status.is-ready     .journey-dot { background: #5db8ff; }
+.journey-library-thumb-status.is-ready     .journey-dot { background: var(--journey-status-info); }
 .journey-library-thumb-status.is-rendering .journey-dot { background: var(--admin-warm-strong); animation: journey-pulse 1.4s ease-in-out infinite; }
 .journey-library-thumb-status.is-draft     .journey-dot { background: var(--admin-text-dim); }
 
@@ -428,10 +487,10 @@
 }
 
 .journey-status-pill.is-published { color: var(--admin-accent); border-color: var(--admin-accent-soft); }
-.journey-status-pill.is-ready     { color: #5db8ff; border-color: rgba(93, 184, 255, 0.24); }
+.journey-status-pill.is-ready     { color: var(--journey-status-info); border-color: var(--journey-status-info-soft); }
 .journey-status-pill.is-rendering { color: var(--admin-warm-strong); border-color: var(--admin-warm-border); }
 .journey-status-pill.is-draft     { color: var(--admin-text-dim); }
-.journey-status-pill.is-error     { color: #ff8a8a; border-color: rgba(255, 138, 138, 0.24); }
+.journey-status-pill.is-error     { color: var(--journey-status-error); border-color: var(--journey-status-error-soft); }
 
 /* ----- Empty / loading states ------------------------------------------- */
 
@@ -687,7 +746,30 @@
 }
 
 .journey-wizard-grid.is-render-stage {
-  grid-template-columns: minmax(360px, 0.95fr) minmax(320px, 0.78fr) auto;
+  grid-template-columns: var(--journey-param-width) minmax(0, 1fr) auto;
+}
+
+.journey-render-side .journey-wizard-side-card.is-narrow {
+  flex: 1 1 auto;
+}
+
+.journey-render-data-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.journey-render-data-panel > .journey-wizard-side-card {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+@media (max-width: 960px) {
+  .journey-wizard-grid.is-render-stage {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 960px) {
@@ -1060,8 +1142,8 @@
 }
 
 .journey-scene-remove:hover:not(:disabled) {
-  background: rgba(255, 80, 80, 0.15);
-  color: #ff5050;
+  background: var(--journey-status-error-bg);
+  color: var(--journey-status-error-strong);
 }
 
 .journey-scene-remove:disabled {
@@ -1777,8 +1859,8 @@ input.journey-step-select {
 
 .journey-log-item-icon.is-pending { background: var(--admin-warm-strong); animation: journey-pulse 1.4s ease-in-out infinite; }
 .journey-log-item-icon.is-ok      { background: var(--admin-accent); }
-.journey-log-item-icon.is-error   { background: #ff8a8a; }
-.journey-log-item-icon.is-info    { background: #5db8ff; }
+.journey-log-item-icon.is-error   { background: var(--journey-status-error); }
+.journey-log-item-icon.is-info    { background: var(--journey-status-info); }
 
 .journey-log-item-body {
   display: flex;
@@ -2340,14 +2422,100 @@ input.journey-step-select {
 }
 
 .journey-wizard-grid.is-template-stage {
-  grid-template-columns: var(--journey-param-width) minmax(360px, 1fr) minmax(300px, 0.68fr);
+  /* Three columns: parameters card (fixed) | scenes data (flex) | TikTok 9:16
+     preview (auto). The preview right-aligns; the data panel sits in the
+     middle and grows with the available width. */
+  grid-template-columns: var(--journey-param-width) minmax(280px, 0.95fr) auto;
   align-items: stretch;
+  gap: 8px;
+}
+
+.journey-wizard-grid.is-template-stage > .journey-template-stage {
+  justify-self: end;
+}
+
+/* Scenes data column wraps the read-only DataEditableCard so it gets a panel
+   surface like the surrounding cards. */
+.journey-template-data-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.journey-template-data-panel > .journey-wizard-side-card {
+  flex: 1 1 auto;
+  margin: 0;
 }
 
 .journey-template-side,
-.journey-template-main,
-.journey-template-summary {
+.journey-template-stage {
   min-height: 0;
+}
+
+/* Middle column — pure preview at TikTok proportions. The frame width is
+   capped at 400px (matches RenderStep / UploadStep) and shrinks on shorter
+   viewports so the whole stage fits without scroll. */
+.journey-template-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 8px;
+  width: min(400px, calc((100vh - 240px) * 9 / 16));
+  min-width: 0;
+  justify-self: end;
+}
+
+.journey-template-stage .journey-template-head {
+  width: 100%;
+}
+
+.journey-template-preview-frame {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--admin-border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0)),
+    radial-gradient(circle at 50% 10%, rgba(255,255,255,0.16), transparent 28%),
+    var(--admin-panel-black);
+  box-shadow: 0 20px 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+.journey-template-preview-frame.is-tiktok-pro-vertical {
+  background: linear-gradient(155deg, #101010 0%, #27292c 46%, #c84f36 100%);
+}
+
+.journey-template-preview-frame.is-tiktok-bold-story {
+  background: linear-gradient(160deg, #121212 0%, #392f66 45%, #e0b95d 100%);
+}
+
+.journey-template-preview-frame.is-tiktok-clean-minimal {
+  background: linear-gradient(180deg, #f7f7f2 0%, #d8ded7 100%);
+}
+
+.journey-template-preview-frame.is-tiktok-clean-minimal .journey-template-preview-text {
+  text-shadow: none;
+}
+
+@media (max-width: 1100px) {
+  .journey-template-stage {
+    width: min(360px, 100%);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 960px) {
+  .journey-wizard-grid.is-template-stage {
+    grid-template-columns: 1fr;
+  }
+  .journey-wizard-grid.is-template-stage > .journey-template-stage {
+    justify-self: center;
+  }
 }
 
 .journey-template-side {
@@ -2362,14 +2530,6 @@ input.journey-step-select {
   min-height: 0;
 }
 
-.journey-template-main,
-.journey-template-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px 12px;
-}
-
 .journey-template-head {
   display: flex;
   align-items: flex-start;
@@ -2377,153 +2537,366 @@ input.journey-step-select {
   gap: 12px;
 }
 
-.journey-template-grid {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+/* ----- Style controls panel ---------------------------------------------- */
+
+.journey-style-card {
+  /* Tightens spacing relative to the generic side card so the grouped sections
+     read as one continuous panel. */
+  padding: 12px 14px;
+  gap: 12px;
   overflow-y: auto;
-  padding: 4px 4px 8px;
-  align-content: start;
 }
 
-.journey-template-card {
-  min-height: 128px;
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+.journey-style-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 12px;
-  text-align: left;
-  background: var(--admin-panel-surface);
-  border: 2px solid var(--admin-border);
-  border-radius: var(--admin-radius-md);
-  color: var(--admin-text);
-  cursor: pointer;
-  transition: border-color 180ms ease, transform 160ms ease, box-shadow 180ms ease;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-border-faint);
 }
 
-.journey-template-card:hover,
-.journey-template-card.is-selected {
-  border-color: var(--admin-warm-strong);
-  box-shadow: 0 14px 34px -20px rgba(0, 0, 0, 0.75);
-  transform: translateY(-1px);
-}
-
-.journey-template-card-preview {
-  position: relative;
-  aspect-ratio: 9 / 16;
-  width: 72px;
-  overflow: hidden;
-  border-radius: var(--admin-radius-sm);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02)),
-    var(--admin-panel-black);
+.journey-style-reset {
+  background: transparent;
   border: 1px solid var(--admin-border);
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color var(--admin-motion-fast), border-color var(--admin-motion-fast), background var(--admin-motion-fast);
 }
 
-.journey-template-card-preview-bar,
-.journey-template-card-preview-title,
-.journey-template-card-preview-caption {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  border-radius: 4px;
+.journey-style-reset:hover {
+  color: var(--admin-text);
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-overlay);
 }
 
-.journey-template-card-preview-bar {
-  top: 14px;
-  height: 5px;
-  background: var(--admin-warm-strong);
-}
-
-.journey-template-card-preview-title {
-  top: 42%;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.journey-template-card-preview-caption {
-  bottom: 18px;
-  height: 18px;
-  background: rgba(255,255,255,0.78);
-}
-
-.journey-template-card-copy {
-  min-width: 0;
+.journey-style-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  align-self: center;
-}
-
-.journey-template-card-copy strong {
-  font-size: 15px;
-  line-height: 1.25;
-}
-
-.journey-template-card-copy span {
-  color: var(--admin-text-soft);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.journey-template-preview-phone {
-  position: relative;
-  width: min(100%, 340px);
-  aspect-ratio: 9 / 16;
-  align-self: center;
-  overflow: hidden;
-  border-radius: 18px;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--admin-panel-surface-2);
   border: 1px solid var(--admin-border);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0)),
-    radial-gradient(circle at 50% 10%, rgba(255,255,255,0.16), transparent 28%),
-    var(--admin-panel-black);
-  box-shadow: 0 20px 60px -30px rgba(0, 0, 0, 0.9);
+  border-radius: var(--admin-radius-sm);
 }
 
-.journey-template-preview-phone.is-tiktok-pro-vertical {
-  background: linear-gradient(155deg, #101010 0%, #27292c 46%, #c84f36 100%);
+.journey-style-section-title {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--admin-text-dim);
 }
 
-.journey-template-preview-phone.is-tiktok-bold-story {
-  background: linear-gradient(160deg, #121212 0%, #392f66 45%, #e0b95d 100%);
+.journey-style-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
-.journey-template-preview-phone.is-tiktok-clean-minimal {
-  background: linear-gradient(180deg, #f7f7f2 0%, #d8ded7 100%);
+.journey-style-row > label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admin-text-soft);
+  font-weight: 600;
 }
 
-.journey-template-preview-phone.is-tiktok-clean-minimal .journey-template-preview-text {
-  text-shadow: none;
+.journey-style-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.journey-style-row-head > label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admin-text-soft);
+  font-weight: 600;
+}
+
+.journey-style-row-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--admin-text);
+  background: var(--admin-surface-overlay);
+  padding: 2px 8px;
+  border-radius: 999px;
+  min-width: 44px;
+  text-align: center;
+}
+
+.journey-style-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Custom range slider — neutral track, warm thumb (admin theme accent),
+   no purple anywhere. Both the WebKit and Firefox shadow trees are styled. */
+.journey-style-section input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--admin-border-strong);
+  outline: none;
+  cursor: pointer;
+  margin: 6px 0 2px;
+}
+
+.journey-style-section input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--admin-border-strong);
+}
+
+.journey-style-section input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--admin-warm-strong);
+  border: 2px solid var(--admin-panel-surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  margin-top: -6px;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.journey-style-section input[type="range"]::-webkit-slider-thumb:hover,
+.journey-style-section input[type="range"]:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.18);
+}
+
+.journey-style-section input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--admin-border-strong);
+}
+
+.journey-style-section input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--admin-warm-strong);
+  border: 2px solid var(--admin-panel-surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.journey-style-section input[type="range"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--admin-warm-soft);
+}
+
+.journey-style-color-pair {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.journey-style-color-pair .journey-color-input {
+  width: 44px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.journey-style-color-hex {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.journey-style-color-value {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text);
+  background: var(--admin-surface-overlay);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.journey-style-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--admin-text-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.journey-style-toggle input[type="checkbox"] {
+  accent-color: var(--admin-warm-strong);
+  width: 14px;
+  height: 14px;
+}
+
+.journey-style-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  background: var(--admin-surface-overlay);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+}
+
+.journey-style-segmented-item {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 0;
+  border-radius: calc(var(--admin-radius-sm) - 2px);
+  cursor: pointer;
+  transition: background var(--admin-motion-fast), color var(--admin-motion-fast);
+}
+
+.journey-style-segmented-item:hover {
+  color: var(--admin-text);
+}
+
+.journey-style-segmented-item.is-active {
+  background: var(--admin-warm-strong);
+  color: var(--admin-text-inverse);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 1200px) {
+  .journey-wizard-grid.is-template-stage {
+    grid-template-columns: var(--journey-param-width) minmax(240px, 0.85fr) auto;
+  }
+}
+
+/* Real Pexels footage rendered behind the text overlay so the user can verify
+   the chosen position / size / colour against actual motion instead of a
+   static gradient. The fallback below only shows while React Query is still
+   in flight (or no keyword is available yet). */
+.journey-template-preview-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.journey-template-preview-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.journey-template-preview-fallback-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  animation: journey-pulse 1s linear infinite;
 }
 
 .journey-template-preview-text {
   position: absolute;
-  width: 78%;
+  z-index: 1;
+  width: 88%;
+  max-width: 88%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   gap: 10px;
   text-align: center;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.65);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7), 0 0 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  /* Each scene re-mounts via React `key` change, replaying the fade-in so the
+     preview matches the rhythm of the rendered video. */
+  animation: journey-scene-fade 320ms ease-out;
+}
+
+@keyframes journey-scene-fade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.journey-template-preview-counter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
 }
 
 .journey-template-preview-text strong {
-  font-size: 28px;
+  /* Headline size is driven by the inline style coming from the slider; the
+     CSS rule provides only the typographic shape. */
   line-height: 1.05;
   font-weight: 900;
   text-transform: uppercase;
+  word-break: break-word;
 }
 
 .journey-template-preview-text span {
-  font-size: 13px;
+  /* Caption size is also driven by the slider (proportional to headline). */
   line-height: 1.35;
-  background: rgba(0, 0, 0, 0.34);
+  background: rgba(0, 0, 0, 0.42);
   border-radius: 999px;
-  padding: 7px 10px;
+  padding: 6px 12px;
+  align-self: center;
+  word-break: break-word;
+}
+
+.journey-step-row-hint-inline {
+  margin-left: 8px;
+  color: var(--admin-text-dim);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .journey-template-controls {
@@ -2615,6 +2988,60 @@ input.journey-step-select {
 
 .journey-media-preview-arrow.is-prev { left: 8px; }
 .journey-media-preview-arrow.is-next { right: 8px; }
+
+/* Carousel dot indicators below the preview frame. Each dot is the active /
+   inactive state of a scene; clicking a dot jumps the carousel to that scene.
+   Sits inside .journey-media-preview, after the frame. */
+.journey-media-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.journey-media-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--admin-border-strong);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: background var(--admin-motion-fast), transform 160ms ease;
+}
+
+.journey-media-carousel-dot:hover {
+  background: var(--admin-text-soft);
+  transform: scale(1.2);
+}
+
+.journey-media-carousel-dot.is-active {
+  background: var(--admin-warm-strong);
+  width: 22px;
+  border-radius: 999px;
+}
+
+.journey-media-preview-empty-copy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: var(--admin-text-dim);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* When the step 2 frame is reused inside the step 3 right aside, cap its
+   height so the carousel + dots fit the journey shell on shorter viewports. */
+.journey-media-preview > .journey-template-preview-frame {
+  max-height: calc(100vh - 240px);
+  flex: 0 1 auto;
+}
 
 /* ----- Slots scène (1 par index, dans le side-card) ---------------------- */
 
