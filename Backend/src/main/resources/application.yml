@@ -105,6 +105,15 @@ app:
       refill-seconds: ${APP_RATE_LIMIT_AUDIO_REFILL_SECONDS:60}
   redis:
     enabled: ${APP_REDIS_ENABLED:false}
+  anthropic:
+    enabled: ${APP_ANTHROPIC_ENABLED:false}
+    api-key: ${ANTHROPIC_API_KEY:}
+    base-url: ${APP_ANTHROPIC_BASE_URL:https://api.anthropic.com}
+    version: ${APP_ANTHROPIC_VERSION:2023-06-01}
+    default-model-id: ${APP_ANTHROPIC_DEFAULT_MODEL_ID:claude-sonnet-4-6}
+    max-tokens: ${APP_ANTHROPIC_MAX_TOKENS:4096}
+    max-tool-loop-iterations: ${APP_ANTHROPIC_MAX_TOOL_LOOP_ITERATIONS:10}
+    read-timeout-ms: ${APP_ANTHROPIC_READ_TIMEOUT_MS:90000}
   elevenlabs:
     enabled: ${APP_ELEVENLABS_ENABLED:false}
     api-key: ${ELEVENLABS_API_KEY:}
