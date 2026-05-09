@@ -64,7 +64,14 @@ function resolveMinimumDurationProgress({
 
 function DashboardIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M4 13.5 12 5l8 8.5" />
       <path d="M5.5 12.5V20h13v-7.5" />
       <path d="M10 20v-4.5h4V20" />
@@ -74,7 +81,14 @@ function DashboardIcon() {
 
 function PipelineIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3.5" y="5" width="6" height="4" rx="1.2" />
       <rect x="14.5" y="5" width="6" height="4" rx="1.2" />
       <rect x="9" y="15" width="6" height="4" rx="1.2" />
@@ -86,7 +100,14 @@ function PipelineIcon() {
 
 function AccountsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="8" r="3.2" />
       <path d="M5 19.5v-1.2A4.8 4.8 0 0 1 9.8 13.5h4.4a4.8 4.8 0 0 1 4.8 4.8v1.2" />
       <path d="M18.5 6.5h2" />
@@ -97,7 +118,14 @@ function AccountsIcon() {
 
 function ActionsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M4 12h10" />
       <path d="m10 6 6 6-6 6" />
       <rect x="16.5" y="4.5" width="3" height="3" rx="0.8" />
@@ -108,16 +136,53 @@ function ActionsIcon() {
 
 function TikTokIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M14 4v8.2a4.2 4.2 0 1 1-3.4-4.1" />
       <path d="M14 4c1.1 2.4 2.8 3.8 5 4.2" />
     </svg>
   )
 }
 
+function AIAgentsIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="3.5" />
+      <circle cx="5" cy="6" r="1.4" />
+      <circle cx="19" cy="6" r="1.4" />
+      <circle cx="5" cy="18" r="1.4" />
+      <circle cx="19" cy="18" r="1.4" />
+      <path d="M6.2 6.8 9.5 10" />
+      <path d="m17.8 6.8-3.3 3.2" />
+      <path d="M6.2 17.2 9.5 14" />
+      <path d="m17.8 17.2-3.3-3.2" />
+    </svg>
+  )
+}
+
 function LogoutIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M14 7V5.8A1.8 1.8 0 0 0 12.2 4H7.8A1.8 1.8 0 0 0 6 5.8v12.4A1.8 1.8 0 0 0 7.8 20h4.4a1.8 1.8 0 0 0 1.8-1.8V17" />
       <path d="M10 12h10" />
       <path d="m17 8 4 4-4 4" />
@@ -128,13 +193,16 @@ function LogoutIcon() {
 const ADMIN_NAV_ICONS: Record<string, ComponentType> = {
   dashboard: DashboardIcon,
   tiktok: TikTokIcon,
+  'ai-agents': AIAgentsIcon,
   'content-pipeline': PipelineIcon,
   accounts: AccountsIcon,
   'manual-actions': ActionsIcon,
 }
 
 function formatAdminRoleLabel(role: string | null | undefined): string {
-  const normalizedRole = String(role || 'ADMIN').trim().toUpperCase()
+  const normalizedRole = String(role || 'ADMIN')
+    .trim()
+    .toUpperCase()
   if (normalizedRole === 'SUPER_ADMIN') return 'Super Admin'
   if (normalizedRole === 'ADMIN') return 'Admin'
   return normalizedRole.replaceAll('_', ' ') || 'Admin'
@@ -161,18 +229,22 @@ export default function AdminShell({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [logoutProgressValue, setLogoutProgressValue] = useState<number | null>(null)
   const [showBlockingFallback, setShowBlockingFallback] = useState(false)
-  const [blockingFallbackSnapshot, setBlockingFallbackSnapshot] = useState<BlockingFallbackSnapshot>({
-    message: blockingMessage,
-    progress: blockingProgress,
-    startedAt: 0,
-  })
+  const [blockingFallbackSnapshot, setBlockingFallbackSnapshot] =
+    useState<BlockingFallbackSnapshot>({
+      message: blockingMessage,
+      progress: blockingProgress,
+      startedAt: 0,
+    })
   const [logoutStartedAt, setLogoutStartedAt] = useState(0)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const profileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const blockingFallbackShownAtRef = useRef(0)
   const [, forceProgressTick] = useState(0)
   const userWithRole = user as (typeof user & { role?: string | null }) | null
-  const adminRoleLabel = useMemo(() => formatAdminRoleLabel(userWithRole?.role), [userWithRole?.role])
+  const adminRoleLabel = useMemo(
+    () => formatAdminRoleLabel(userWithRole?.role),
+    [userWithRole?.role],
+  )
   const visibleFeedbackItems = useMemo(
     () => feedbackItems.filter((item) => Boolean(item?.message)),
     [feedbackItems],
@@ -180,7 +252,10 @@ export default function AdminShell({
 
   const resolvedActiveNavId = useMemo(() => {
     if (activeNavId !== undefined) return activeNavId
-    return ADMIN_NAV_ITEMS.find((item) => location.pathname.startsWith(item.path))?.id || ADMIN_NAV_ITEMS[0]?.id
+    return (
+      ADMIN_NAV_ITEMS.find((item) => location.pathname.startsWith(item.path))?.id ||
+      ADMIN_NAV_ITEMS[0]?.id
+    )
   }, [activeNavId, location.pathname])
 
   const navSections = useMemo(() => {
@@ -191,6 +266,11 @@ export default function AdminShell({
         id: 'production',
         label: 'Production',
         items: ['dashboard', 'tiktok'].map((id) => navItemsById[id]).filter(Boolean),
+      },
+      {
+        id: 'supervision',
+        label: 'Supervision',
+        items: ['ai-agents'].map((id) => navItemsById[id]).filter(Boolean),
       },
       {
         id: 'configuration',
@@ -350,13 +430,13 @@ export default function AdminShell({
   }
 
   return (
-    <div className={`admin-console-page with-side-nav ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${visibleFeedbackItems.length ? 'has-navbar-feedback' : ''}`}>
+    <div
+      className={`admin-console-page with-side-nav ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${visibleFeedbackItems.length ? 'has-navbar-feedback' : ''}`}
+    >
       <nav className="admin-navbar">
         <div className="admin-navbar-shell">
           <div className="admin-navbar-brand">
-            <div className="admin-profile-role-badge admin-navbar-brand-role">
-              {adminRoleLabel}
-            </div>
+            <div className="admin-profile-role-badge admin-navbar-brand-role">{adminRoleLabel}</div>
             <div className="admin-navbar-brand-copy">
               <span className="admin-navbar-logo">TikTok App Ops</span>
             </div>
@@ -375,8 +455,14 @@ export default function AdminShell({
                 ref={profileMenuButtonRef}
               >
                 <div className="admin-profile-info">
-                  <span className="admin-navbar-presence-indicator" aria-label="Admin en ligne" title="En ligne" />
-                  <strong className="admin-profile-name">{user?.nom || user?.email || 'Equipe admin'}</strong>
+                  <span
+                    className="admin-navbar-presence-indicator"
+                    aria-label="Admin en ligne"
+                    title="En ligne"
+                  />
+                  <strong className="admin-profile-name">
+                    {user?.nom || user?.email || 'Equipe admin'}
+                  </strong>
                   <span className="admin-profile-email">{user?.email || 'Session active'}</span>
                 </div>
               </button>
@@ -457,7 +543,9 @@ export default function AdminShell({
             className="admin-context-sidebar-toggle"
             onClick={() => setIsSidebarCollapsed((prev) => !prev)}
             aria-pressed={isSidebarCollapsed}
-            aria-label={isSidebarCollapsed ? 'Elargir la barre laterale' : 'Reduire la barre laterale'}
+            aria-label={
+              isSidebarCollapsed ? 'Elargir la barre laterale' : 'Reduire la barre laterale'
+            }
             title={isSidebarCollapsed ? 'Elargir la barre laterale' : 'Reduire la barre laterale'}
           >
             <span className="admin-context-sidebar-toggle-icon" aria-hidden="true">

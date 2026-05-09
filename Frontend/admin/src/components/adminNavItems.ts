@@ -8,6 +8,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { id: 'dashboard', label: 'Dashboard', path: '/dashboard' },
   { id: 'tiktok', label: 'TikTok', path: '/tiktok' },
+  { id: 'ai-agents', label: 'AI Agents', path: '/ai-agents' },
   { id: 'accounts', label: 'Accounts', path: '/accounts' },
 ]
 
@@ -139,7 +140,10 @@ export function createProductDraft(): ProductDraft {
   }
 }
 
-export function isCreateDraftSaved(draft: { id?: string } | null | undefined, savedCreateDraftIds: string[] = []): boolean {
+export function isCreateDraftSaved(
+  draft: { id?: string } | null | undefined,
+  savedCreateDraftIds: string[] = [],
+): boolean {
   return Boolean(draft?.id) && savedCreateDraftIds.includes(draft!.id!)
 }
 
@@ -148,11 +152,10 @@ export function findFirstPendingCreateDraftId(
   savedCreateDraftIds: string[] = [],
 ): string | null {
   const drafts = Array.isArray(createDrafts) ? createDrafts : []
-  const pendingDraft = drafts.find((draft) => (
-    draft?.id
-    && !draft.persistedProductId
-    && !isCreateDraftSaved(draft, savedCreateDraftIds)
-  ))
+  const pendingDraft = drafts.find(
+    (draft) =>
+      draft?.id && !draft.persistedProductId && !isCreateDraftSaved(draft, savedCreateDraftIds),
+  )
 
   return pendingDraft?.id || null
 }
