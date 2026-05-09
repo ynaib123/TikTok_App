@@ -18,6 +18,7 @@ import { useLocation, useNavigate, type Location } from 'react-router-dom'
 import AdminShell from '../components/AdminShell'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { useTikTokWorkflow } from '../hooks'
+import { useRenderNotifications } from '../hooks/useRenderNotifications'
 import {
   triggerMainContentPipeline,
   triggerPublishTikTokWorkflow,
@@ -227,6 +228,9 @@ export default function TikTokJourneyPage() {
   const resumeWorkspaceIdeaIdRef = useRef<number | null>(location.state?.resumeWorkspaceIdeaId ?? null)
   const pendingExitTargetRef = useRef<PendingExitTarget | null>(null)
   const { logout } = useAdminAuth()
+  // Lot 7 / H3 — request Notification permission and pop a toast when a render
+  // finishes while the operator is in another tab.
+  useRenderNotifications(true)
   const {
     accountsReadiness,
     contentIdeas,

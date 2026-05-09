@@ -4,6 +4,7 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.model.VideoWorkflowRun;
 import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.model.VideoWorkflowType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.repository.VideoWorkflowRunRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,9 @@ class WorkflowCallbackServiceIdempotencyTest {
         workflowRunRepository = mock(VideoWorkflowRunRepository.class);
         trackingService = mock(VideoOpsTrackingService.class);
         callbackAuthService = mock(VideoOpsCallbackAuthService.class);
-        service = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
+        service = new WorkflowCallbackService(
+                workflowRunRepository, trackingService, callbackAuthService,
+                new RenderEventBroadcaster(new ObjectMapper()));
     }
 
     @Test

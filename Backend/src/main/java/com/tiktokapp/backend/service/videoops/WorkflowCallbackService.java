@@ -29,15 +29,18 @@ public class WorkflowCallbackService {
     private final VideoWorkflowRunRepository workflowRunRepository;
     private final VideoOpsTrackingService trackingService;
     private final VideoOpsCallbackAuthService callbackAuthService;
+    private final RenderEventBroadcaster renderEventBroadcaster;
 
     public WorkflowCallbackService(
             VideoWorkflowRunRepository workflowRunRepository,
             VideoOpsTrackingService trackingService,
-            VideoOpsCallbackAuthService callbackAuthService
+            VideoOpsCallbackAuthService callbackAuthService,
+            RenderEventBroadcaster renderEventBroadcaster
     ) {
         this.workflowRunRepository = workflowRunRepository;
         this.trackingService = trackingService;
         this.callbackAuthService = callbackAuthService;
+        this.renderEventBroadcaster = renderEventBroadcaster;
     }
 
     public void validateCallback(String method, String path, String body, String timestamp, String signature, String legacySecret) {
@@ -131,7 +134,25 @@ public class WorkflowCallbackService {
             logInfo("workflow_callback_succeeded", run, request.getMessage() == null ? "Workflow externe termine avec succes." : request.getMessage());
         }
         VideoWorkflowRun saved = workflowRunRepository.save(run);
+        publishRenderEvent(saved);
         return toResponse(saved);
+    }
+
+    /**
+     * Lot 7 / H3 — broadcasts a render-specific terminal event so the frontend
+     * can fire a browser Notification when the operator left the tab.
+     */
+    private void publishRenderEvent(VideoWorkflowRun run) {
+        if (run.getWorkflowType() != com.tiktokapp.backend.model.VideoWorkflowType.RENDER_TEMPLATE_VIDEO) {
+            return;
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("runId", run.getId());
+        payload.put("contentIdeaId", run.getContentIdeaId());
+        payload.put("status", run.getStatus() == null ? null : run.getStatus().name());
+        payload.put("errorMessage", run.getErrorMessage());
+        payload.put("completedAt", run.getCompletedAt() == null ? null : run.getCompletedAt().toString());
+        renderEventBroadcaster.publish("render_finished", payload);
     }
 
     private VideoWorkflowRunDetailResponse toResponse(VideoWorkflowRun run) {

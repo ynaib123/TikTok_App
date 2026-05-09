@@ -174,7 +174,9 @@ class VideoOpsServiceTest {
         when(workflowRunRepository.save(any(VideoWorkflowRun.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        WorkflowCallbackService callbackService = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
+        WorkflowCallbackService callbackService = new WorkflowCallbackService(
+                workflowRunRepository, trackingService, callbackAuthService,
+                new RenderEventBroadcaster(new ObjectMapper()));
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
         request.setStatus("rendering_requested");
@@ -199,7 +201,9 @@ class VideoOpsServiceTest {
 
         when(workflowRunRepository.findById(88L)).thenReturn(Optional.of(existingRun));
 
-        WorkflowCallbackService callbackService = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
+        WorkflowCallbackService callbackService = new WorkflowCallbackService(
+                workflowRunRepository, trackingService, callbackAuthService,
+                new RenderEventBroadcaster(new ObjectMapper()));
 
         VideoWorkflowRunCompletionRequest request = new VideoWorkflowRunCompletionRequest();
         request.setStatus("FAILED");
