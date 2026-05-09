@@ -60,7 +60,8 @@ public class SecurityConfig {
                                 "/api/video-ops/internal/groq/chat-completions",
                                 "/api/video-ops/internal/pexels/videos/search",
                                 "/api/video-ops/accounts/**",
-                                "/api/ai/agents/*/run"
+                                "/api/ai/agents/*/run",
+                                "/api/audio/**"
                         )
                 )
                 .cors(Customizer.withDefaults())

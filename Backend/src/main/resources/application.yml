@@ -105,6 +105,16 @@ app:
       refill-seconds: ${APP_RATE_LIMIT_AUDIO_REFILL_SECONDS:60}
   redis:
     enabled: ${APP_REDIS_ENABLED:false}
+  elevenlabs:
+    enabled: ${APP_ELEVENLABS_ENABLED:false}
+    api-key: ${ELEVENLABS_API_KEY:}
+    base-url: ${APP_ELEVENLABS_BASE_URL:https://api.elevenlabs.io}
+    default-model-id: ${APP_ELEVENLABS_DEFAULT_MODEL_ID:eleven_multilingual_v2}
+    preview-max-chars: ${APP_ELEVENLABS_PREVIEW_MAX_CHARS:240}
+    generate-max-chars: ${APP_ELEVENLABS_GENERATE_MAX_CHARS:4000}
+    read-timeout-ms: ${APP_ELEVENLABS_READ_TIMEOUT_MS:60000}
+    storage-path: ${APP_ELEVENLABS_STORAGE_PATH:/app/audio-assets}
+    public-base-url: ${APP_ELEVENLABS_PUBLIC_BASE_URL:}
   alerting:
     enabled: ${APP_ALERTING_ENABLED:true}
     slack-webhook-url: ${APP_ALERTING_SLACK_WEBHOOK_URL:}
@@ -165,6 +175,12 @@ resilience4j:
         baseConfig: default
       groq:
         baseConfig: default
+      elevenlabs:
+        baseConfig: default
+        waitDurationInOpenState: 60s
+      anthropic:
+        baseConfig: default
+        waitDurationInOpenState: 60s
   retry:
     configs:
       default:
@@ -188,3 +204,9 @@ resilience4j:
         baseConfig: default
       groq:
         baseConfig: default
+      elevenlabs:
+        baseConfig: default
+        maxAttempts: 2
+      anthropic:
+        baseConfig: default
+        maxAttempts: 2
