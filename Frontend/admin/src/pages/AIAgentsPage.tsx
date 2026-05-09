@@ -117,7 +117,8 @@ function SceneFallback() {
 const pageStyle: React.CSSProperties = {
   position: 'fixed',
   top: 'var(--admin-nav-height, 78px)',
-  left: 'var(--admin-sidebar-width, 260px)',
+  // left + transition are set by ai-agents.css so they can react to the
+  // .sidebar-collapsed class on the parent .admin-console-page.
   right: 0,
   bottom: 0,
   display: 'flex',
@@ -125,7 +126,6 @@ const pageStyle: React.CSSProperties = {
   background: '#000',
   color: '#fff',
   zIndex: 1,
-  transition: 'left 220ms ease',
 }
 const headerStyle: React.CSSProperties = {
   display: 'flex',

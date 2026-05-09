@@ -1,6 +1,12 @@
 /* AI Agents supervision page (Lot 6) — fills the viewport minus the navbar
  * (top) and the sidebar (left). The sidebar stays visible and the page
- * follows its collapse/expand animation. */
+ * follows its collapse/expand animation precisely.
+ *
+ * The sidebar is position: fixed at left = var(--admin-sidebar-offset-x, 25px)
+ * with width var(--admin-sidebar-width, 260px) when expanded. When the
+ * .is-collapsed modifier kicks in, the OpenAI theme switches its width to
+ * var(--admin-shell-static-nav-collapsed-width, 80px). The page mirrors those
+ * exact values so its left edge sits flush against the sidebar's right border. */
 
 .admin-console-page:has(.ai-agents-page) {
   padding: 0;
@@ -8,11 +14,23 @@
 }
 
 .admin-console-page:has(.ai-agents-page) .ai-agents-page {
-  left: var(--admin-sidebar-width, 260px);
+  left: calc(var(--admin-sidebar-offset-x, 25px) + var(--admin-sidebar-width, 260px));
+  transition: left 220ms ease;
 }
 
 .admin-console-page.sidebar-collapsed:has(.ai-agents-page) .ai-agents-page {
-  left: var(--admin-sidebar-collapsed-width, 70px);
+  left: calc(
+    var(--admin-sidebar-offset-x, 25px) + var(--admin-shell-static-nav-collapsed-width, 80px)
+  );
+}
+
+/* The base sidebar declares no width/padding transition, so collapsing it
+ * snaps instantly. Add one only when the AI Agents page is mounted so the
+ * sidebar AND the content slide together. */
+.admin-console-page:has(.ai-agents-page) .admin-context-sidebar {
+  transition:
+    width 220ms ease,
+    padding 220ms ease;
 }
 
 @media (max-width: 980px) {
