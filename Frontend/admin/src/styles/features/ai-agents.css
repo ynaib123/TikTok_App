@@ -30,7 +30,7 @@
 
 .ai-agents-layout {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 0;
   flex: 1;
   min-height: 0;
@@ -42,8 +42,13 @@
   flex-direction: column;
   height: 100%;
   background: #111111;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
+  order: 2;
+}
+
+.ai-agents-stage {
+  order: 1;
 }
 
 .ai-toolbar-loading {
@@ -526,8 +531,8 @@
     grid-template-columns: 1fr;
   }
   .ai-toolbar {
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
     height: auto;
   }
 }
