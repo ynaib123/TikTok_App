@@ -51,6 +51,7 @@ public class AgentOrchestrator {
     private final VideoOpsMetrics metrics;
     private final LlmProvider llmProvider;
     private final AnthropicProperties anthropicProperties;
+    private final AgentRunBroadcaster broadcaster;
 
     public AgentOrchestrator(
             AgentRegistry registry,
@@ -59,7 +60,8 @@ public class AgentOrchestrator {
             ObjectMapper objectMapper,
             VideoOpsMetrics metrics,
             LlmProvider llmProvider,
-            AnthropicProperties anthropicProperties
+            AnthropicProperties anthropicProperties,
+            AgentRunBroadcaster broadcaster
     ) {
         this.registry = registry;
         this.toolRegistry = toolRegistry;
@@ -68,6 +70,7 @@ public class AgentOrchestrator {
         this.metrics = metrics;
         this.llmProvider = llmProvider;
         this.anthropicProperties = anthropicProperties;
+        this.broadcaster = broadcaster;
     }
 
     public AgentRunResponse run(AgentRunRequest request, Long adminId, String adminEmail) {
@@ -84,6 +87,13 @@ public class AgentOrchestrator {
         run.setTraceId(MDC.get("traceId"));
         run.setInputJson(serialize(request.input()));
         run = runRepository.save(run);
+
+        broadcaster.publish("agent_run_started", java.util.Map.of(
+                "runId", run.getId(),
+                "agentId", definition.agentId(),
+                "modelId", definition.modelId(),
+                "adminEmail", adminEmail == null ? "" : adminEmail
+        ));
 
         long startMillis = System.currentTimeMillis();
         try {
@@ -104,6 +114,14 @@ public class AgentOrchestrator {
             run.setTokensIn(result.totalInputTokens);
             run.setTokensOut(result.totalOutputTokens);
             runRepository.save(run);
+            broadcaster.publish("agent_run_finished", java.util.Map.of(
+                    "runId", run.getId(),
+                    "agentId", definition.agentId(),
+                    "status", "SUCCEEDED",
+                    "tokensIn", result.totalInputTokens,
+                    "tokensOut", result.totalOutputTokens,
+                    "durationMs", run.getDurationMs()
+            ));
             return new AgentRunResponse(run.getId(), run.getStatus(), result.output, null);
         } catch (Exception exception) {
             run.setStatus("FAILED");
@@ -113,6 +131,12 @@ public class AgentOrchestrator {
             runRepository.save(run);
             logger.warn("agent run failed agentId={} runId={} cause={}",
                     definition.agentId(), run.getId(), exception.getMessage());
+            broadcaster.publish("agent_run_finished", java.util.Map.of(
+                    "runId", run.getId(),
+                    "agentId", definition.agentId(),
+                    "status", "FAILED",
+                    "error", exception.getMessage() == null ? "" : exception.getMessage()
+            ));
             return new AgentRunResponse(run.getId(), "FAILED", null, exception.getMessage());
         }
     }
@@ -179,11 +203,24 @@ public class AgentOrchestrator {
                     }
                     JsonNode toolOut = tool.execute(toolInput, context);
                     resultNode.put("content", serialize(toolOut));
+                    broadcaster.publish("agent_tool_call", java.util.Map.of(
+                            "runId", context.runId(),
+                            "agentId", context.agentId(),
+                            "tool", toolName,
+                            "ok", true
+                    ));
                 } catch (Exception toolEx) {
                     logger.warn("agent tool failed runId={} tool={} reason={}",
                             context.runId(), toolName, toolEx.getMessage());
                     resultNode.put("content", "{\"error\":\"" + truncate(toolEx.getMessage(), 200) + "\"}");
                     resultNode.put("is_error", true);
+                    broadcaster.publish("agent_tool_call", java.util.Map.of(
+                            "runId", context.runId(),
+                            "agentId", context.agentId(),
+                            "tool", toolName,
+                            "ok", false,
+                            "error", toolEx.getMessage() == null ? "" : toolEx.getMessage()
+                    ));
                 }
                 resultsArr.add(resultNode);
             }

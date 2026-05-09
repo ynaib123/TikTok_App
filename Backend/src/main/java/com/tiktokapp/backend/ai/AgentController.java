@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Collection;
 
@@ -23,15 +24,18 @@ public class AgentController {
 
     private final AgentRegistry registry;
     private final AgentOrchestrator orchestrator;
+    private final AgentRunBroadcaster broadcaster;
     private final boolean agentsEnabled;
 
     public AgentController(
             AgentRegistry registry,
             AgentOrchestrator orchestrator,
+            AgentRunBroadcaster broadcaster,
             @Value("${app.ai.agents.enabled:false}") boolean agentsEnabled
     ) {
         this.registry = registry;
         this.orchestrator = orchestrator;
+        this.broadcaster = broadcaster;
         this.agentsEnabled = agentsEnabled;
     }
 
@@ -58,5 +62,15 @@ public class AgentController {
                 null,
                 authentication == null ? null : authentication.getName()
         ));
+    }
+
+    /**
+     * Server-Sent Events stream of agent run lifecycle events. Powers the AI
+     * Agents 3D supervision page (particle flux + Matrix terminal). Events :
+     * {@code agent_run_started} / {@code agent_tool_call} / {@code agent_run_finished}.
+     */
+    @GetMapping(value = "/stream", produces = "text/event-stream")
+    public SseEmitter stream() {
+        return broadcaster.subscribe();
     }
 }

@@ -17,6 +17,7 @@ const TikTokOAuthCallbackPage = lazy(() => import('./pages/TikTokOAuthCallbackPa
 const TikTokAccountsPage = lazy(() => import('./pages/TikTokAccountsPage'))
 const IdeaDetailPage = lazy(() => import('./pages/IdeaDetailPage'))
 const DesignSystemPreviewPage = lazy(() => import('./pages/DesignSystemPreviewPage'))
+const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'))
 const ADMIN_DESKTOP_ONLY_MEDIA_QUERY = '(max-width: 980px)'
 
 function AdminMobileBlockedPage() {
@@ -129,6 +130,14 @@ export default function AdminApp() {
           )}
         />
         <Route path="/tiktok-accounts" element={<Navigate to="/accounts" replace />} />
+        <Route
+          path="/ai-agents"
+          element={(
+            <AdminOnlyRoute>
+              <AIAgentsPage />
+            </AdminOnlyRoute>
+          )}
+        />
         <Route
           path="/__design"
           element={(

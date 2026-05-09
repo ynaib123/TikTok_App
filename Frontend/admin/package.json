@@ -18,12 +18,16 @@
     "prepare": "cd ../.. && husky Frontend/admin/.husky"
   },
   "dependencies": {
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.0.0",
     "@tanstack/react-query": "^5.96.2",
     "i18next": "^26.0.10",
+    "lucide-react": "^0.471.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-i18next": "^17.0.7",
     "react-router-dom": "^7.13.1",
+    "three": "^0.171.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -33,6 +37,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.171.0",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.39.1",
