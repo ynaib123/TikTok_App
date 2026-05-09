@@ -1,4 +1,5 @@
 {
+  "id": "612b79217eb97182",
   "name": "_callback_hmac",
   "nodes": [
     {
@@ -7,7 +8,10 @@
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,15 +21,26 @@
       "name": "Compute HMAC",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     }
   ],
   "connections": {
     "When Executed by Another Workflow": {
-      "main": [[{"node": "Compute HMAC", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Compute HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": true,
-  "settings": {"executionOrder": "v1"},
-  "tags": ["shared", "callback", "hmac"]
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

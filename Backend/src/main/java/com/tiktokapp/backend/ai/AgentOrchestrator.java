@@ -204,18 +204,18 @@ public class AgentOrchestrator {
                     JsonNode toolOut = tool.execute(toolInput, context);
                     resultNode.put("content", serialize(toolOut));
                     broadcaster.publish("agent_tool_call", java.util.Map.of(
-                            "runId", context.runId(),
+                            "runId", context.agentRunId(),
                             "agentId", context.agentId(),
                             "tool", toolName,
                             "ok", true
                     ));
                 } catch (Exception toolEx) {
                     logger.warn("agent tool failed runId={} tool={} reason={}",
-                            context.runId(), toolName, toolEx.getMessage());
+                            context.agentRunId(), toolName, toolEx.getMessage());
                     resultNode.put("content", "{\"error\":\"" + truncate(toolEx.getMessage(), 200) + "\"}");
                     resultNode.put("is_error", true);
                     broadcaster.publish("agent_tool_call", java.util.Map.of(
-                            "runId", context.runId(),
+                            "runId", context.agentRunId(),
                             "agentId", context.agentId(),
                             "tool", toolName,
                             "ok", false,

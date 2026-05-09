@@ -79,7 +79,7 @@ public class ScriptAutoRepairService {
                     return ValidationResult.invalid("scene " + i + " missing/invalid durationSec");
                 }
             }
-            return ValidationResult.ok();
+            return ValidationResult.validResult();
         } catch (JsonProcessingException ex) {
             return ValidationResult.invalid("invalid JSON: " + ex.getOriginalMessage());
         }
@@ -168,8 +168,9 @@ public class ScriptAutoRepairService {
         return value.length() <= max ? value : value.substring(0, max) + " ...[truncated]";
     }
 
-    public record ValidationResult(boolean ok, String reason) {
-        public static ValidationResult ok() { return new ValidationResult(true, null); }
+    public record ValidationResult(boolean valid, String reason) {
+        public boolean ok() { return valid; }
+        public static ValidationResult validResult() { return new ValidationResult(true, null); }
         public static ValidationResult invalid(String reason) { return new ValidationResult(false, reason); }
     }
 
