@@ -92,6 +92,59 @@ Pas de push.
 - Pas de visual testing — toutes les vérifs sont compile/lint/type-check.
 - AgentOrchestrator.runAgentLoop : maintenant throw 501 (au lieu d'un faux 200). Endpoint gated par `app.ai.agents.enabled=false`. Brancher Anthropic SDK pour activer.
 
+## Session 2026-05-09 — Master plan 8 lots (CLAUDE_CODE_MISSIONS.md)
+
+Toutes les 8 missions du master plan livrées en 10 commits sur `wip/auto-phases`.
+
+### Lot 1 — Architecture backend
+- ✅ VideoOpsService (1003 L) splitté en 4 services + WorkflowOrchestrator + helpers (commit `60cdeee`)
+- ✅ ContentIdeaPatchRequest typé, JsonNode des proxy endpoints documenté (commit `55ef06f`)
+
+### Lot 2 — Frontend data + i18n
+- ✅ VIDEO_OPS_QUERY_KEYS factory étendue avec helpers paramétrés, 5 query keys ad-hoc migrés (commit `5f7ce8c`)
+- ✅ LanguageSwitcher dans AdminShell, common namespace FR/EN, audio strings scaffoldées
+- ✅ Migration fetch → useQuery déjà complète (3 fetch restants = transport HTTP, à conserver)
+
+### Lot 3 — Sécurité & Cache
+- ✅ Redis docker service + spring-boot-starter-data-redis + RedisCacheConfig (3 régions) (commit `3b0c1b3`)
+- ✅ Bucket4j étendu avec buckets ai-agents + audio
+- ✅ Sub-workflows n8n `_callback_hmac` + `_error_handler` + README import procedure
+
+### Lot 4 — Audio (4e étape du parcours)
+- ✅ Backend ElevenLabs : V11 migration + AudioAsset + Repository + Client + Service + Storage + Controller (commit `21c082f`)
+- ✅ Frontend AudioStep + Waveform Canvas + mixer dual-volume + STEPS passé à 4 (commit `0670ff6`)
+- ✅ RenderVideo AudioMixer dans les 4 templates Remotion + schéma JSON ajusté + parallel downloads
+
+### Lot 5 — IA Anthropic
+- ✅ LlmProvider interface + AnthropicProvider (Messages API direct) + tool-use loop complet (commit `9750d3d`)
+- ✅ Strategist agent + 3 tools DB read-only (list_top_topics, get_publish_kpis, get_pending_ideas)
+- ✅ Tracking tokensIn/tokensOut + métriques
+
+### Lot 6 — Supervision 3D
+- ✅ AgentRunBroadcaster SSE + events agent_run_started / agent_tool_call / agent_run_finished (commit `471582a`)
+- ✅ AIAgentsPage + AgentsScene Three.js (4 nodes + particles instanced + orbit) + LogTerminal Matrix
+- ⏳ `npm install` requis pour activer les deps three / @react-three/* / lucide-react
+
+### Lot 7 — Performance & Qualité
+- ✅ Téléchargement parallèle voice + music dans postProcess.ts (commit `0670ff6`)
+- ✅ ScriptAutoRepairService (validate + repair via Claude, gated par feature flag) (commit `795c2ec`)
+- ✅ RenderEventBroadcaster + useRenderNotifications hook + Notification API quand tab cachée
+
+### Lot 8 — Tests
+- ✅ AudioServiceIntegrationTest (Testcontainers Postgres) avec 3 scenarios (commit `7dc692e`)
+- ✅ tiktok-audio-step.spec.js Playwright smoke (mocks /api/audio/* + génération)
+
+## Bloquants restants (côté user)
+
+1. **Frontend** : `cd Frontend/admin && npm install` pour matérialiser three / @react-three/* / lucide-react
+2. **Backend** : `cd Backend && mvn verify` pour valider le build complet (pas de Maven local)
+3. **Secrets à fournir** :
+   - `ANTHROPIC_API_KEY` + `APP_ANTHROPIC_ENABLED=true` + `APP_AI_AGENTS_ENABLED=true` pour activer le strategist
+   - `ELEVENLABS_API_KEY` + `APP_ELEVENLABS_ENABLED=true` pour activer le step Audio
+   - `APP_REDIS_ENABLED=true` pour activer le cache Redis (compose lance déjà le service)
+4. **n8n** : importer manuellement `n8n-local/shared/_callback_hmac.json` et `_error_handler.json` via UI
+5. **Tests Testcontainers** : `mvn test` quand Docker tourne (bibliothèque déjà dans pom)
+
 ## Session 2026-05-05 — solidification
 
 - ✅ Adaptive polling effectivement wiré (Phase 2.10 réelle)
