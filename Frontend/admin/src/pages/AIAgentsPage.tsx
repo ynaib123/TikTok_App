@@ -1,12 +1,12 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AdminShell from '../components/AdminShell'
+import type { NodeId, SceneNode } from './ai-agents/agentNodes'
 import '../styles/features/ai-agents.css'
 
 const AgentsScene = lazy(() => import('./ai-agents/AgentsScene'))
-const LogTerminal = lazy(() => import('./ai-agents/LogTerminal'))
-const AgentRunner = lazy(() => import('./ai-agents/AgentRunner'))
-const HelpLegend = lazy(() => import('./ai-agents/HelpLegend'))
+const ActivityToolbar = lazy(() => import('./ai-agents/ActivityToolbar'))
+const AgentDetailsModal = lazy(() => import('./ai-agents/AgentDetailsModal'))
 
 export interface AgentEvent {
   id: number
@@ -16,29 +16,23 @@ export interface AgentEvent {
 }
 
 const MAX_EVENTS = 200
-
 type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'closed'
 
 /**
- * AI Agents supervision page — 3D flux + Matrix terminal driven by the
- * /api/ai/agents/stream SSE endpoint.
- *
- * The body is rendered via {@code position: fixed} so it spans the entire
- * viewport minus the AdminShell navbar (top) and sidebar (left). Both
- * offsets read CSS vars from foundation/core.css so they track sidebar
- * collapse via :has(.sidebar-collapsed) without extra wiring.
+ * AI Agents supervision page — full redesign matching the OpenAI-flavoured
+ * admin theme. Two-column layout : a 340px toolbar on the left (runner +
+ * live activity), and a fully interactive 3D canvas on the right with
+ * professional agent meshes (operator humanoid, brain orb, server rack,
+ * Postgres disk stack). Clicking any node opens a details modal.
  */
 export default function AIAgentsPage() {
   const { t } = useTranslation('common')
   const [events, setEvents] = useState<AgentEvent[]>([])
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('connecting')
   const [sidebarRightEdge, setSidebarRightEdge] = useState<number>(0)
+  const [selectedNode, setSelectedNode] = useState<SceneNode | null>(null)
   const idCounterRef = useRef(0)
 
-  // Track the sidebar's actual right-edge in pixels so the AI Agents content
-  // sits flush against it regardless of theme overrides, scrollbars or
-  // border-right offsets. ResizeObserver fires on every collapse animation
-  // frame so the page slides in lockstep with the sidebar.
   useEffect(() => {
     const sidebar = document.querySelector<HTMLElement>('.admin-context-sidebar')
     if (!sidebar) return undefined
@@ -73,8 +67,6 @@ export default function AIAgentsPage() {
     }
     source.onopen = () => setStreamStatus('live')
     source.onerror = () => {
-      // EventSource auto-reconnects unless readyState is CLOSED. Mirror that
-      // truth into the UI : we only flip to "closed" when the browser gave up.
       setStreamStatus(source.readyState === EventSource.CLOSED ? 'closed' : 'reconnecting')
     }
     source.addEventListener('agent_run_started', onEvent('agent_run_started') as EventListener)
@@ -84,104 +76,66 @@ export default function AIAgentsPage() {
   }, [])
 
   const statusColor: Record<StreamStatus, string> = {
-    connecting: '#94a3b8',
-    live: '#22c55e',
-    reconnecting: '#f59e0b',
+    connecting: '#9c9c9c',
+    live: '#12b76a',
+    reconnecting: '#ffc36f',
     closed: '#ef4444',
   }
   const statusLabel: Record<StreamStatus, string> = {
-    connecting: events.length === 0 ? "en attente d'un premier event" : 'connecting…',
+    connecting: events.length === 0 ? "en attente d'un événement" : 'connecting…',
     live: 'live',
     reconnecting: 'reconnecting…',
     closed: t('errors.network'),
   }
 
+  const selectedNodeId: NodeId | null = selectedNode?.id ?? null
+
   return (
     <AdminShell activeNavId="ai-agents">
-      <div className="ai-agents-page" style={{ ...pageStyle, left: sidebarRightEdge }}>
-        <header style={headerStyle}>
-          <h1 style={{ margin: 0, fontSize: 22 }}>AI Agents Supervision</h1>
-          <span style={{ ...statusDotStyle, background: statusColor[streamStatus] }} />
-          <span style={{ fontSize: 12, opacity: 0.7 }}>{statusLabel[streamStatus]}</span>
-        </header>
-        <div style={mainStyle}>
-          <div style={sceneStyle}>
+      <div
+        className="ai-agents-page"
+        style={{
+          position: 'fixed',
+          top: 'var(--admin-nav-height, 78px)',
+          left: sidebarRightEdge,
+          right: 0,
+          bottom: 0,
+        }}
+      >
+        <div className="ai-agents-layout">
+          <Suspense fallback={<ToolbarFallback />}>
+            <ActivityToolbar
+              events={events}
+              streamLabel={statusLabel[streamStatus]}
+              streamColor={statusColor[streamStatus]}
+            />
+          </Suspense>
+          <div className="ai-agents-stage">
+            <div className="ai-agents-stage-hud">
+              <span>Cliquez un nœud pour voir ses détails</span>
+              <span className="ai-agents-stage-hud-hint">drag = orbiter · scroll = zoom</span>
+            </div>
             <Suspense fallback={<SceneFallback />}>
-              <AgentsScene events={events} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <AgentRunner />
-            </Suspense>
-            <Suspense fallback={null}>
-              <HelpLegend />
+              <AgentsScene
+                events={events}
+                onSelectNode={setSelectedNode}
+                selectedNodeId={selectedNodeId}
+              />
             </Suspense>
           </div>
-          <aside style={asideStyle}>
-            <Suspense fallback={<div style={{ padding: 12 }}>Loading terminal…</div>}>
-              <LogTerminal events={events} />
-            </Suspense>
-          </aside>
         </div>
+        <Suspense fallback={null}>
+          <AgentDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />
+        </Suspense>
       </div>
     </AdminShell>
   )
 }
 
 function SceneFallback() {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        color: 'rgba(255, 255, 255, 0.5)',
-        fontSize: 13,
-      }}
-    >
-      Loading 3D scene…
-    </div>
-  )
+  return <div className="ai-agents-stage-loading">Chargement de la scène 3D…</div>
 }
 
-const pageStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 'var(--admin-nav-height, 78px)',
-  // left + transition are set by ai-agents.css so they can react to the
-  // .sidebar-collapsed class on the parent .admin-console-page.
-  right: 0,
-  bottom: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  background: '#000',
-  color: '#fff',
-  zIndex: 1,
-}
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  padding: '12px 18px',
-  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-  flex: '0 0 auto',
-}
-const statusDotStyle: React.CSSProperties = { width: 10, height: 10, borderRadius: '50%' }
-const mainStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) 360px',
-  gap: 0,
-  flex: 1,
-  minHeight: 0,
-}
-const sceneStyle: React.CSSProperties = {
-  position: 'relative',
-  background: 'radial-gradient(circle at center, #0b1420 0%, #000 80%)',
-  minHeight: 0,
-}
-const asideStyle: React.CSSProperties = {
-  borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-  background: '#000',
-  display: 'flex',
-  flexDirection: 'column',
-  minHeight: 0,
+function ToolbarFallback() {
+  return <div className="ai-toolbar ai-toolbar-loading">Chargement de la console…</div>
 }
