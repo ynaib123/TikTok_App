@@ -30,6 +30,7 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunDetailResponse;
 import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tiktokapp.backend.dto.videoops.ContentIdeaCreateRequest;
+import com.tiktokapp.backend.dto.videoops.ContentIdeaPatchRequest;
 import com.tiktokapp.backend.service.videoops.AccountsService;
 import com.tiktokapp.backend.service.videoops.VideoOpsService;
 import com.tiktokapp.backend.service.videoops.VideoOpsDataService;
@@ -334,6 +335,12 @@ public class VideoOpsController {
         return ResponseEntity.ok(tikTokInternalAccountContextService.buildContext(request));
     }
 
+    // ── Proxy endpoints (JsonNode by design) ─────────────────────────────
+    // The bodies below forward opaque payloads to/from third-party APIs
+    // (Groq, Pexels, RenderVideo). Modeling these as DTOs would require
+    // mirroring three external schemas that change independently of us, so
+    // we keep them as JsonNode and let the consumer interpret the shape.
+
     @PostMapping("/internal/groq/chat-completions")
     public ResponseEntity<JsonNode> proxyGroqChatCompletions(
             @RequestBody(required = false) JsonNode request,
@@ -419,24 +426,19 @@ public class VideoOpsController {
     /**
      * Endpoint admin pour mettre à jour le contenu éditable d une content_idea
      * (topic, script, caption, keyword) depuis le parcours TikTok côté UI.
-     * Whitelist stricte des champs : on n autorise pas la modif des statuts /
-     * timestamps / urls / ids depuis ici (ils restent gérés par les workflows).
+     * Whitelist stricte des champs portée par {@link ContentIdeaPatchRequest} :
+     * on n autorise pas la modif des statuts / timestamps / urls / ids depuis
+     * ici (ils restent gérés par les workflows). Le retour reste un JsonNode
+     * car {@code videoOpsDataService.patchContentIdea} forward la ligne brute
+     * de la table {@code content_ideas} qui contient ~30 colonnes mixtes.
      */
     @PatchMapping("/content-ideas/{contentIdeaId}")
     public ResponseEntity<JsonNode> patchContentIdeaAdmin(
             @PathVariable long contentIdeaId,
-            @RequestBody Map<String, Object> patch,
+            @Valid @RequestBody ContentIdeaPatchRequest request,
             Authentication authentication
     ) {
-        Map<String, Object> safe = new LinkedHashMap<>();
-        if (patch.containsKey("topic")) safe.put("topic", patch.get("topic"));
-        if (patch.containsKey("script")) safe.put("scripts", patch.get("script"));
-        if (patch.containsKey("scripts")) safe.put("scripts", patch.get("scripts"));
-        if (patch.containsKey("plannedScenes")) safe.put("planned_scenes", patch.get("plannedScenes"));
-        if (patch.containsKey("planned_scenes")) safe.put("planned_scenes", patch.get("planned_scenes"));
-        if (patch.containsKey("caption")) safe.put("caption", patch.get("caption"));
-        if (patch.containsKey("keyword")) safe.put("background_keyword", patch.get("keyword"));
-        if (patch.containsKey("backgroundKeyword")) safe.put("background_keyword", patch.get("backgroundKeyword"));
+        Map<String, Object> safe = request.toSafePatch();
         if (safe.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aucun champ modifiable fourni.");
         }
