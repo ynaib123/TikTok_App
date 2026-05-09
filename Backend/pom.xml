@@ -127,6 +127,11 @@
             <artifactId>bucket4j-core</artifactId>
             <version>8.10.1</version>
         </dependency>
+        <!-- Phase 3 / Lot 3 : Redis cache pour quotas, sessions et cache LLM -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
         <!-- Phase 1.7: Testcontainers -->
         <dependency>
             <groupId>org.testcontainers</groupId>

@@ -34,6 +34,18 @@ spring:
     baseline-on-migrate: true
     baseline-version: "1"
     validate-on-migrate: true
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+      # Lettuce client is lazy : the connection factory bean is created at boot
+      # but no TCP connection is opened until a @Cacheable method (or any
+      # RedisTemplate operation) actually fires. Caches are gated by
+      # app.redis.enabled in RedisCacheConfig — so a dev that runs without Redis
+      # simply never triggers the connection.
 
 server:
   port: ${PORT:${SERVER_PORT:8081}}
@@ -85,6 +97,14 @@ app:
     workflows:
       capacity: ${APP_RATE_LIMIT_WORKFLOWS_CAPACITY:60}
       refill-seconds: ${APP_RATE_LIMIT_WORKFLOWS_REFILL_SECONDS:60}
+    ai-agents:
+      capacity: ${APP_RATE_LIMIT_AI_AGENTS_CAPACITY:20}
+      refill-seconds: ${APP_RATE_LIMIT_AI_AGENTS_REFILL_SECONDS:60}
+    audio:
+      capacity: ${APP_RATE_LIMIT_AUDIO_CAPACITY:40}
+      refill-seconds: ${APP_RATE_LIMIT_AUDIO_REFILL_SECONDS:60}
+  redis:
+    enabled: ${APP_REDIS_ENABLED:false}
   alerting:
     enabled: ${APP_ALERTING_ENABLED:true}
     slack-webhook-url: ${APP_ALERTING_SLACK_WEBHOOK_URL:}

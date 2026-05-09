@@ -1,0 +1,31 @@
+{
+  "name": "_callback_hmac",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-callback-hmac",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Computes the HMAC signature header pair expected by the backend\n// VideoOpsCallbackAuthService for POST /api/video-ops/workflow-runs/:id/complete.\n//\n// Inputs ($json):\n//   - workflowRunId    : long\n//   - body             : object — the JSON body that will be POSTed verbatim\n//   - method           : string — defaults to 'POST'\n//   - path             : string — defaults to '/api/video-ops/workflow-runs/<id>/complete'\n//\n// Output:\n//   - timestamp, signature : the X-Workflow-Timestamp and X-Workflow-Signature\n//                            headers to attach to the outgoing HTTP request.\n//\n// The HMAC secret is read from $env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET\n// to keep the secret out of every parent workflow.\n\nconst crypto = require('crypto');\n\nconst secret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET || '');\nif (!secret) {\n  throw new Error('APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET env var is empty.');\n}\n\nconst workflowRunId = Number($json.workflowRunId || 0);\nif (!workflowRunId || workflowRunId <= 0) {\n  throw new Error('workflowRunId is required and must be > 0.');\n}\n\nconst method = String($json.method || 'POST').toUpperCase();\nconst path = String($json.path || ('/api/video-ops/workflow-runs/' + workflowRunId + '/complete'));\nconst bodyObj = $json.body && typeof $json.body === 'object' ? $json.body : {};\nconst bodyJson = JSON.stringify(bodyObj);\n\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst payload = method + '\\n' + path + '\\n' + timestamp + '\\n' + bodyJson;\nconst signature = crypto\n  .createHmac('sha256', secret)\n  .update(payload, 'utf8')\n  .digest('hex');\n\nreturn [{\n  json: {\n    timestamp,\n    signature,\n    method,\n    path,\n    body: bodyObj,\n    bodyJson,\n  },\n}];"
+      },
+      "id": "compute-hmac",
+      "name": "Compute HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{"node": "Compute HMAC", "type": "main", "index": 0}]]
+    }
+  },
+  "active": true,
+  "settings": {"executionOrder": "v1"},
+  "tags": ["shared", "callback", "hmac"]
+}

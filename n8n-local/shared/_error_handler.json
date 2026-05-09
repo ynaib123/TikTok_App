@@ -1,0 +1,31 @@
+{
+  "name": "_error_handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-error-handler",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Marks the parent workflow run as FAILED on the backend and forwards the\n// error message to the Slack alerting webhook (if configured).\n//\n// Inputs ($json):\n//   - workflowRunId : long — the run to fail\n//   - errorMessage  : string — short human-readable explanation\n//   - errorPayload  : object — optional structured context (stack, http status, ...)\n//\n// Output:\n//   - failed           : true\n//   - completionStatus : 'FAILED'\n//\n// Reads:\n//   - APP_VIDEO_OPS_BACKEND_BASE_URL\n//   - APP_VIDEO_OPS_INTERNAL_API_SECRET    (legacy fallback)\n//   - APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET\n//   - APP_ALERTING_SLACK_WEBHOOK_URL       (optional)\n\nconst crypto = require('crypto');\nconst https = require('https');\nconst http = require('http');\nconst { URL } = require('url');\n\nconst backendBase = String($env.APP_VIDEO_OPS_BACKEND_BASE_URL || '').replace(/\\/+$/, '');\nif (!backendBase) {\n  throw new Error('APP_VIDEO_OPS_BACKEND_BASE_URL env var is empty.');\n}\nconst hmacSecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_HMAC_SECRET || '');\nconst legacySecret = String($env.APP_VIDEO_OPS_WORKFLOW_CALLBACK_SECRET || '');\nconst slackUrl = String($env.APP_ALERTING_SLACK_WEBHOOK_URL || '');\n\nconst workflowRunId = Number($json.workflowRunId || 0);\nif (!workflowRunId || workflowRunId <= 0) {\n  throw new Error('workflowRunId is required and must be > 0.');\n}\nconst errorMessage = String($json.errorMessage || 'Unknown workflow error');\nconst errorPayload = $json.errorPayload && typeof $json.errorPayload === 'object'\n  ? $json.errorPayload : {};\n\nconst body = {\n  status: 'FAILED',\n  errorMessage,\n  errorPayload,\n};\nconst bodyJson = JSON.stringify(body);\nconst path = '/api/video-ops/workflow-runs/' + workflowRunId + '/complete';\n\nconst headers = { 'Content-Type': 'application/json' };\nif (hmacSecret) {\n  const timestamp = String(Math.floor(Date.now() / 1000));\n  const payload = 'POST\\n' + path + '\\n' + timestamp + '\\n' + bodyJson;\n  headers['X-Workflow-Timestamp'] = timestamp;\n  headers['X-Workflow-Signature'] = crypto.createHmac('sha256', hmacSecret).update(payload, 'utf8').digest('hex');\n} else if (legacySecret) {\n  headers['X-Workflow-Callback-Secret'] = legacySecret;\n}\n\nfunction post(urlString, payloadString, payloadHeaders) {\n  return new Promise((resolve, reject) => {\n    const url = new URL(urlString);\n    const lib = url.protocol === 'https:' ? https : http;\n    const req = lib.request(\n      {\n        method: 'POST',\n        hostname: url.hostname,\n        port: url.port || (url.protocol === 'https:' ? 443 : 80),\n        path: url.pathname + url.search,\n        headers: { ...payloadHeaders, 'Content-Length': Buffer.byteLength(payloadString) },\n      },\n      (res) => {\n        let chunks = '';\n        res.on('data', (c) => { chunks += c; });\n        res.on('end', () => resolve({ status: res.statusCode || 0, body: chunks }));\n      }\n    );\n    req.on('error', reject);\n    req.write(payloadString);\n    req.end();\n  });\n}\n\nconst backendResp = await post(backendBase + path, bodyJson, headers);\n\nif (slackUrl) {\n  try {\n    const slackPayload = JSON.stringify({\n      text: ':rotating_light: n8n workflow run failed',\n      blocks: [{\n        type: 'section',\n        text: { type: 'mrkdwn', text: '*Run ' + workflowRunId + '* failed:\\n```' + errorMessage + '```' },\n      }],\n    });\n    await post(slackUrl, slackPayload, { 'Content-Type': 'application/json' });\n  } catch (e) { /* swallow alerting errors so we don't mask the real failure */ }\n}\n\nreturn [{\n  json: {\n    failed: true,\n    completionStatus: 'FAILED',\n    backendStatus: backendResp.status,\n    backendBody: backendResp.body,\n  },\n}];"
+      },
+      "id": "complete-failed",
+      "name": "Mark Run FAILED",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{"node": "Mark Run FAILED", "type": "main", "index": 0}]]
+    }
+  },
+  "active": true,
+  "settings": {"executionOrder": "v1"},
+  "tags": ["shared", "error-handling"]
+}

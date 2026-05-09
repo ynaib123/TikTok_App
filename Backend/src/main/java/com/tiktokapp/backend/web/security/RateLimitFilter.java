@@ -41,10 +41,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final String LOGIN_PATH = "/api/admins/login";
     private static final String WORKFLOWS_PATTERN = "/api/video-ops/workflows/**";
+    private static final String AI_AGENTS_PATTERN = "/api/ai/agents/**";
+    private static final String AUDIO_PATTERN = "/api/audio/**";
 
     private final RateLimitProperties properties;
     private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> workflowBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> aiAgentBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> audioBuckets = new ConcurrentHashMap<>();
 
     public RateLimitFilter(RateLimitProperties properties) {
         this.properties = properties;
@@ -91,6 +95,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if (PATH_MATCHER.match(WORKFLOWS_PATTERN, path)) {
             return workflowBuckets.computeIfAbsent(key, k -> newBucket(properties.getWorkflows()));
+        }
+        if (PATH_MATCHER.match(AI_AGENTS_PATTERN, path)) {
+            return aiAgentBuckets.computeIfAbsent(key, k -> newBucket(properties.getAiAgents()));
+        }
+        if (PATH_MATCHER.match(AUDIO_PATTERN, path)) {
+            return audioBuckets.computeIfAbsent(key, k -> newBucket(properties.getAudio()));
         }
         return null;
     }

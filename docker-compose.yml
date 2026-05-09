@@ -17,6 +17,21 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: tiktok-app-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: ./Backend
@@ -25,6 +40,8 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -63,6 +80,10 @@ services:
       APP_VIDEO_OPS_N8N_BASE_URL: ${APP_VIDEO_OPS_N8N_BASE_URL:-http://n8n:5678}
       APP_VIDEO_OPS_N8N_READ_TIMEOUT_MS: ${APP_VIDEO_OPS_N8N_READ_TIMEOUT_MS:-600000}
       APP_VIDEO_OPS_N8N_RENDER_PATH: ${APP_VIDEO_OPS_N8N_RENDER_PATH:-/webhook/render-template-video-remotion}
+      APP_REDIS_ENABLED: ${APP_REDIS_ENABLED:-true}
+      SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD:-}
 
     ports:
       - "8080:8080"
@@ -171,3 +192,4 @@ volumes:
   admin_node_modules:
   backend_target:
   render_video_renders:
+  redis_data:

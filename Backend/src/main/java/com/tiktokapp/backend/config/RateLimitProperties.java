@@ -11,6 +11,12 @@ public class RateLimitProperties {
 
     private final Bucket workflows = new Bucket(60, 60);
 
+    /** Stricter cap on agent runs — each one fans out to a paid LLM API. */
+    private final Bucket aiAgents = new Bucket(20, 60);
+
+    /** ElevenLabs previews + voice generation — they bill per character. */
+    private final Bucket audio = new Bucket(40, 60);
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -25,6 +31,14 @@ public class RateLimitProperties {
 
     public Bucket getWorkflows() {
         return workflows;
+    }
+
+    public Bucket getAiAgents() {
+        return aiAgents;
+    }
+
+    public Bucket getAudio() {
+        return audio;
     }
 
     public static class Bucket {
