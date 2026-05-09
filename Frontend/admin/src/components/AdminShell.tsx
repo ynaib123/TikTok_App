@@ -5,6 +5,7 @@ import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { ADMIN_NAV_ITEMS } from './adminNavItems'
 import AdminFeedbackBanner, { type AdminFeedbackBannerType } from './AdminFeedbackBanner'
 import AdminRouteFallback from './AdminRouteFallback'
+import LanguageSwitcher from './LanguageSwitcher'
 import { prefetchAdminRoute } from '../services/adminPrefetch'
 import '../styles/layout/shell.css'
 import '../styles/themes/shell-openai.css'
@@ -361,6 +362,7 @@ export default function AdminShell({
             </div>
           </div>
           <div className="admin-navbar-actions">
+            <LanguageSwitcher />
             <div ref={profileMenuRef} className="admin-profile-menu">
               <button
                 type="button"

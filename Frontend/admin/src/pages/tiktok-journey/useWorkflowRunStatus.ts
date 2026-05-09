@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchWorkflowRunStatus, type WorkflowRunStatus } from '../../services/videoOpsSupabase'
+import { VIDEO_OPS_QUERY_KEYS } from '../../services/videoOpsQueries'
 
 /**
  * Polls the lightweight `GET /workflow-runs/:id/status` endpoint while a run
@@ -40,7 +41,7 @@ export function useWorkflowRunStatus({
   const id = runId == null ? null : Number(runId) || null
 
   const query = useQuery<WorkflowRunStatus, Error>({
-    queryKey: ['workflow-run-status', id],
+    queryKey: VIDEO_OPS_QUERY_KEYS.workflowRunStatus(id),
     queryFn: () => fetchWorkflowRunStatus(id as number),
     enabled: Boolean(id) && enabled,
     // Poll while the run is non-terminal; stop the moment we see terminal=true.

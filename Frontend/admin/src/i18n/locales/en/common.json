@@ -1,0 +1,17 @@
+{
+  "language": {
+    "label": "Language",
+    "fr": "Français",
+    "en": "English",
+    "switchAria": "Switch language"
+  },
+  "shell": {
+    "logout": "Sign out",
+    "loggedAs": "Signed in as {{email}}"
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "network": "Network connection lost.",
+    "retry": "Retry"
+  }
+}

@@ -5,6 +5,7 @@
   },
   "steps": {
     "creation": { "label": "Creation", "sub": "Generate an idea + script" },
+    "audio": { "label": "Audio", "sub": "Voice-over + music" },
     "template": { "label": "Template", "sub": "Style + media per scene" },
     "render": { "label": "Video", "sub": "Render the Remotion video" },
     "upload": { "label": "Publish", "sub": "Publish to TikTok" }
@@ -129,5 +130,33 @@
     "noVideoSub": "Go back to the video step to generate a render.",
     "emptyTitle": "No data",
     "emptySub": "Go back to step 1."
+  },
+  "audio": {
+    "paramsLabel": "Voice + music",
+    "voiceLibrary": "Voice library",
+    "voicePreview": "Preview voice",
+    "voicePlaying": "Playing...",
+    "voicePause": "Pause",
+    "voiceLanguage": "Voice language",
+    "voiceGender": "Gender",
+    "voiceStyleLabel": "Style",
+    "voiceFlagAria": "{{language}} flag",
+    "selectVoice": "Select this voice",
+    "selected": "Selected",
+    "generate": "Generate voice-over",
+    "generating": "Generating voice...",
+    "regenerate": "Regenerate voice",
+    "waveformLabel": "Waveform",
+    "voiceVolume": "Voice volume",
+    "musicVolume": "Music volume",
+    "musicTrack": "Background music",
+    "musicNone": "No music",
+    "musicUpload": "Upload music",
+    "previewMix": "Preview mix",
+    "skipStep": "Skip this step",
+    "skipHint": "The video will be rendered without voice-over or music.",
+    "errorTitle": "ElevenLabs error",
+    "errorRetry": "Retry",
+    "noScript": "No script to vocalize. Go back to the Creation step."
   }
 }

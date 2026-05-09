@@ -5,6 +5,7 @@
   },
   "steps": {
     "creation": { "label": "Création", "sub": "Générer une idée + script" },
+    "audio": { "label": "Audio", "sub": "Voix off + musique" },
     "template": { "label": "Template", "sub": "Style + médias par scène" },
     "render": { "label": "Vidéo", "sub": "Rendre la vidéo Remotion" },
     "upload": { "label": "Publication", "sub": "Publier sur TikTok" }
@@ -129,5 +130,33 @@
     "noVideoSub": "Reviens à l'étape vidéo pour générer un rendu.",
     "emptyTitle": "Aucune donnée",
     "emptySub": "Reviens à l'étape 1."
+  },
+  "audio": {
+    "paramsLabel": "Voix + musique",
+    "voiceLibrary": "Bibliothèque de voix",
+    "voicePreview": "Tester la voix",
+    "voicePlaying": "Lecture...",
+    "voicePause": "Pause",
+    "voiceLanguage": "Langue de la voix",
+    "voiceGender": "Genre",
+    "voiceStyleLabel": "Style",
+    "voiceFlagAria": "Drapeau {{language}}",
+    "selectVoice": "Sélectionner cette voix",
+    "selected": "Sélectionnée",
+    "generate": "Générer la voix off",
+    "generating": "Génération de la voix...",
+    "regenerate": "Regénérer la voix",
+    "waveformLabel": "Forme d'onde",
+    "voiceVolume": "Volume voix",
+    "musicVolume": "Volume musique",
+    "musicTrack": "Musique de fond",
+    "musicNone": "Aucune musique",
+    "musicUpload": "Importer une musique",
+    "previewMix": "Aperçu du mix",
+    "skipStep": "Passer cette étape",
+    "skipHint": "La vidéo sera rendue sans voix off ni musique.",
+    "errorTitle": "Erreur ElevenLabs",
+    "errorRetry": "Réessayer",
+    "noScript": "Aucun script à vocaliser. Reviens à l'étape Création."
   }
 }

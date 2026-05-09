@@ -16,6 +16,11 @@ import {
   fetchVideoOpsObservability,
 } from './videoOpsSupabase'
 
+/**
+ * Single source of truth for every React Query key used by the admin UI.
+ * Keys are organized as a hierarchical factory so invalidating a parent
+ * (e.g. `videoDashboardRoot`) cascades to its children.
+ */
 export const VIDEO_OPS_QUERY_KEYS = {
   bootstrap: ['video-ops', 'bootstrap'] as const,
   accountsOverview: ['accounts-overview'] as const,
@@ -23,9 +28,18 @@ export const VIDEO_OPS_QUERY_KEYS = {
   tiktokAccounts: ['tiktok-accounts'] as const,
   manualActions: ['manual-actions'] as const,
   contentIdeas: ['content-ideas'] as const,
+  videoDashboardRoot: ['video-dashboard'] as const,
   dashboard: ['video-dashboard', 'dashboard'] as const,
   health: ['video-dashboard', 'health'] as const,
   observability: ['video-dashboard', 'observability'] as const,
+  workflowRunStatus: (runId: number | string | null | undefined) =>
+    ['workflow-run-status', runId] as const,
+  pexelsVideos: (
+    query: string,
+    orientation: 'portrait' | 'landscape' | 'square' = 'portrait',
+    perPage = 18,
+  ) => ['pexels-videos', query, orientation, perPage] as const,
+  pexelsVideosRoot: ['pexels-videos'] as const,
 }
 
 export const VIDEO_OPS_STALE_TIMES = {

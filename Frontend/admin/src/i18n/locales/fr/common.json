@@ -1,0 +1,17 @@
+{
+  "language": {
+    "label": "Langue",
+    "fr": "Français",
+    "en": "English",
+    "switchAria": "Changer de langue"
+  },
+  "shell": {
+    "logout": "Se déconnecter",
+    "loggedAs": "Connecté en tant que {{email}}"
+  },
+  "errors": {
+    "generic": "Une erreur est survenue.",
+    "network": "Connexion réseau perdue.",
+    "retry": "Réessayer"
+  }
+}

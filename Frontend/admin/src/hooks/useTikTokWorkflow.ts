@@ -170,7 +170,7 @@ export function useTikTokWorkflow() {
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap }),
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas }),
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.manualActions }),
-      queryClient.invalidateQueries({ queryKey: ['video-dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.videoDashboardRoot }),
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.accountsReadiness }),
     ]);
   }, [queryClient]);

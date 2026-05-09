@@ -172,7 +172,7 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.bootstrap })
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.contentIdeas })
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.manualActions })
-      queryClient.invalidateQueries({ queryKey: ['video-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.videoDashboardRoot })
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.observability })
       toasts.push(`${ids.length} vidéo${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}`, { variant: 'success' })
     } catch (error) {

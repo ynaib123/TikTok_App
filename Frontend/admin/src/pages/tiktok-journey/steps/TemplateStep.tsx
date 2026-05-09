@@ -7,6 +7,7 @@ import {
   type PexelsSearchResponse,
   type PexelsVideo,
 } from '../../../services/videoOpsSupabase'
+import { VIDEO_OPS_QUERY_KEYS } from '../../../services/videoOpsQueries'
 import { getIdeaSceneTexts, normalizeSceneCount } from '../journeyHelpers'
 import { useRenderProgress } from '../useRenderProgress'
 import type { SceneTextStyle } from '../types'
@@ -193,7 +194,7 @@ export default function TemplateStep() {
   const queryClient = useQueryClient()
   const trimmedCommittedQuery = committedQuery.trim()
   const pexelsQuery = useQuery<PexelsSearchResponse, Error>({
-    queryKey: ['pexels-videos', trimmedCommittedQuery, 'portrait', 18],
+    queryKey: VIDEO_OPS_QUERY_KEYS.pexelsVideos(trimmedCommittedQuery, 'portrait', 18),
     queryFn: () => searchPexelsVideos(trimmedCommittedQuery, 18, 'portrait'),
     enabled: trimmedCommittedQuery.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -245,7 +246,7 @@ export default function TemplateStep() {
     const trimmed = q.trim()
     if (!trimmed) return
     if (trimmed === trimmedCommittedQuery) {
-      void queryClient.invalidateQueries({ queryKey: ['pexels-videos', trimmed, 'portrait', 18] })
+      void queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.pexelsVideos(trimmed, 'portrait', 18) })
       return
     }
     setCommittedQuery(trimmed)
