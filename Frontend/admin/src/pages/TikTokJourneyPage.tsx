@@ -59,6 +59,7 @@ import '../styles/themes/products-dark.css'
 import '../styles/features/journey.css'
 import '../styles/features/tiktok-step.css'
 import type { ContentIdea, TikTokAccount } from '../types'
+import type { SceneTextStyle } from './tiktok-journey/types'
 
 type JourneyLocationState = {
   tiktokOAuthSuccess?: string
@@ -80,8 +81,7 @@ type PendingExitTarget =
 
 const STEPS = [
   { id: 'creation', label: 'Creation', sub: 'Generer une idee + script' },
-  { id: 'template', label: 'Template', sub: 'Style + medias par scene' },
-  { id: 'init-publish', label: 'Video', sub: 'Rendre la video Remotion' },
+  { id: 'init-publish', label: 'Video', sub: 'Regler les scenes puis generer' },
   { id: 'upload', label: 'Publication', sub: 'Publier sur TikTok' },
 ]
 const TIKTOK_BASE_ROUTE = '/tiktok'
@@ -254,6 +254,7 @@ export default function TikTokJourneyPage() {
   // URLs Pexels choisies par l user dans l étape "Médias" — une URL par scène
   // dans l ordre. Reset à chaque nouvelle idée.
   const [selectedSceneMediaUrls, setSelectedSceneMediaUrls] = useState<string[]>([])
+  const [sceneTextStyles, setSceneTextStyles] = useState<SceneTextStyle[]>([])
   // Edits en cours sur l idée générée (l utilisateur peut modifier avant de
   // passer à l étape vidéo). On les sauvegarde via PATCH au moment du Suivant.
   const [editedTopic, setEditedTopic] = useState<string>('')
@@ -271,11 +272,10 @@ export default function TikTokJourneyPage() {
     if (location.pathname === `${TIKTOK_BASE_ROUTE}/publish`) {
       navigate(`${TIKTOK_BASE_ROUTE}/upload`, { replace: true })
     }
-    // Backwards compat: the previous template-style step has been merged into
-    // /tiktok/template. Bookmarks / saved workspaces from older sessions land
-    // on the new merged step instead of 404'ing.
-    if (location.pathname === `${TIKTOK_BASE_ROUTE}/template-style`) {
-      navigate(`${TIKTOK_BASE_ROUTE}/template`, { replace: true })
+    // Backwards compat: the previous template/template-style steps are now
+    // merged into the Video step.
+    if (location.pathname === `${TIKTOK_BASE_ROUTE}/template-style` || location.pathname === `${TIKTOK_BASE_ROUTE}/template`) {
+      navigate(`${TIKTOK_BASE_ROUTE}/init-publish`, { replace: true })
     }
   }, [location.pathname, navigate])
 
@@ -467,7 +467,7 @@ export default function TikTokJourneyPage() {
         return
       }
     }
-    goToStep('template')
+    goToStep('init-publish')
   }
 
   // Etape Template (fusion style + médias) → étape Vidéo. Pas de side-effect,
@@ -489,6 +489,7 @@ export default function TikTokJourneyPage() {
     videoDurationSec,
     generationSceneCount,
     selectedSceneMediaUrls,
+    sceneTextStyles,
     goToStep,
     triggerRenderTemplateWorkflow,
     fetchContentIdeaById: fetchContentIdeaByIdFromPages,
@@ -574,6 +575,7 @@ export default function TikTokJourneyPage() {
       saveJourneyWorkspace(activeIdea.id, currentStep.id, {
         pexelsQuery: flowState.pexelsCache?.query ?? null,
         selectedSceneMediaUrls,
+        sceneTextStyles,
         editedTopic,
         editedScript,
         editedCaption,
@@ -613,6 +615,7 @@ export default function TikTokJourneyPage() {
     setManualAction,
     setPexelsCache: flowState.setPexelsCache,
     setSelectedSceneMediaUrls,
+    setSceneTextStyles,
     setEditedTopic,
     setEditedScript,
     setEditedCaption,
@@ -894,6 +897,8 @@ export default function TikTokJourneyPage() {
               currentRenderRunId={currentRenderRunId}
               selectedSceneMediaUrls={selectedSceneMediaUrls}
               setSelectedSceneMediaUrls={setSelectedSceneMediaUrls}
+              sceneTextStyles={sceneTextStyles}
+              setSceneTextStyles={setSceneTextStyles}
               editedTopic={editedTopic}
               setEditedTopic={setEditedTopic}
               editedScript={editedScript}

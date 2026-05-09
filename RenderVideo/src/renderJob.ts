@@ -16,6 +16,16 @@ export interface RenderVideoScene {
   mediaQuery?: string | null
   cameraMood?: string | null
   overlayPriority?: string | null
+  textStyle?: {
+    textX?: number | null
+    textY?: number | null
+    textColor?: string | null
+    fontFamily?: string | null
+    fontSize?: number | null
+    fontWeight?: number | null
+    uppercase?: boolean | null
+    shadow?: 'none' | 'soft' | 'strong' | null
+  } | null
   media: RenderVideoSceneMedia
 }
 

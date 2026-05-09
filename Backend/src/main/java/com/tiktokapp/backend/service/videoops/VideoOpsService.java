@@ -646,6 +646,7 @@ public class VideoOpsService {
         payload.put("inspirationRef", trimToNull(request.getInspirationRef()));
         payload.put("sceneCount", request.getSceneCount());
         payload.put("selectedSceneMediaUrls", request.getSelectedSceneMediaUrls());
+        payload.put("sceneTextStyles", request.getSceneTextStyles());
         payload.put("source", request.getSource());
         payload.put("force", force);
         payload.put("requestedBy", requestedByEmail);

@@ -456,6 +456,23 @@
                 ],
                 "maxLength": 40
               },
+              "textStyle": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "textX": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "textY": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "textColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+                  "fontFamily": { "type": "string", "maxLength": 80 },
+                  "fontSize": { "type": "number", "minimum": 10, "maximum": 120 },
+                  "fontWeight": { "type": "integer", "minimum": 100, "maximum": 1000 },
+                  "uppercase": { "type": "boolean" },
+                  "shadow": { "type": "string", "enum": ["none", "soft", "strong"] }
+                }
+              },
               "media": {
                 "type": "object",
                 "additionalProperties": false,

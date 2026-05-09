@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.Map;
 
 public class WorkflowTriggerRequest {
 
@@ -79,6 +80,9 @@ public class WorkflowTriggerRequest {
     @Size(max = SCENE_MEDIA_URLS_MAX_COUNT,
             message = "selectedSceneMediaUrls limité à " + SCENE_MEDIA_URLS_MAX_COUNT + " entrées")
     private List<@Size(max = SCENE_MEDIA_URL_MAX) @Pattern(regexp = "^https?://.+", message = "URL doit commencer par http:// ou https://") String> selectedSceneMediaUrls;
+    @Size(max = SCENE_MEDIA_URLS_MAX_COUNT,
+            message = "sceneTextStyles limite a " + SCENE_MEDIA_URLS_MAX_COUNT + " entrees")
+    private List<Map<String, Object>> sceneTextStyles;
 
     public Long getContentIdeaId() {
         return contentIdeaId;
@@ -213,4 +217,6 @@ public class WorkflowTriggerRequest {
 
     public List<String> getSelectedSceneMediaUrls() { return selectedSceneMediaUrls; }
     public void setSelectedSceneMediaUrls(List<String> selectedSceneMediaUrls) { this.selectedSceneMediaUrls = selectedSceneMediaUrls; }
+    public List<Map<String, Object>> getSceneTextStyles() { return sceneTextStyles; }
+    public void setSceneTextStyles(List<Map<String, Object>> sceneTextStyles) { this.sceneTextStyles = sceneTextStyles; }
 }

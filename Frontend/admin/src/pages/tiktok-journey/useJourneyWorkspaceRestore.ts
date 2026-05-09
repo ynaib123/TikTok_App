@@ -29,6 +29,7 @@ export interface UseJourneyWorkspaceRestoreArgs {
   setManualAction: Dispatch<SetStateAction<ManualActionLike | null>>
   setPexelsCache: Dispatch<SetStateAction<PexelsCacheValue | null>>
   setSelectedSceneMediaUrls: Dispatch<SetStateAction<string[]>>
+  setSceneTextStyles: Dispatch<SetStateAction<any[]>>
   setEditedTopic: (value: string) => void
   setEditedScript: (value: string) => void
   setEditedCaption: (value: string) => void
@@ -56,6 +57,7 @@ export function useJourneyWorkspaceRestore({
   setManualAction,
   setPexelsCache,
   setSelectedSceneMediaUrls,
+  setSceneTextStyles,
   setEditedTopic,
   setEditedScript,
   setEditedCaption,
@@ -103,6 +105,9 @@ export function useJourneyWorkspaceRestore({
           }
           if (Array.isArray(snapshot.selectedSceneMediaUrls)) {
             setSelectedSceneMediaUrls(snapshot.selectedSceneMediaUrls.map((u) => String(u || '')))
+          }
+          if (Array.isArray(snapshot.sceneTextStyles)) {
+            setSceneTextStyles(snapshot.sceneTextStyles as any[])
           }
           if (typeof snapshot.editedTopic === 'string') setEditedTopic(snapshot.editedTopic)
           if (typeof snapshot.editedScript === 'string') setEditedScript(snapshot.editedScript)

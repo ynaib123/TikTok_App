@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useJourney } from '../JourneyContext'
@@ -8,12 +8,14 @@ import {
   type PexelsVideo,
 } from '../../../services/videoOpsSupabase'
 import { getIdeaSceneTexts, normalizeSceneCount } from '../journeyHelpers'
+import { useRenderProgress } from '../useRenderProgress'
+import type { SceneTextStyle } from '../types'
 import { Button } from '../../../design-system'
 import { PexelsGallerySkeleton } from './PexelsSkeleton'
 import { PexelsGalleryGrid } from './PexelsGalleryGrid'
 
 /**
- * Step 2 — merged Template + Médias.
+ * Step 2 Ã¢â‚¬â€ merged Template + MÃƒÂ©dias.
  *
  *   Left   : grouped style controls (position / typography / appearance).
  *            Suivant button at the bottom.
@@ -24,7 +26,7 @@ import { PexelsGalleryGrid } from './PexelsGalleryGrid'
  *            settings from the left panel. Prev / next arrows + dot
  *            indicators stay in sync with the active slot.
  *
- * The carousel doubles as the scene navigator — picking a scene in the
+ * The carousel doubles as the scene navigator Ã¢â‚¬â€ picking a scene in the
  * carousel is the same as picking it in the strip; clicking a Pexels tile
  * fills that scene and advances to the next one.
  */
@@ -67,6 +69,25 @@ const STYLE_DEFAULTS = {
   shadow: 'strong' as const,
 }
 
+function createDefaultSceneStyle(saved = false): SceneTextStyle {
+  return { ...STYLE_DEFAULTS, saved }
+}
+
+function normalizeSceneStyle(value: unknown): SceneTextStyle {
+  const raw = value && typeof value === 'object' ? value as Partial<SceneTextStyle> : {}
+  return {
+    textX: Number.isFinite(Number(raw.textX)) ? Math.min(94, Math.max(6, Number(raw.textX))) : STYLE_DEFAULTS.textX,
+    textY: Number.isFinite(Number(raw.textY)) ? Math.min(94, Math.max(6, Number(raw.textY))) : STYLE_DEFAULTS.textY,
+    textColor: typeof raw.textColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.textColor) ? raw.textColor : STYLE_DEFAULTS.textColor,
+    fontFamily: typeof raw.fontFamily === 'string' && raw.fontFamily.trim() ? raw.fontFamily : STYLE_DEFAULTS.fontFamily,
+    fontSize: Number.isFinite(Number(raw.fontSize)) ? Math.min(80, Math.max(14, Number(raw.fontSize))) : STYLE_DEFAULTS.fontSize,
+    fontWeight: Number.isFinite(Number(raw.fontWeight)) ? Number(raw.fontWeight) : STYLE_DEFAULTS.fontWeight,
+    uppercase: typeof raw.uppercase === 'boolean' ? raw.uppercase : STYLE_DEFAULTS.uppercase,
+    shadow: raw.shadow === 'none' || raw.shadow === 'soft' || raw.shadow === 'strong' ? raw.shadow : STYLE_DEFAULTS.shadow,
+    saved: Boolean(raw.saved),
+  }
+}
+
 // Pause + detach src on a <video>, aborting any in-flight metadata fetch.
 function releaseVideoElement(video: HTMLVideoElement | null) {
   if (!video) return
@@ -91,6 +112,24 @@ export default function TemplateStep() {
   const p = useJourney()
   const idea = p.scriptedIdea || p.selectedGeneratedIdea
   const sceneCount = Math.max(1, Math.min(10, p.generationSceneCount || 1))
+  const previewUrl = p.manualAction?.shotstackUrl || idea?.shotstackUrl
+  const isRenderActive = p.isPreparingVideo && !previewUrl
+  const renderProgress = useRenderProgress(p.currentRenderRunId, isRenderActive)
+  const [renderOutputUrl, setRenderOutputUrl] = useState<string>('')
+  useEffect(() => {
+    if (renderProgress.outputUrl) setRenderOutputUrl(renderProgress.outputUrl)
+  }, [renderProgress.outputUrl])
+  const effectivePreviewUrl = previewUrl || renderOutputUrl || ''
+  const progressPct = Math.round(renderProgress.progress * 100)
+  const statusLabel: Record<typeof renderProgress.status, string> = {
+    preparing: t('render.status.preparing'),
+    rendering: t('render.status.rendering'),
+    'post-processing': t('render.status.post-processing'),
+    uploading: t('render.status.uploading'),
+    done: t('render.status.done'),
+    error: t('render.status.error'),
+    unknown: t('render.status.unknown'),
+  }
 
   // ----- Style controls (live-bound to the carousel preview overlay) -------
   const [textX, setTextX] = useState(STYLE_DEFAULTS.textX)
@@ -102,15 +141,19 @@ export default function TemplateStep() {
   const [uppercase, setUppercase] = useState<boolean>(STYLE_DEFAULTS.uppercase)
   const [shadow, setShadow] = useState<'none' | 'soft' | 'strong'>(STYLE_DEFAULTS.shadow)
 
+  const applyStyleToControls = useCallback((style: SceneTextStyle) => {
+    setTextX(style.textX)
+    setTextY(style.textY)
+    setTextColor(style.textColor)
+    setFontFamily(style.fontFamily)
+    setFontSize(style.fontSize)
+    setFontWeight(style.fontWeight)
+    setUppercase(style.uppercase)
+    setShadow(style.shadow)
+  }, [])
+
   const resetStyleDefaults = () => {
-    setTextX(STYLE_DEFAULTS.textX)
-    setTextY(STYLE_DEFAULTS.textY)
-    setTextColor(STYLE_DEFAULTS.textColor)
-    setFontFamily(STYLE_DEFAULTS.fontFamily)
-    setFontSize(STYLE_DEFAULTS.fontSize)
-    setFontWeight(STYLE_DEFAULTS.fontWeight)
-    setUppercase(STYLE_DEFAULTS.uppercase)
-    setShadow(STYLE_DEFAULTS.shadow)
+    applyStyleToControls(createDefaultSceneStyle(false))
   }
 
   // ----- Scene state --------------------------------------------------------
@@ -120,6 +163,11 @@ export default function TemplateStep() {
       while (next.length < sceneCount) next.push('')
       return next
     })
+    p.setSceneTextStyles((current) => {
+      const next = current.slice(0, sceneCount).map(normalizeSceneStyle)
+      while (next.length < sceneCount) next.push(createDefaultSceneStyle(false))
+      return next
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneCount])
 
@@ -127,6 +175,11 @@ export default function TemplateStep() {
   useEffect(() => {
     if (activeSlot >= sceneCount) setActiveSlot(Math.max(0, sceneCount - 1))
   }, [sceneCount, activeSlot])
+
+  useEffect(() => {
+    applyStyleToControls(normalizeSceneStyle(p.sceneTextStyles[activeSlot]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSlot])
 
   // ----- Pexels search ------------------------------------------------------
   const defaultQuery = String(idea?.keyword || idea?.topic || p.editedKeyword || '').trim() || 'lifestyle'
@@ -158,7 +211,7 @@ export default function TemplateStep() {
 
   const videos = pexelsQuery.data?.videos ?? []
   const isSearching = pexelsQuery.isFetching
-  const searchError = pexelsQuery.isError ? (pexelsQuery.error?.message || 'Recherche échouée') : null
+  const searchError = pexelsQuery.isError ? (pexelsQuery.error?.message || 'Recherche ÃƒÂ©chouÃƒÂ©e') : null
 
   // Mirror the React Query result into the global flow state for workspace
   // save / leave / resume.
@@ -200,20 +253,28 @@ export default function TemplateStep() {
 
   // ----- Slot assignment helpers -------------------------------------------
   // useCallback so PexelsGalleryGrid (React.memo) doesn't re-render every time
-  // a style slider moves — its props stay referentially stable.
+  // a style slider moves Ã¢â‚¬â€ its props stay referentially stable.
   const setSelectedSceneMediaUrls = p.setSelectedSceneMediaUrls
   const assignSlot = useCallback((slotIndex: number, url: string) => {
     setSelectedSceneMediaUrls((current) => {
       const next = [...current]
       while (next.length < sceneCount) next.push('')
+      for (let i = 0; i < next.length; i += 1) {
+        if (next[i] === url) next[i] = ''
+      }
       next[slotIndex] = url
       return next
     })
-    if (slotIndex < sceneCount - 1) setActiveSlot(slotIndex + 1)
+    setActiveSlot(slotIndex)
   }, [sceneCount, setSelectedSceneMediaUrls])
 
   const clearVideo = useCallback((url: string) => {
     setSelectedSceneMediaUrls((current) => current.map((value) => (value === url ? '' : value)))
+  }, [setSelectedSceneMediaUrls])
+
+  const clearSlot = useCallback((slotIndex: number) => {
+    setSelectedSceneMediaUrls((current) => current.map((value, index) => (index === slotIndex ? '' : value)))
+    setActiveSlot(slotIndex)
   }, [setSelectedSceneMediaUrls])
 
   const selectExistingSlot = useCallback((slotIndex: number) => {
@@ -231,26 +292,91 @@ export default function TemplateStep() {
 
   const currentSceneText = (sceneTexts[activeSlot] || '').slice(0, 140)
   const currentSceneVideo = p.selectedSceneMediaUrls[activeSlot] || ''
+  const currentControlsStyle: SceneTextStyle = {
+    textX,
+    textY,
+    textColor,
+    fontFamily,
+    fontSize,
+    fontWeight,
+    uppercase,
+    shadow,
+    saved: true,
+  }
+  const savedStyleCount = p.sceneTextStyles
+    .slice(0, sceneCount)
+    .map(normalizeSceneStyle)
+    .filter((style) => style.saved).length
+  const allStylesSaved = savedStyleCount === sceneCount
+  const allScenesConfigured = allFilled && allStylesSaved
+
+  const saveActiveSceneStyle = () => {
+    p.setSceneTextStyles((current) => {
+      const next = current.slice(0, sceneCount).map(normalizeSceneStyle)
+      while (next.length < sceneCount) next.push(createDefaultSceneStyle(false))
+      next[activeSlot] = currentControlsStyle
+      return next
+    })
+  }
+
+  const applyCurrentStyleToAllScenes = () => {
+    const style = { ...currentControlsStyle, saved: true }
+    p.setSceneTextStyles(Array.from({ length: sceneCount }, () => ({ ...style })))
+  }
 
   const goPrevScene = () => setActiveSlot((index) => (index - 1 + sceneCount) % sceneCount)
   const goNextScene = () => setActiveSlot((index) => (index + 1) % sceneCount)
 
   return (
     <div className="journey-wizard-grid is-media-stage is-template-merged">
-      {/* ── Left : style parameters + Suivant ─────────────────────────── */}
       <aside className="journey-wizard-grid-side journey-template-side">
         <div className="journey-wizard-side-card is-narrow journey-style-card">
           <div className="journey-style-card-head">
-            <span className="journey-wizard-card-label">Paramètres</span>
+            <span className="journey-wizard-card-label">Parametres</span>
             <button
               type="button"
               className="journey-style-reset"
               onClick={resetStyleDefaults}
-              aria-label="Réinitialiser les paramètres"
+              aria-label="Reinitialiser les parametres"
             >
-              Réinitialiser
+              Reinitialiser
             </button>
           </div>
+          <div className="journey-style-scroll">
+
+          <section className="journey-style-section" aria-labelledby="merged-section-scene">
+            <div className="journey-style-section-head">
+              <h3 id="merged-section-scene" className="journey-style-section-title">Scene active</h3>
+              <span className="journey-step-row-hint">{savedStyleCount}/{sceneCount} styles</span>
+            </div>
+            <div className="journey-scene-style-tabs" role="tablist" aria-label="Scenes">
+              {Array.from({ length: sceneCount }).map((_, index) => {
+                const saved = normalizeSceneStyle(p.sceneTextStyles[index]).saved
+                const filled = Boolean(p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim())
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    role="tab"
+                    aria-selected={index === activeSlot}
+                    className={`journey-scene-style-tab ${index === activeSlot ? 'is-active' : ''} ${saved ? 'is-saved' : ''} ${filled ? 'is-filled' : ''}`}
+                    onClick={() => setActiveSlot(index)}
+                  >
+                    {index + 1}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="journey-style-actions">
+              <button type="button" className="journey-style-action" onClick={saveActiveSceneStyle}>
+                Enregistrer cette scene
+              </button>
+              <button type="button" className="journey-style-action" onClick={applyCurrentStyleToAllScenes}>
+                Appliquer a toutes
+              </button>
+            </div>
+          </section>
+
 
           <section className="journey-style-section" aria-labelledby="merged-section-position">
             <h3 id="merged-section-position" className="journey-style-section-title">Position</h3>
@@ -322,7 +448,7 @@ export default function TemplateStep() {
                   }}
                   maxLength={7}
                   spellCheck={false}
-                  aria-label="Couleur hexadécimale"
+                  aria-label="Couleur hexadÃƒÂ©cimale"
                 />
               </div>
             </div>
@@ -348,19 +474,73 @@ export default function TemplateStep() {
             </div>
           </section>
 
+          <section className="journey-style-section" aria-labelledby="merged-section-render">
+            <h3 id="merged-section-render" className="journey-style-section-title">Rendu</h3>
+            <div className="journey-style-grid-2">
+              <div className="journey-style-row">
+                <label htmlFor="merged-quality">Qualite</label>
+                <select
+                  id="merged-quality"
+                  className="journey-step-select"
+                  value={p.selectedQualityProfile}
+                  onChange={(event) => p.setSelectedQualityProfile(event.target.value)}
+                  disabled={p.isBusy}
+                >
+                  {p.qualityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="journey-style-row">
+                <label htmlFor="merged-duration">Duree</label>
+                <input
+                  id="merged-duration"
+                  className="journey-step-select"
+                  type="number"
+                  min={p.minVideoDurationSec}
+                  max={p.maxVideoDurationSec}
+                  step={1}
+                  value={p.videoDurationSec}
+                  onChange={(event) => {
+                    const next = Number(event.target.value)
+                    if (Number.isFinite(next)) {
+                      p.setVideoDurationSec(Math.min(p.maxVideoDurationSec, Math.max(p.minVideoDurationSec, next)))
+                    }
+                  }}
+                  disabled={p.isBusy}
+                />
+              </div>
+            </div>
+          </section>
+
+          </div>
           <div className="journey-step-cta journey-step-cta-stack">
-            <Button
-              variant="primary"
-              onClick={p.handleValidateMedia}
-              disabled={p.isBusy || !idea || !allFilled}
-            >
-              {t('common.next')}
-            </Button>
+            <span className="journey-style-save-status">
+              {allStylesSaved ? 'Styles scenes enregistres' : `Enregistre les styles: ${savedStyleCount}/${sceneCount}`}
+            </span>
+            {effectivePreviewUrl ? (
+              <>
+                <Button variant="secondary" onClick={() => void p.handleRetryInitPublish()} disabled={p.isBusy || !idea || !allScenesConfigured}>
+                  {t('render.regenerate')}
+                </Button>
+                <Button variant="primary" onClick={p.handleValidateInitPublish} disabled={p.isBusy}>
+                  {t('render.validate')}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={() => void p.handleRetryInitPublish()}
+                disabled={p.isBusy || !idea || !allScenesConfigured}
+              >
+                {p.isPreparingVideo ? t('common.generating') : t('common.generate')}
+              </Button>
+            )}
           </div>
         </div>
       </aside>
 
-      {/* ── Middle : search + gallery (2 cards / row) ─────────────────── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Middle : search + gallery (2 cards / row) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="journey-media-middle">
         <div className="journey-media-gallery-head">
           <div className="journey-media-gallery-title">
@@ -408,29 +588,89 @@ export default function TemplateStep() {
             <p>{t('media.noVideoSub')}</p>
           </div>
         ) : (
-          <PexelsGalleryGrid
-            videos={videos}
-            selectedSceneMediaUrls={p.selectedSceneMediaUrls}
-            activeSlot={activeSlot}
-            pickPortraitFile={pickPortraitFile}
-            onAssign={assignSlot}
-            onSelectExistingSlot={selectExistingSlot}
-            onClear={clearVideo}
-            registerVideoRef={registerVideoRef}
-          />
+          <>
+            <div className="journey-media-scene-map">
+              {Array.from({ length: sceneCount }).map((_, index) => {
+                const url = p.selectedSceneMediaUrls[index] || ''
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    className={`journey-media-scene-map-item ${index === activeSlot ? 'is-active' : ''} ${url ? 'is-filled' : ''}`}
+                    onClick={() => setActiveSlot(index)}
+                  >
+                    <span>Scene {index + 1}</span>
+                    {url ? (
+                      <span
+                        className="journey-media-scene-map-remove"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          clearSlot(index)
+                        }}
+                      >
+                        Retirer
+                      </span>
+                    ) : <span>Vide</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <PexelsGalleryGrid
+              videos={videos}
+              selectedSceneMediaUrls={p.selectedSceneMediaUrls}
+              activeSlot={activeSlot}
+              sceneCount={sceneCount}
+              pickPortraitFile={pickPortraitFile}
+              onAssign={assignSlot}
+              onSelectExistingSlot={selectExistingSlot}
+              onClear={clearVideo}
+              onClearSlot={clearSlot}
+              registerVideoRef={registerVideoRef}
+            />
+          </>
         )}
       </section>
 
-      {/* ── Right : TikTok 9:16 carousel preview ──────────────────────── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Right : TikTok 9:16 carousel preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <aside className="journey-media-preview">
         <div className="journey-template-head">
           <span className="journey-wizard-card-label">{t('templateStyle.previewLabel')}</span>
           <span className="journey-step-row-hint">
-            Scène {activeSlot + 1} / {sceneCount}
+            Scene {activeSlot + 1} / {sceneCount}
           </span>
         </div>
         <div className="journey-template-preview-frame">
-          {currentSceneVideo ? (
+          {isRenderActive && !effectivePreviewUrl ? (
+            <div className="journey-render-stage">
+              <div className="journey-render-stage-frame" />
+              <div className="journey-render-progress is-overlay">
+                <div className="journey-render-progress-copy">
+                  <strong>{statusLabel[renderProgress.status]}</strong>
+                  <span>{progressPct}%</span>
+                </div>
+                <div className="journey-render-progress-track">
+                  <div
+                    className="journey-render-progress-fill"
+                    style={{ width: `${Math.max(2, progressPct)}%` }}
+                  />
+                </div>
+                <div className="journey-render-progress-foot">
+                  {renderProgress.status === 'error' && renderProgress.error ? (
+                    <span className="journey-render-progress-error">{renderProgress.error}</span>
+                  ) : <span />}
+                </div>
+              </div>
+            </div>
+          ) : effectivePreviewUrl ? (
+            <video
+              key={effectivePreviewUrl}
+              src={effectivePreviewUrl}
+              className="journey-template-preview-video"
+              controls
+              playsInline
+              preload="metadata"
+            />
+          ) : currentSceneVideo ? (
             <video
               key={currentSceneVideo}
               src={currentSceneVideo}
@@ -444,49 +684,51 @@ export default function TemplateStep() {
           ) : (
             <div className="journey-template-preview-fallback" aria-hidden="true">
               <span className="journey-media-preview-empty-copy">
-                Aucune vidéo assignée
+                Aucune video assignee
               </span>
             </div>
           )}
-          <div
-            className="journey-template-preview-text"
-            style={{
-              left: `${textX}%`,
-              top: `${textY}%`,
-              color: textColor,
-              fontFamily,
-              textShadow: SHADOW_CSS[shadow],
-            }}
-            key={activeSlot}
-          >
-            <strong
+          {!isRenderActive && !effectivePreviewUrl ? (
+            <div
+              className="journey-template-preview-text"
               style={{
-                fontSize: `${fontSize}px`,
-                lineHeight: 1.1,
-                fontWeight,
-                textTransform: uppercase ? 'uppercase' : 'none',
+                left: `${textX}%`,
+                top: `${textY}%`,
+                color: textColor,
+                fontFamily,
+                textShadow: SHADOW_CSS[shadow],
               }}
+              key={activeSlot}
             >
-              {currentSceneText || '—'}
-            </strong>
-          </div>
-          {sceneCount > 1 ? (
+              <strong
+                style={{
+                  fontSize: `${fontSize}px`,
+                  lineHeight: 1.1,
+                  fontWeight,
+                  textTransform: uppercase ? 'uppercase' : 'none',
+                }}
+              >
+                {currentSceneText || '-'}
+              </strong>
+            </div>
+          ) : null}
+          {!isRenderActive && !effectivePreviewUrl && sceneCount > 1 ? (
             <>
               <button
                 type="button"
                 className="journey-media-preview-arrow is-prev"
                 onClick={goPrevScene}
-                aria-label="Scène précédente"
+                aria-label="Scene precedente"
               >
-                ‹
+                {'<'}
               </button>
               <button
                 type="button"
                 className="journey-media-preview-arrow is-next"
                 onClick={goNextScene}
-                aria-label="Scène suivante"
+                aria-label="Scene suivante"
               >
-                ›
+                {'>'}
               </button>
               <span className="journey-template-preview-counter">
                 {activeSlot + 1} / {sceneCount}
@@ -494,8 +736,8 @@ export default function TemplateStep() {
             </>
           ) : null}
         </div>
-        {sceneCount > 1 ? (
-          <div className="journey-media-carousel-dots" role="tablist" aria-label="Scènes">
+        {!isRenderActive && !effectivePreviewUrl && sceneCount > 1 ? (
+          <div className="journey-media-carousel-dots" role="tablist" aria-label="Scenes">
             {Array.from({ length: sceneCount }).map((_, index) => {
               const isActive = index === activeSlot
               const isFilled = Boolean(p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim())
@@ -505,7 +747,7 @@ export default function TemplateStep() {
                   type="button"
                   role="tab"
                   aria-selected={isActive}
-                  aria-label={`Aller à la scène ${index + 1}${isFilled ? ' (assignée)' : ' (vide)'}`}
+                  aria-label={`Aller a la scene ${index + 1}${isFilled ? ' (assignee)' : ' (vide)'}`}
                   className={`journey-media-carousel-dot ${isActive ? 'is-active' : ''} ${isFilled ? 'is-filled' : ''}`}
                   onClick={() => setActiveSlot(index)}
                 />
@@ -521,3 +763,4 @@ export default function TemplateStep() {
     </div>
   )
 }
+

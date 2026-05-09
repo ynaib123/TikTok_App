@@ -25,10 +25,9 @@ export default function CreationStep() {
   const idea = p.scriptedIdea || p.selectedGeneratedIdea
 
   return (
-    <div className="journey-wizard-grid is-creation-stage">
+    <div className="journey-wizard-grid is-creation-stage is-render-stage">
       <aside className="journey-wizard-grid-side journey-creation-side">
-        <div className="journey-wizard-side-row">
-          <div className="journey-wizard-side-card is-narrow">
+        <div className="journey-wizard-side-card is-narrow">
             <span className="journey-wizard-card-label">{t('creation.paramsLabel')}</span>
 
             <div className="journey-tabs" role="tablist">
@@ -160,18 +159,23 @@ export default function CreationStep() {
                 {t('common.next')}
               </Button>
             </div>
-          </div>
-
-          <DataEditableCard
-            loading={p.isGeneratingIdeas || p.isGeneratingScript}
-            loadingTitle={t('creation.loadingTitle')}
-            loadingSub={t('creation.loadingSub')}
-            emptyTitle={t('creation.emptyTitle')}
-            emptySub={t('creation.emptySub')}
-            hint={t('data.saveHint')}
-          />
         </div>
       </aside>
+
+      <section className="journey-render-data-panel">
+        <DataEditableCard
+          loading={p.isGeneratingIdeas || p.isGeneratingScript}
+          loadingTitle={t('creation.loadingTitle')}
+          loadingSub={t('creation.loadingSub')}
+          emptyTitle={t('creation.emptyTitle')}
+          emptySub={t('creation.emptySub')}
+          hint={t('data.saveHint')}
+        />
+      </section>
+
+      <section className="journey-wizard-grid-main is-video-stage journey-empty-preview">
+        <span className="journey-wizard-card-label">{t('render.previewLabel')}</span>
+      </section>
     </div>
   )
 }

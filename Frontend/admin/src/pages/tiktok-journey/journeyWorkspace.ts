@@ -1,5 +1,6 @@
 const JOURNEY_WORKSPACE_STORAGE_KEY = 'tiktok-journey-workspaces-v1'
 const MAX_PEXELS_QUERY_LENGTH = 200
+const MAX_SCENE_STYLES_COUNT = 10
 
 export interface JourneyWorkspaceSnapshot {
   ideaId: number
@@ -7,6 +8,7 @@ export interface JourneyWorkspaceSnapshot {
   updatedAt: string
   pexelsQuery?: string | null
   selectedSceneMediaUrls?: string[] | null
+  sceneTextStyles?: unknown[] | null
   editedTopic?: string | null
   editedScript?: string | null
   editedCaption?: string | null
@@ -16,6 +18,7 @@ export interface JourneyWorkspaceSnapshot {
 export interface JourneyWorkspaceExtras {
   pexelsQuery?: string | null
   selectedSceneMediaUrls?: string[] | null
+  sceneTextStyles?: unknown[] | null
   editedTopic?: string | null
   editedScript?: string | null
   editedCaption?: string | null
@@ -61,12 +64,16 @@ export function saveJourneyWorkspace(
   const sceneUrls = Array.isArray(extras.selectedSceneMediaUrls)
     ? extras.selectedSceneMediaUrls.slice(0, 10).map((u) => String(u || ''))
     : null
+  const sceneTextStyles = Array.isArray(extras.sceneTextStyles)
+    ? extras.sceneTextStyles.slice(0, MAX_SCENE_STYLES_COUNT)
+    : null
   current[String(numericIdeaId)] = {
     ideaId: numericIdeaId,
     stepId,
     updatedAt: new Date().toISOString(),
     pexelsQuery: trimmedQuery || null,
     selectedSceneMediaUrls: sceneUrls,
+    sceneTextStyles,
     editedTopic: extras.editedTopic ?? null,
     editedScript: extras.editedScript ?? null,
     editedCaption: extras.editedCaption ?? null,

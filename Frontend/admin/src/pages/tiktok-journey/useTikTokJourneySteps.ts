@@ -5,6 +5,7 @@ import {
 } from './journeyHelpers'
 import { journeyTelemetry } from './journeyTelemetry'
 import type { ContentIdea, ContentIdeaStatus, ManualAction, TikTokAccount, WorkflowRun } from '../../types'
+import type { SceneTextStyle } from './types'
 
 type RunAction = <T>(name: string, fn: () => Promise<T>) => Promise<T>
 type ShowSuccess = (message: string) => void
@@ -183,6 +184,7 @@ export interface UseRenderStepOptions {
   videoDurationSec?: number | null
   generationSceneCount?: number | null
   selectedSceneMediaUrls?: string[] | null
+  sceneTextStyles?: SceneTextStyle[] | null
   goToStep: (step: string) => void
   triggerRenderTemplateWorkflow: (input: Record<string, unknown>) => Promise<WorkflowResponseLike>
   fetchContentIdeaById: (ideaId: number | string) => Promise<ContentIdea | null>
@@ -209,6 +211,7 @@ export function useRenderStep({
   videoDurationSec,
   generationSceneCount,
   selectedSceneMediaUrls,
+  sceneTextStyles,
   goToStep,
   triggerRenderTemplateWorkflow,
   fetchContentIdeaById,
@@ -252,6 +255,7 @@ export function useRenderStep({
       durationSec: typeof videoDurationSec === 'number' && videoDurationSec > 0 ? videoDurationSec : null,
       sceneCount: typeof generationSceneCount === 'number' && generationSceneCount > 0 ? generationSceneCount : null,
       selectedSceneMediaUrls: Array.isArray(selectedSceneMediaUrls) && selectedSceneMediaUrls.length > 0 ? selectedSceneMediaUrls : null,
+      sceneTextStyles: Array.isArray(sceneTextStyles) && sceneTextStyles.length > 0 ? sceneTextStyles : null,
     })
     if (setCurrentRenderRunId && workflowRun?.runId) {
       setCurrentRenderRunId(Number(workflowRun.runId))

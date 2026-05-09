@@ -747,10 +747,57 @@
 
 .journey-wizard-grid.is-render-stage {
   grid-template-columns: var(--journey-param-width) minmax(0, 1fr) auto;
+  align-items: stretch;
 }
 
 .journey-render-side .journey-wizard-side-card.is-narrow {
   flex: 1 1 auto;
+}
+
+.journey-wizard-grid.is-render-stage > .journey-wizard-grid-side,
+.journey-wizard-grid.is-render-stage > .journey-render-data-panel,
+.journey-wizard-grid.is-render-stage > .journey-wizard-grid-main.is-video-stage {
+  align-self: stretch;
+}
+
+.journey-wizard-grid.is-render-stage .journey-wizard-side-card.is-narrow,
+.journey-wizard-grid.is-template-merged .journey-style-card {
+  height: calc(100vh - 210px);
+  min-height: 460px;
+  max-height: calc(100vh - 210px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.journey-wizard-grid.is-render-stage .journey-step-cta,
+.journey-wizard-grid.is-template-merged .journey-step-cta {
+  margin-top: auto;
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 8px;
+  background: var(--admin-panel-surface);
+}
+
+.journey-wizard-grid.is-render-stage .journey-tab-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.journey-wizard-grid.is-render-stage .journey-wizard-side-card.is-narrow > .journey-tab-panel,
+.journey-wizard-grid.is-render-stage .journey-wizard-side-card.is-narrow > .journey-tabs + .journey-tab-panel {
+  flex: 1 1 auto;
+}
+
+.journey-wizard-grid.is-render-stage .journey-wizard-side-card.is-narrow > .journey-step-cta {
+  display: flex;
+  visibility: visible;
+  opacity: 1;
 }
 
 .journey-render-data-panel {
@@ -798,6 +845,20 @@
   align-items: flex-end;
   padding: 8px;
   overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0)),
+    radial-gradient(circle at 50% 10%, rgba(255,255,255,0.16), transparent 28%),
+    var(--admin-panel-black);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+.journey-wizard-grid-main.is-video-stage .journey-wizard-card-label {
+  align-self: flex-start;
+}
+
+.journey-empty-preview {
+  justify-content: flex-start;
 }
 
 .journey-wizard-grid-side {
@@ -2544,7 +2605,30 @@ input.journey-step-select {
      read as one continuous panel. */
   padding: 12px 14px;
   gap: 12px;
+  overflow: hidden;
+}
+
+.journey-style-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   overflow-y: auto;
+  padding-right: 2px;
+}
+
+.journey-style-card > .journey-step-cta {
+  flex: 0 0 auto;
+  display: flex;
+  visibility: visible;
+  opacity: 1;
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  padding-top: 8px;
+  background: var(--admin-panel-surface);
 }
 
 .journey-style-card-head {
@@ -2554,6 +2638,72 @@ input.journey-step-select {
   gap: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--admin-border-faint);
+}
+
+.journey-style-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.journey-scene-style-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.journey-scene-style-tab {
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-panel-surface);
+  color: var(--admin-text-soft);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.journey-scene-style-tab.is-active {
+  color: var(--admin-text);
+  border-color: var(--admin-warm-border-strong);
+  background: var(--admin-surface-overlay);
+}
+
+.journey-scene-style-tab.is-filled {
+  box-shadow: inset 0 -2px 0 var(--admin-warm-strong);
+}
+
+.journey-scene-style-tab.is-saved {
+  box-shadow: inset 0 -2px 0 var(--journey-status-success);
+}
+
+.journey-style-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.journey-style-action {
+  min-height: 32px;
+  border-radius: 7px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-panel-surface);
+  color: var(--admin-text);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.journey-style-action:hover {
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-overlay);
+}
+
+.journey-style-save-status {
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  text-align: center;
 }
 
 .journey-style-reset {
@@ -3189,7 +3339,45 @@ input.journey-step-select {
 
 /* ---- Cards 2 par ligne (merged step) ----------------------------------- */
 .journey-media-grid.is-two-cols {
-  gap: 14px;
+  gap: 12px;
+}
+
+.journey-media-scene-map {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.journey-media-scene-map-item {
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-panel-surface);
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.journey-media-scene-map-item.is-active {
+  color: var(--admin-text);
+  border-color: var(--admin-warm-border-strong);
+  background: var(--admin-surface-overlay);
+}
+
+.journey-media-scene-map-item.is-filled {
+  box-shadow: inset 0 -2px 0 var(--journey-status-success);
+}
+
+.journey-media-scene-map-remove {
+  color: var(--admin-danger, #ff7a7a);
+  font-size: 10px;
+  text-transform: uppercase;
 }
 
 /* In the merged step the cards are proper containers with a 9:16 video frame
@@ -3227,7 +3415,7 @@ input.journey-step-select {
 
 .journey-media-grid.is-two-cols .journey-media-card-frame {
   position: relative;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 1 / 1;
   width: 100%;
   background: var(--admin-panel-black);
   overflow: hidden;
@@ -3255,6 +3443,46 @@ input.journey-step-select {
   justify-content: center;
   pointer-events: none;
   z-index: 3;
+}
+
+.journey-media-assign-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  padding: 8px 8px 0;
+}
+
+.journey-media-assign-btn {
+  height: 28px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: var(--admin-panel-surface-2);
+  color: var(--admin-text-soft);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.journey-media-assign-btn.is-current {
+  border-color: var(--admin-warm-border-strong);
+}
+
+.journey-media-assign-btn.is-active {
+  color: var(--admin-panel-black);
+  border-color: var(--journey-status-success);
+  background: var(--journey-status-success);
+}
+
+.journey-media-card-remove {
+  margin: 8px 8px 0;
+  min-height: 28px;
+  border: 1px solid var(--admin-border);
+  border-radius: 7px;
+  background: var(--admin-panel-surface-2);
+  color: var(--admin-danger, #ff7a7a);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .journey-media-grid.is-two-cols .journey-media-card-meta {

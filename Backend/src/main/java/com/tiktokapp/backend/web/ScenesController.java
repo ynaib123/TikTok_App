@@ -54,7 +54,8 @@ public class ScenesController {
             String captionMode,
             String hook,
             String cta,
-            java.util.List<String> selectedMediaUrls
+            java.util.List<String> selectedMediaUrls,
+            java.util.List<java.util.Map<String, Object>> sceneTextStyles
     ) {}
 
     @PostMapping("/build/{contentIdeaId}")
@@ -106,7 +107,8 @@ public class ScenesController {
                         ? defaults.captionMode() : request.captionMode(),
                 request.hook(),
                 request.cta(),
-                request.selectedMediaUrls()
+                request.selectedMediaUrls(),
+                request.sceneTextStyles()
         );
     }
 }

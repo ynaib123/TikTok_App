@@ -33,6 +33,18 @@ export interface JourneyNumericOptionDescriptor {
   description: string
 }
 
+export interface SceneTextStyle {
+  textX: number
+  textY: number
+  textColor: string
+  fontFamily: string
+  fontSize: number
+  fontWeight: number
+  uppercase: boolean
+  shadow: 'none' | 'soft' | 'strong'
+  saved?: boolean
+}
+
 export interface StepBodyProps {
   steps: StepDescriptor[]
   currentStepIndex: number
@@ -122,6 +134,8 @@ export interface StepBodyProps {
   sceneCountOptions: JourneyNumericOptionDescriptor[]
   selectedSceneMediaUrls: string[]
   setSelectedSceneMediaUrls: (urls: string[] | ((current: string[]) => string[])) => void
+  sceneTextStyles: SceneTextStyle[]
+  setSceneTextStyles: (styles: SceneTextStyle[] | ((current: SceneTextStyle[]) => SceneTextStyle[])) => void
   pexelsCache: { query: string; videos: any[] } | null
   setPexelsCache: (cache: { query: string; videos: any[] } | null) => void
 }

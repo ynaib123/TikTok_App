@@ -18,30 +18,20 @@ export default function UploadStep() {
   const isPublishing = p.isPreparingUpload || p.isUploadingVideo || p.isPublishingVideo
 
   return (
-    <div className="journey-wizard-grid is-video-stage">
-      <aside className="journey-wizard-grid-side">
-        <div className="journey-wizard-side-row">
-          <div className="journey-wizard-side-card is-narrow">
-            <span className="journey-wizard-card-label">{t('upload.paramsLabel')}</span>
-            <div className="journey-step-cta journey-step-cta-stack">
-              <Button
-                variant="primary"
-                onClick={() => void p.handlePrepareAndUploadVideo()}
-                disabled={p.isBusy || !previewUrl || !p.isJourneyReady}
-              >
-                {isPublishing ? t('upload.publishingFlow') : t('upload.publishOnTikTok')}
-              </Button>
-            </div>
+    <div className="journey-wizard-grid is-video-stage is-render-stage">
+      <aside className="journey-wizard-grid-side journey-render-side">
+        <div className="journey-wizard-side-card is-narrow">
+          <span className="journey-wizard-card-label">{t('upload.paramsLabel')}</span>
+          <div className="journey-step-cta journey-step-cta-stack">
+            <Button
+              variant="primary"
+              onClick={() => void p.handlePrepareAndUploadVideo()}
+              disabled={p.isBusy || !previewUrl || !p.isJourneyReady}
+            >
+              {isPublishing ? t('upload.publishingFlow') : t('upload.publishOnTikTok')}
+            </Button>
           </div>
-
-          <DataEditableCard
-            loading={false}
-            emptyTitle={t('upload.emptyTitle')}
-            emptySub={t('upload.emptySub')}
-            readOnly
-          />
         </div>
-
         <AccountSideCard
           connectedTikTokAccount={p.connectedTikTokAccount}
           hasConnectedTikTokAccount={p.hasConnectedTikTokAccount}
@@ -50,6 +40,15 @@ export default function UploadStep() {
           navigate={p.navigate}
         />
       </aside>
+
+      <section className="journey-render-data-panel">
+        <DataEditableCard
+          loading={false}
+          emptyTitle={t('upload.emptyTitle')}
+          emptySub={t('upload.emptySub')}
+          readOnly
+        />
+      </section>
 
       <section className="journey-wizard-grid-main is-video-stage">
         <span className="journey-wizard-card-label">{t('upload.previewLabel')}</span>

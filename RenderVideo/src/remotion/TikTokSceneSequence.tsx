@@ -12,6 +12,7 @@ interface NormalizedScene {
   mediaUrl: string
   durationFrames: number
   startFrame: number
+  textStyle?: RenderVideoScene['textStyle']
 }
 
 function normalizeScenes(job: RenderVideoJob, fps: number, totalFrames: number): NormalizedScene[] {
@@ -29,6 +30,7 @@ function normalizeScenes(job: RenderVideoJob, fps: number, totalFrames: number):
         mediaUrl: scene.media.url,
         durationFrames,
         startFrame,
+        textStyle: scene.textStyle || null,
       }
     })
   }
@@ -145,7 +147,13 @@ function HookHero({ text, accent, hookFrames }: { text: string; accent: string; 
   )
 }
 
-function SceneTextHero({ text, durationFrames }: { text: string; durationFrames: number }) {
+function shadowCss(value?: string | null) {
+  if (value === 'none') return 'none'
+  if (value === 'soft') return '0 4px 18px rgba(0,0,0,0.45)'
+  return '0 6px 22px rgba(0,0,0,0.6), 0 2px 0 rgba(0,0,0,0.55)'
+}
+
+function SceneTextHero({ text, durationFrames, textStyle }: { text: string; durationFrames: number; textStyle?: RenderVideoScene['textStyle'] }) {
   const fadeIn = useFadeIn({ durationFrames: 10 })
   const fadeOut = useFadeOut({
     startFrame: Math.max(0, durationFrames - 8),
@@ -154,9 +162,20 @@ function SceneTextHero({ text, durationFrames }: { text: string; durationFrames:
   const translateY = useRise({ durationFrames: 14, fromY: 24 })
   if (!text) return null
   const opacity = Math.min(fadeIn, fadeOut)
-  return (
-    <div style={{ ...proSceneText, opacity, transform: `translateY(${translateY}px)` }}>{text}</div>
-  )
+  const custom: React.CSSProperties = textStyle ? {
+    position: 'absolute',
+    left: `${textStyle.textX ?? 50}%`,
+    top: `${textStyle.textY ?? 48}%`,
+    transform: `translate(-50%, -50%) translateY(${translateY}px)`,
+    color: textStyle.textColor || proSceneText.color,
+    fontFamily: textStyle.fontFamily || proSceneText.fontFamily,
+    fontSize: textStyle.fontSize ? `${Math.round(textStyle.fontSize * 2.2)}px` : proSceneText.fontSize,
+    fontWeight: textStyle.fontWeight || proSceneText.fontWeight,
+    textTransform: textStyle.uppercase === false ? 'none' : 'uppercase',
+    textShadow: shadowCss(textStyle.shadow),
+    opacity,
+  } : { opacity, transform: `translateY(${translateY}px)` }
+  return <div style={{ ...proSceneText, ...custom }}>{text}</div>
 }
 
 export function TikTokSceneSequence({ job }: { job: RenderVideoJob }) {
@@ -199,7 +218,7 @@ export function TikTokSceneSequence({ job }: { job: RenderVideoJob }) {
                   justifyContent: 'center',
                 }}
               >
-                <SceneTextHero text={scene.text} durationFrames={textDuration} />
+                <SceneTextHero text={scene.text} durationFrames={textDuration} textStyle={scene.textStyle} />
               </AbsoluteFill>
             </Sequence>
           </Sequence>

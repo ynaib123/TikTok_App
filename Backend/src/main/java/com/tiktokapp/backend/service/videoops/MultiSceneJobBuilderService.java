@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -52,7 +53,8 @@ public class MultiSceneJobBuilderService {
             // par scène, dans l'ordre. Si non vide, on saute la recherche Pexels
             // et on les utilise directement. Tailles inconnues = on défaut à
             // 1080x1920 (suffisant pour le contrat 1.1.0).
-            List<String> selectedMediaUrls
+            List<String> selectedMediaUrls,
+            List<Map<String, Object>> sceneTextStyles
     ) {
         public static BuildOptions defaults(long workflowRunId, String source) {
             return new BuildOptions(
@@ -65,6 +67,7 @@ public class MultiSceneJobBuilderService {
                     15.0,
                     "high",
                     "none",
+                    null,
                     null,
                     null,
                     null
@@ -209,9 +212,68 @@ public class MultiSceneJobBuilderService {
             if (pick.durationSec() > 0) {
                 media.put("durationSec", pick.durationSec());
             }
+            ObjectNode textStyle = buildSceneTextStyle(opts.sceneTextStyles(), i);
+            if (textStyle != null) {
+                sceneNode.set("textStyle", textStyle);
+            }
         }
 
         return job;
+    }
+
+    private ObjectNode buildSceneTextStyle(List<Map<String, Object>> styles, int index) {
+        if (styles == null || index < 0 || index >= styles.size()) {
+            return null;
+        }
+        Map<String, Object> raw = styles.get(index);
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        ObjectNode style = objectMapper.createObjectNode();
+        style.put("textX", clampDouble(number(raw.get("textX"), 50.0), 6.0, 94.0));
+        style.put("textY", clampDouble(number(raw.get("textY"), 48.0), 6.0, 94.0));
+        style.put("textColor", color(raw.get("textColor"), "#ffffff"));
+        style.put("fontFamily", truncate(text(raw.get("fontFamily"), "Inter"), 80));
+        style.put("fontSize", clampDouble(number(raw.get("fontSize"), 36.0), 14.0, 80.0));
+        style.put("fontWeight", (int) clampDouble(number(raw.get("fontWeight"), 800.0), 100.0, 1000.0));
+        style.put("uppercase", bool(raw.get("uppercase"), true));
+        style.put("shadow", shadow(raw.get("shadow")));
+        return style;
+    }
+
+    private static double number(Object value, double fallback) {
+        if (value instanceof Number n) return n.doubleValue();
+        if (value instanceof String s) {
+            try {
+                return Double.parseDouble(s);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static double clampDouble(double value, double min, double max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    private static boolean bool(Object value, boolean fallback) {
+        return value instanceof Boolean b ? b : fallback;
+    }
+
+    private static String text(Object value, String fallback) {
+        String text = value == null ? "" : String.valueOf(value).trim();
+        return text.isBlank() ? fallback : text;
+    }
+
+    private static String color(Object value, String fallback) {
+        String color = text(value, fallback);
+        return color.matches("^#[0-9a-fA-F]{6}$") ? color : fallback;
+    }
+
+    private static String shadow(Object value) {
+        String shadow = text(value, "strong");
+        return shadow.equals("none") || shadow.equals("soft") || shadow.equals("strong") ? shadow : "strong";
     }
 
     private List<SceneBuilderService.SceneSpec> buildSceneSpecs(ContentIdea idea, double durationSec) {
