@@ -5,6 +5,8 @@ import '../styles/features/ai-agents.css'
 
 const AgentsScene = lazy(() => import('./ai-agents/AgentsScene'))
 const LogTerminal = lazy(() => import('./ai-agents/LogTerminal'))
+const AgentRunner = lazy(() => import('./ai-agents/AgentRunner'))
+const HelpLegend = lazy(() => import('./ai-agents/HelpLegend'))
 
 export interface AgentEvent {
   id: number
@@ -88,7 +90,7 @@ export default function AIAgentsPage() {
     closed: '#ef4444',
   }
   const statusLabel: Record<StreamStatus, string> = {
-    connecting: 'connecting…',
+    connecting: events.length === 0 ? "en attente d'un premier event" : 'connecting…',
     live: 'live',
     reconnecting: 'reconnecting…',
     closed: t('errors.network'),
@@ -106,6 +108,12 @@ export default function AIAgentsPage() {
           <div style={sceneStyle}>
             <Suspense fallback={<SceneFallback />}>
               <AgentsScene events={events} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <AgentRunner />
+            </Suspense>
+            <Suspense fallback={null}>
+              <HelpLegend />
             </Suspense>
           </div>
           <aside style={asideStyle}>

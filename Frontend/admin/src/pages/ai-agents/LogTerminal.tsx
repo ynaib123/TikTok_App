@@ -18,7 +18,9 @@ function formatTime(ts: number) {
 }
 
 function formatPayload(payload: Record<string, unknown>): string {
-  const entries = Object.entries(payload).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  const entries = Object.entries(payload).filter(
+    ([, v]) => v !== '' && v !== null && v !== undefined,
+  )
   if (entries.length === 0) return ''
   return entries.map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' ')
 }
@@ -37,7 +39,34 @@ export default function LogTerminal({ events }: LogTerminalProps) {
       <div style={headerStyle}>$ tail -f /var/log/agents/anthropic.log</div>
       <div ref={containerRef} style={bodyStyle} role="log" aria-live="polite">
         {events.length === 0 ? (
-          <div style={{ opacity: 0.5, padding: '8px 0' }}>// awaiting first agent run…</div>
+          <div style={{ opacity: 0.7, padding: '8px 0', lineHeight: 1.6 }}>
+            <div style={{ color: '#475569', marginBottom: 6 }}>// awaiting first agent run…</div>
+            <div style={{ color: 'rgba(34, 211, 238, 0.7)' }}>
+              {'>'} Lance un agent depuis le panneau violet à gauche.
+            </div>
+            <div style={{ color: 'rgba(34, 211, 238, 0.7)', marginTop: 4 }}>
+              {'>'} Chaque ligne ici correspondra à un événement live :
+            </div>
+            <ul style={{ listStyle: 'none', padding: '4px 0 0 14px', margin: 0 }}>
+              <li>
+                <span style={{ color: '#a855f7' }}>agent_run_started</span>
+                <span style={{ color: '#475569' }}> = l'agent commence à réfléchir</span>
+              </li>
+              <li>
+                <span style={{ color: '#22d3ee' }}>agent_tool_call</span>
+                <span style={{ color: '#475569' }}> = il interroge la BD</span>
+              </li>
+              <li>
+                <span style={{ color: '#22c55e' }}>agent_run_finished</span>
+                <span style={{ color: '#475569' }}> = il a terminé (status + tokens)</span>
+              </li>
+            </ul>
+            <div style={{ color: '#475569', marginTop: 8 }}>
+              // Sans clé Anthropic, le bouton Run renverra 501 et rien
+              <br />
+              // ne s'affichera ici. Configure ANTHROPIC_API_KEY pour activer.
+            </div>
+          </div>
         ) : (
           events.map((event) => (
             <div key={event.id} style={lineStyle}>
