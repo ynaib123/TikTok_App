@@ -15,6 +15,8 @@ export interface AgentEvent {
 
 const MAX_EVENTS = 200
 
+type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'closed'
+
 /**
  * AI Agents supervision page — 3D flux + Matrix terminal driven by the
  * /api/ai/agents/stream SSE endpoint.
@@ -27,7 +29,7 @@ const MAX_EVENTS = 200
 export default function AIAgentsPage() {
   const { t } = useTranslation('common')
   const [events, setEvents] = useState<AgentEvent[]>([])
-  const [connected, setConnected] = useState(false)
+  const [streamStatus, setStreamStatus] = useState<StreamStatus>('connecting')
   const idCounterRef = useRef(0)
 
   useEffect(() => {
@@ -45,23 +47,38 @@ export default function AIAgentsPage() {
         return next.length > MAX_EVENTS ? next.slice(-MAX_EVENTS) : next
       })
     }
-    source.onopen = () => setConnected(true)
-    source.onerror = () => setConnected(false)
+    source.onopen = () => setStreamStatus('live')
+    source.onerror = () => {
+      // EventSource auto-reconnects unless readyState is CLOSED. Mirror that
+      // truth into the UI : we only flip to "closed" when the browser gave up.
+      setStreamStatus(source.readyState === EventSource.CLOSED ? 'closed' : 'reconnecting')
+    }
     source.addEventListener('agent_run_started', onEvent('agent_run_started') as EventListener)
     source.addEventListener('agent_tool_call', onEvent('agent_tool_call') as EventListener)
     source.addEventListener('agent_run_finished', onEvent('agent_run_finished') as EventListener)
     return () => source.close()
   }, [])
 
+  const statusColor: Record<StreamStatus, string> = {
+    connecting: '#94a3b8',
+    live: '#22c55e',
+    reconnecting: '#f59e0b',
+    closed: '#ef4444',
+  }
+  const statusLabel: Record<StreamStatus, string> = {
+    connecting: 'connecting…',
+    live: 'live',
+    reconnecting: 'reconnecting…',
+    closed: t('errors.network'),
+  }
+
   return (
     <AdminShell activeNavId="ai-agents">
       <div className="ai-agents-page" style={pageStyle}>
         <header style={headerStyle}>
           <h1 style={{ margin: 0, fontSize: 22 }}>AI Agents Supervision</h1>
-          <span style={{ ...statusDotStyle, background: connected ? '#22c55e' : '#ef4444' }} />
-          <span style={{ fontSize: 12, opacity: 0.7 }}>
-            {connected ? 'live' : t('errors.network')}
-          </span>
+          <span style={{ ...statusDotStyle, background: statusColor[streamStatus] }} />
+          <span style={{ fontSize: 12, opacity: 0.7 }}>{statusLabel[streamStatus]}</span>
         </header>
         <div style={mainStyle}>
           <div style={sceneStyle}>
@@ -108,7 +125,7 @@ const pageStyle: React.CSSProperties = {
   background: '#000',
   color: '#fff',
   zIndex: 1,
-  transition: 'left 180ms ease',
+  transition: 'left 220ms ease',
 }
 const headerStyle: React.CSSProperties = {
   display: 'flex',

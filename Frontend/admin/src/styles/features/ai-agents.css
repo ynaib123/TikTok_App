@@ -1,24 +1,22 @@
-/* AI Agents supervision page (Lot 6) — full-viewport content area minus
- * navbar (top) and sidebar (left). The base position/offsets live inline on
- * the .ai-agents-page node ; this file only handles the sidebar-collapsed
- * variant via the parent .admin-console-page state. */
+/* AI Agents supervision page (Lot 6) — fills the viewport minus the navbar
+ * (top) and the sidebar (left). The sidebar stays visible and the page
+ * follows its collapse/expand animation. */
 
-.admin-console-page.sidebar-collapsed .ai-agents-page {
-  left: var(--admin-sidebar-collapsed-width, 70px);
-}
-
-/* Hide the inherited shell padding so the content can truly span edge-to-edge.
- * .admin-console-page sets a body padding-top reserving space for the navbar
- * but our fixed-position content already accounts for it. */
 .admin-console-page:has(.ai-agents-page) {
   padding: 0;
   min-height: 100vh;
 }
 
-/* Mobile (<= 980px) — AdminShell shows the desktop-only blocker, but if a
- * future change unblocks mobile, fall back to overlaying the sidebar. */
+.admin-console-page:has(.ai-agents-page) .ai-agents-page {
+  left: var(--admin-sidebar-width, 260px);
+}
+
+.admin-console-page.sidebar-collapsed:has(.ai-agents-page) .ai-agents-page {
+  left: var(--admin-sidebar-collapsed-width, 70px);
+}
+
 @media (max-width: 980px) {
-  .ai-agents-page {
-    left: 0 !important;
+  .admin-console-page:has(.ai-agents-page) .ai-agents-page {
+    left: 0;
   }
 }
