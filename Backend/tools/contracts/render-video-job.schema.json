@@ -308,6 +308,12 @@
                 "string",
                 "null"
               ]
+            },
+            "volume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 200,
+              "description": "Voice-over volume in percent (0–200). 100 = no change."
             }
           }
         },
@@ -325,7 +331,8 @@
             "volume": {
               "type": "number",
               "minimum": 0,
-              "maximum": 1
+              "maximum": 200,
+              "description": "Music track volume in percent (0–200). 100 = no change."
             }
           }
         },

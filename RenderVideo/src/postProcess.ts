@@ -79,16 +79,21 @@ export async function postProcess({
   const musicUrl = job.assets.music?.url || null
   const musicVolume = clampVolume(job.assets.music?.volume, 0.18)
 
+  // Lot 7 / H1 — parallelize asset downloads. Voice and music are independent
+  // so awaiting them sequentially wastes time-to-first-frame on every render.
   let voicePath: string | null = null
   let musicPath: string | null = null
-
+  const downloads: Promise<void>[] = []
   if (voiceUrl) {
     voicePath = path.join(workDir, 'voice.input')
-    await downloadAsset(voiceUrl, voicePath)
+    downloads.push(downloadAsset(voiceUrl, voicePath))
   }
   if (musicUrl) {
     musicPath = path.join(workDir, 'music.input')
-    await downloadAsset(musicUrl, musicPath)
+    downloads.push(downloadAsset(musicUrl, musicPath))
+  }
+  if (downloads.length > 0) {
+    await Promise.all(downloads)
   }
 
   const audioMixed = Boolean(voicePath || musicPath)

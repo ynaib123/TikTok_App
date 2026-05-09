@@ -2,6 +2,7 @@ import React from 'react'
 import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame, useVideoConfig } from 'remotion'
 import type { RenderVideoJob, RenderVideoScene } from '../renderJob.js'
 import { AnimatedBlock } from './design/AnimatedBlock.js'
+import { AudioMixer } from './design/AudioMixer.js'
 import { Background } from './design/Background.js'
 import { useFadeIn, useFadeOut, useRise } from './design/animations.js'
 import { cleanText, fontStacks, resolvePalette, resolveSafeZones, splitScript } from './design/tokens.js'
@@ -228,6 +229,8 @@ export function TikTokSceneSequence({ job }: { job: RenderVideoJob }) {
       <Sequence from={0} durationInFrames={hookFrames}>
         <HookHero text={hook} accent={palette.accent} hookFrames={hookFrames} />
       </Sequence>
+
+      <AudioMixer job={job} />
     </AbsoluteFill>
   )
 }

@@ -2,6 +2,7 @@ import React from 'react'
 import { AbsoluteFill, Sequence, useVideoConfig } from 'remotion'
 import type { RenderVideoJob } from '../renderJob.js'
 import { AnimatedBlock } from './design/AnimatedBlock.js'
+import { AudioMixer } from './design/AudioMixer.js'
 import { Background } from './design/Background.js'
 import { Captions } from './design/Captions.js'
 import { useScaleIn } from './design/animations.js'
@@ -203,6 +204,8 @@ export function TikTokBoldStory({ job }: { job: RenderVideoJob }) {
           }}
         />
       </AbsoluteFill>
+
+      <AudioMixer job={job} />
     </AbsoluteFill>
   )
 }

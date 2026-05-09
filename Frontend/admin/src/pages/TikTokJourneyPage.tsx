@@ -81,6 +81,7 @@ type PendingExitTarget =
 
 const STEPS = [
   { id: 'creation', label: 'Creation', sub: 'Generer une idee + script' },
+  { id: 'audio', label: 'Audio', sub: 'Voix off + musique (ElevenLabs)' },
   { id: 'init-publish', label: 'Video', sub: 'Regler les scenes puis generer' },
   { id: 'upload', label: 'Publication', sub: 'Publier sur TikTok' },
 ]

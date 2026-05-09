@@ -40,6 +40,10 @@ export const VIDEO_OPS_QUERY_KEYS = {
     perPage = 18,
   ) => ['pexels-videos', query, orientation, perPage] as const,
   pexelsVideosRoot: ['pexels-videos'] as const,
+  audioVoices: ['audio', 'voices'] as const,
+  audioAssets: (contentIdeaId: number | null) =>
+    ['audio', 'assets', contentIdeaId] as const,
+  audioRoot: ['audio'] as const,
 }
 
 export const VIDEO_OPS_STALE_TIMES = {
