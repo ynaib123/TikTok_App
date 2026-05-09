@@ -30,7 +30,29 @@ export default function AIAgentsPage() {
   const { t } = useTranslation('common')
   const [events, setEvents] = useState<AgentEvent[]>([])
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('connecting')
+  const [sidebarRightEdge, setSidebarRightEdge] = useState<number>(0)
   const idCounterRef = useRef(0)
+
+  // Track the sidebar's actual right-edge in pixels so the AI Agents content
+  // sits flush against it regardless of theme overrides, scrollbars or
+  // border-right offsets. ResizeObserver fires on every collapse animation
+  // frame so the page slides in lockstep with the sidebar.
+  useEffect(() => {
+    const sidebar = document.querySelector<HTMLElement>('.admin-context-sidebar')
+    if (!sidebar) return undefined
+    const update = () => {
+      const rect = sidebar.getBoundingClientRect()
+      setSidebarRightEdge(Math.round(rect.right))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(sidebar)
+    window.addEventListener('resize', update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [])
 
   useEffect(() => {
     const source = new EventSource('/api/ai/agents/stream', { withCredentials: true })
@@ -74,7 +96,7 @@ export default function AIAgentsPage() {
 
   return (
     <AdminShell activeNavId="ai-agents">
-      <div className="ai-agents-page" style={pageStyle}>
+      <div className="ai-agents-page" style={{ ...pageStyle, left: sidebarRightEdge }}>
         <header style={headerStyle}>
           <h1 style={{ margin: 0, fontSize: 22 }}>AI Agents Supervision</h1>
           <span style={{ ...statusDotStyle, background: statusColor[streamStatus] }} />
