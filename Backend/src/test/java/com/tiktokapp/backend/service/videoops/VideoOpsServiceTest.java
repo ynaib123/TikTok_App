@@ -9,11 +9,7 @@ import com.tiktokapp.backend.dto.videoops.WorkflowTriggerRequest;
 import com.tiktokapp.backend.model.VideoWorkflowRun;
 import com.tiktokapp.backend.model.VideoWorkflowRunStatus;
 import com.tiktokapp.backend.model.VideoWorkflowType;
-import com.tiktokapp.backend.repository.ContentIdeaRepository;
-import com.tiktokapp.backend.repository.VideoPipelineEventRepository;
-import com.tiktokapp.backend.repository.VideoPipelineStateRepository;
 import com.tiktokapp.backend.repository.VideoWorkflowRunRepository;
-import com.tiktokapp.backend.service.TikTokUploadService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,72 +17,57 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.Map;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Behaviour tests for the four services extracted from the legacy VideoOpsService monolith.
+ * Exercises the trigger orchestration end-to-end (idempotency, payload, run lifecycle)
+ * by wiring real {@link WorkflowOrchestrator} instances over Mockito mocks.
+ */
 @ExtendWith(MockitoExtension.class)
 class VideoOpsServiceTest {
 
-    @Mock
-    private ContentIdeaGateway contentIdeaGateway;
+    @Mock private ContentIdeaGateway contentIdeaGateway;
+    @Mock private N8nWorkflowGateway n8nWorkflowGateway;
+    @Mock private VideoOpsCallbackAuthService callbackAuthService;
+    @Mock private VideoWorkflowRunRepository workflowRunRepository;
+    @Mock private VideoOpsRunPersistenceHelper runPersistenceHelper;
+    @Mock private VideoOpsTrackingService trackingService;
 
-    @Mock
-    private ContentIdeaRepository contentIdeaRepository;
-
-    @Mock
-    private N8nWorkflowGateway n8nWorkflowGateway;
-
-    @Mock
-    private VideoOpsInternalProxyService videoOpsInternalProxyService;
-
-    @Mock
-    private TikTokUploadService tikTokUploadService;
-
-    @Mock
-    private VideoOpsCallbackAuthService callbackAuthService;
-
-    @Mock
-    private VideoPipelineStateRepository pipelineStateRepository;
-
-    @Mock
-    private VideoWorkflowRunRepository workflowRunRepository;
-
-    @Mock
-    private VideoPipelineEventRepository eventRepository;
-
-    @Mock
-    private VideoOpsRunPersistenceHelper runPersistenceHelper;
-
-    @Mock
-    private N8nWorkflowContractService n8nWorkflowContractService;
-
-    @Mock
-    private VideoOpsTrackingService trackingService;
-
-    @Mock
-    private WorkflowCallbackService workflowCallbackService;
-
-    @Test
-    void triggerMainPipelineSendsCategoryAndIdeaCountToN8n() {
+    private VideoOpsProperties properties() {
         VideoOpsProperties properties = new VideoOpsProperties();
         properties.setIdempotencyWindowSeconds(120);
+        return properties;
+    }
 
+    private WorkflowOrchestrator orchestrator() {
+        return new WorkflowOrchestrator(
+                contentIdeaGateway,
+                n8nWorkflowGateway,
+                workflowRunRepository,
+                properties(),
+                new ObjectMapper(),
+                runPersistenceHelper,
+                trackingService
+        );
+    }
+
+    private void stubRunPersistence(long expectedId) {
         doAnswer(invocation -> {
             VideoWorkflowRun run = invocation.getArgument(0);
             if (run.getId() == null) {
-                ReflectionTestUtils.setField(run, "id", 21L);
+                ReflectionTestUtils.setField(run, "id", expectedId);
             }
             if (run.getCreatedAt() == null) {
                 ReflectionTestUtils.setField(run, "createdAt", Instant.now());
@@ -97,14 +78,18 @@ class VideoOpsServiceTest {
         doAnswer(invocation -> {
             VideoWorkflowRun run = invocation.getArgument(0);
             if (run.getId() == null) {
-                ReflectionTestUtils.setField(run, "id", 21L);
+                ReflectionTestUtils.setField(run, "id", expectedId);
             }
             if (run.getCreatedAt() == null) {
                 ReflectionTestUtils.setField(run, "createdAt", Instant.now());
             }
             return run;
         }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
+    }
 
+    @Test
+    void triggerMainPipelineSendsCategoryAndIdeaCountToN8n() {
+        stubRunPersistence(21L);
         when(workflowRunRepository.findTopByContentIdeaIdIsNullAndWorkflowTypeOrderByCreatedAtDesc(VideoWorkflowType.MAIN_PIPELINE))
                 .thenReturn(Optional.empty());
         when(workflowRunRepository.countByContentIdeaIdIsNullAndWorkflowType(VideoWorkflowType.MAIN_PIPELINE))
@@ -112,23 +97,7 @@ class VideoOpsServiceTest {
         when(n8nWorkflowGateway.trigger(eq(VideoWorkflowType.MAIN_PIPELINE), any()))
                 .thenReturn(new ObjectMapper().createObjectNode());
 
-        VideoOpsService service = new VideoOpsService(
-                contentIdeaGateway,
-                contentIdeaRepository,
-                n8nWorkflowGateway,
-                videoOpsInternalProxyService,
-                tikTokUploadService,
-                callbackAuthService,
-                pipelineStateRepository,
-                workflowRunRepository,
-                eventRepository,
-                properties,
-                new ObjectMapper(),
-                runPersistenceHelper,
-                n8nWorkflowContractService,
-                trackingService,
-                workflowCallbackService
-        );
+        ContentGenerationService service = new ContentGenerationService(orchestrator());
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
         request.setCategory("Fitness");
@@ -137,6 +106,7 @@ class VideoOpsServiceTest {
 
         service.triggerMainPipeline(request, "admin@tiktokapp.local");
 
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
         verify(n8nWorkflowGateway).trigger(eq(VideoWorkflowType.MAIN_PIPELINE), payloadCaptor.capture());
         assertEquals("Fitness", payloadCaptor.getValue().get("category"));
@@ -145,26 +115,7 @@ class VideoOpsServiceTest {
 
     @Test
     void checkShotstackIsGoneAfterRemotionMigration() {
-        VideoOpsProperties properties = new VideoOpsProperties();
-        properties.setIdempotencyWindowSeconds(120);
-
-        VideoOpsService service = new VideoOpsService(
-                contentIdeaGateway,
-                contentIdeaRepository,
-                n8nWorkflowGateway,
-                videoOpsInternalProxyService,
-                tikTokUploadService,
-                callbackAuthService,
-                pipelineStateRepository,
-                workflowRunRepository,
-                eventRepository,
-                properties,
-                new ObjectMapper(),
-                runPersistenceHelper,
-                n8nWorkflowContractService,
-                trackingService,
-                workflowCallbackService
-        );
+        VideoRenderService service = new VideoRenderService(orchestrator());
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
         request.setContentIdeaId(55L);
@@ -180,31 +131,7 @@ class VideoOpsServiceTest {
 
     @Test
     void triggerRenderTemplateAcceptsEmptyInlineWebhookBody() {
-        VideoOpsProperties properties = new VideoOpsProperties();
-        properties.setIdempotencyWindowSeconds(120);
-
-        doAnswer(invocation -> {
-            VideoWorkflowRun run = invocation.getArgument(0);
-            if (run.getId() == null) {
-                ReflectionTestUtils.setField(run, "id", 34L);
-            }
-            if (run.getCreatedAt() == null) {
-                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
-            }
-            return run;
-        }).when(runPersistenceHelper).saveAndCommit(any(VideoWorkflowRun.class));
-
-        doAnswer(invocation -> {
-            VideoWorkflowRun run = invocation.getArgument(0);
-            if (run.getId() == null) {
-                ReflectionTestUtils.setField(run, "id", 34L);
-            }
-            if (run.getCreatedAt() == null) {
-                ReflectionTestUtils.setField(run, "createdAt", Instant.now());
-            }
-            return run;
-        }).when(workflowRunRepository).save(any(VideoWorkflowRun.class));
-
+        stubRunPersistence(34L);
         when(workflowRunRepository.countByContentIdeaIdAndWorkflowType(19L, VideoWorkflowType.RENDER_TEMPLATE_VIDEO))
                 .thenReturn(0L);
         when(contentIdeaGateway.fetchContentIdeaById(19L))
@@ -219,23 +146,7 @@ class VideoOpsServiceTest {
         when(n8nWorkflowGateway.trigger(eq(VideoWorkflowType.RENDER_TEMPLATE_VIDEO), any()))
                 .thenReturn(new ObjectMapper().createObjectNode());
 
-        VideoOpsService service = new VideoOpsService(
-                contentIdeaGateway,
-                contentIdeaRepository,
-                n8nWorkflowGateway,
-                videoOpsInternalProxyService,
-                tikTokUploadService,
-                callbackAuthService,
-                pipelineStateRepository,
-                workflowRunRepository,
-                eventRepository,
-                properties,
-                new ObjectMapper(),
-                runPersistenceHelper,
-                n8nWorkflowContractService,
-                trackingService,
-                workflowCallbackService
-        );
+        VideoRenderService service = new VideoRenderService(orchestrator());
 
         WorkflowTriggerRequest request = new WorkflowTriggerRequest();
         request.setContentIdeaId(19L);
@@ -251,9 +162,6 @@ class VideoOpsServiceTest {
 
     @Test
     void completeWorkflowRunAcceptsLegacySuccessAliasesFromN8n() {
-        VideoOpsProperties properties = new VideoOpsProperties();
-        properties.setIdempotencyWindowSeconds(120);
-
         VideoWorkflowRun existingRun = new VideoWorkflowRun();
         ReflectionTestUtils.setField(existingRun, "id", 77L);
         ReflectionTestUtils.setField(existingRun, "createdAt", Instant.now());
@@ -263,7 +171,8 @@ class VideoOpsServiceTest {
         existingRun.setAttemptNumber(1);
 
         when(workflowRunRepository.findById(77L)).thenReturn(Optional.of(existingRun));
-        when(workflowRunRepository.save(any(VideoWorkflowRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workflowRunRepository.save(any(VideoWorkflowRun.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         WorkflowCallbackService callbackService = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
 
@@ -280,9 +189,6 @@ class VideoOpsServiceTest {
 
     @Test
     void completeWorkflowRunIgnoresCallbackWhenRunIsAlreadyTerminal() {
-        VideoOpsProperties properties = new VideoOpsProperties();
-        properties.setIdempotencyWindowSeconds(120);
-
         VideoWorkflowRun existingRun = new VideoWorkflowRun();
         ReflectionTestUtils.setField(existingRun, "id", 88L);
         ReflectionTestUtils.setField(existingRun, "createdAt", Instant.now());
@@ -291,8 +197,7 @@ class VideoOpsServiceTest {
         existingRun.setStatus(VideoWorkflowRunStatus.SUCCEEDED);
         existingRun.setAttemptNumber(1);
 
-        when(workflowRunRepository.findById(88L))
-                .thenReturn(Optional.of(existingRun));
+        when(workflowRunRepository.findById(88L)).thenReturn(Optional.of(existingRun));
 
         WorkflowCallbackService callbackService = new WorkflowCallbackService(workflowRunRepository, trackingService, callbackAuthService);
 
