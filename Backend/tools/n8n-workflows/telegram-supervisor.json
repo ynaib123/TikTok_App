@@ -1,0 +1,126 @@
+[
+  {
+    "name": "telegram-supervisor",
+    "description": "Bridge Telegram <-> backend Supervisor agent. Forward incoming messages to the conversational endpoint, post the assistant reply back to the chat. Whitelisting + auth happen côté backend (InternalSecretFilter + allowed-chat-ids).",
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "updates": ["message"],
+          "additionalFields": {}
+        },
+        "id": "telegram-trigger",
+        "name": "Telegram Trigger",
+        "type": "n8n-nodes-base.telegramTrigger",
+        "typeVersion": 1.2,
+        "position": [0, 0],
+        "credentials": {
+          "telegramApi": {
+            "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+            "name": "Telegram Supervisor Bot"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Garde-fou : ignorer les updates sans message texte (stickers, photos, etc.)\nconst msg = $json.message;\nif (!msg || !msg.text) {\n  return [];\n}\nreturn [{\n  json: {\n    chatId: msg.chat.id,\n    text: msg.text,\n    userHandle: msg.from && msg.from.username ? msg.from.username : null,\n    messageId: msg.message_id\n  }\n}];"
+        },
+        "id": "extract-payload",
+        "name": "Extract Payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [240, 0]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.APP_VIDEO_OPS_BACKEND_BASE_URL}}/api/video-ops/internal/agents/telegram/message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Video-Ops-Internal-Secret",
+                "value": "={{$env.APP_VIDEO_OPS_INTERNAL_API_SECRET}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"chatId\": {{$json.chatId}}, \"text\": {{ JSON.stringify($json.text) }}, \"userHandle\": {{ $json.userHandle ? JSON.stringify($json.userHandle) : null }} }",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 60000
+          }
+        },
+        "id": "call-supervisor",
+        "name": "Call Supervisor",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [480, 0]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Compose le texte final à renvoyer à Telegram. En cas d'erreur HTTP on remonte\n// un message lisible plutôt que de laisser le node sendMessage planter sur un\n// JSON inattendu.\nconst http = $input.first().json || {};\nlet replyText;\nif (http.text) {\n  replyText = String(http.text);\n} else if (http.error) {\n  replyText = '⚠️ Backend erreur: ' + (http.error.message || http.error);\n} else if (http.message) {\n  replyText = '⚠️ ' + http.message;\n} else {\n  replyText = '⚠️ Reponse inattendue du backend.';\n}\n// Telegram limite un message à 4096 caractères.\nif (replyText.length > 4000) replyText = replyText.slice(0, 4000) + '\\n…(tronque)';\nconst chatId = $('Extract Payload').first().json.chatId;\nreturn [{ json: { chatId, replyText } }];"
+        },
+        "id": "format-reply",
+        "name": "Format Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [720, 0]
+      },
+      {
+        "parameters": {
+          "chatId": "={{$json.chatId}}",
+          "text": "={{$json.replyText}}",
+          "additionalFields": {
+            "parse_mode": "Markdown"
+          }
+        },
+        "id": "send-telegram",
+        "name": "Send Telegram Reply",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [960, 0],
+        "credentials": {
+          "telegramApi": {
+            "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+            "name": "Telegram Supervisor Bot"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Telegram Trigger": {
+        "main": [[{ "node": "Extract Payload", "type": "main", "index": 0 }]]
+      },
+      "Extract Payload": {
+        "main": [[{ "node": "Call Supervisor", "type": "main", "index": 0 }]]
+      },
+      "Call Supervisor": {
+        "main": [[{ "node": "Format Reply", "type": "main", "index": 0 }]]
+      },
+      "Format Reply": {
+        "main": [[{ "node": "Send Telegram Reply", "type": "main", "index": 0 }]]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "callerPolicy": "workflowsFromSameOwner"
+    },
+    "tags": [
+      { "name": "supervisor" },
+      { "name": "ai-agents" }
+    ],
+    "workflowVersion": "1.0.0"
+  }
+]

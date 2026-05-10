@@ -8,6 +8,37 @@ TikTok pipeline. Every change to a workflow must land here through a normal PR.
 | `idea-script-fused.json` | `q8OpzbRoQe8W8TzY` | Generate idea + script (Groq) |
 | `render-template-video-remotion.json` | `renderRemotion01` | Build Remotion render job and call RenderVideo |
 | `init-publish-tiktok.json` | `ql0Tg97q1cZ12aee` | Init the TikTok publish session |
+| `telegram-supervisor.json` | (assigned at import) | Bridge Telegram ↔ Supervisor agent (Phase 3.2) |
+
+### telegram-supervisor — setup
+
+1. **Créer le bot** via [@BotFather](https://t.me/BotFather) : `/newbot` puis suivre
+   les étapes. BotFather renvoie un token `123:ABC…`.
+2. **Récupérer ton chat_id** : envoie un message au bot puis ouvre
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` — `chat.id` est dans le JSON.
+3. **Backend `.env`** :
+   ```
+   APP_ANTHROPIC_ENABLED=true
+   ANTHROPIC_API_KEY=sk-ant-...
+   APP_AI_AGENTS_ENABLED=true
+   APP_AI_TELEGRAM_ENABLED=true
+   APP_AI_TELEGRAM_ALLOWED_CHAT_IDS=<ton_chat_id>
+   ```
+   puis `docker compose up -d backend` pour recréer avec ces vars.
+4. **n8n** :
+   - Settings → Credentials → New → Telegram → coller le token, nommer
+     `Telegram Supervisor Bot`.
+   - Workflows → Import from file → `telegram-supervisor.json`.
+   - Sur les 2 nodes Telegram (Trigger + Send Reply), remplacer la credential
+     placeholder par la vraie créée juste avant.
+   - Activer le workflow.
+5. **Test** : envoie au bot "liste mes idees" ou "cree une video food".
+   Le Supervisor (Opus 4.7) appelle un tool et répond dans Telegram.
+
+Sécurité : `/api/video-ops/internal/agents/telegram/message` est protégé par
+`InternalSecretFilter` (n8n envoie le secret partagé) **et** par la whitelist
+`APP_AI_TELEGRAM_ALLOWED_CHAT_IDS` — un attaquant qui devine le secret ne peut
+pas piloter l'agent depuis un compte Telegram aléatoire.
 
 `render-template-video-remotion.json` is the active render workflow. Keep
 `APP_VIDEO_OPS_N8N_RENDER_PATH=/webhook/render-template-video-remotion` to route

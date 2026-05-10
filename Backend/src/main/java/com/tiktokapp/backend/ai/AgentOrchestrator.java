@@ -147,14 +147,33 @@ public class AgentOrchestrator {
      * {@code tool_use} or we exhaust the configured iteration budget.
      */
     protected ToolLoopResult runAgentLoop(AgentDefinition definition, JsonNode input, AgentExecutionContext context) {
+        List<JsonNode> seed = new ArrayList<>();
+        seed.add(userMessage(input));
+        return runConversationLoop(definition, seed, context);
+    }
+
+    /**
+     * Variante "conversation" — accepte un historique pré-existant (messages user/
+     * assistant déjà persistés) et poursuit le tool-use loop à partir de là.
+     * Utilisé par {@link ConversationalAgentService} pour les agents multi-tours
+     * (Supervisor Telegram, chat in-app). L'appelant doit avoir ajouté le dernier
+     * message user à {@code seedMessages} avant l'appel.
+     *
+     * <p>Retourne un résultat enrichi qui expose {@code allMessages} pour que le
+     * caller puisse persister exactement ce qui a été échangé pendant ce tour.
+     */
+    public ConversationLoopResult runConversation(AgentDefinition definition, List<JsonNode> seedMessages, AgentExecutionContext context) {
+        ToolLoopResult result = runConversationLoop(definition, seedMessages, context);
+        return new ConversationLoopResult(result.output, result.totalInputTokens, result.totalOutputTokens, seedMessages);
+    }
+
+    private ToolLoopResult runConversationLoop(AgentDefinition definition, List<JsonNode> messages, AgentExecutionContext context) {
         if (!llmProvider.isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "LLM provider " + llmProvider.providerName() + " is disabled.");
         }
 
         List<AgentTool> tools = toolRegistry.resolve(definition.allowedToolNames());
-        List<JsonNode> messages = new ArrayList<>();
-        messages.add(userMessage(input));
 
         int totalInput = 0;
         int totalOutput = 0;
@@ -260,6 +279,13 @@ public class AgentOrchestrator {
     }
 
     record ToolLoopResult(JsonNode output, int totalInputTokens, int totalOutputTokens) {}
+
+    /**
+     * Résultat enrichi pour les appels conversationnels : expose la liste finale
+     * de messages échangés pour que {@link ConversationalAgentService} puisse
+     * persister exactement ce qui s'est dit pendant ce tour.
+     */
+    public record ConversationLoopResult(JsonNode output, int totalInputTokens, int totalOutputTokens, List<JsonNode> messages) {}
 
     private String serialize(Object obj) {
         if (obj == null) return null;

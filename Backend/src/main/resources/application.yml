@@ -109,6 +109,18 @@ app:
       refill-seconds: ${APP_RATE_LIMIT_AUDIO_REFILL_SECONDS:60}
   redis:
     enabled: ${APP_REDIS_ENABLED:false}
+  ai:
+    agents:
+      enabled: ${APP_AI_AGENTS_ENABLED:false}
+    telegram:
+      # Bridge Telegram pour le Supervisor agent. Le bot lui-meme tourne dans
+      # n8n (workflow telegram-supervisor.json) ; ce flag conditionne juste
+      # l'endpoint /api/video-ops/internal/agents/telegram/message.
+      enabled: ${APP_AI_TELEGRAM_ENABLED:false}
+      # CSV des chat_id Telegram autorises a piloter le Supervisor. La whitelist
+      # est appliquee meme si le secret interne fuite : un attaquant ne peut pas
+      # pretendre etre un chat aleatoire.
+      allowed-chat-ids: ${APP_AI_TELEGRAM_ALLOWED_CHAT_IDS:}
   anthropic:
     enabled: ${APP_ANTHROPIC_ENABLED:false}
     api-key: ${ANTHROPIC_API_KEY:}
