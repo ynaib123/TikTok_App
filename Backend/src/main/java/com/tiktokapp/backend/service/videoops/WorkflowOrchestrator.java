@@ -192,6 +192,7 @@ public class WorkflowOrchestrator {
         String caption = trimToNull(request.getCaption());
         String keyword = trimToNull(request.getKeyword());
         String tiktokAccountOpenId = trimToNull(request.getTiktokAccountOpenId());
+        String tiktokSoundId = trimToNull(request.getTiktokSoundId());
         String templateId = trimToNull(request.getTemplateId());
         String qualityProfile = trimToNull(request.getQualityProfile());
 
@@ -232,6 +233,7 @@ public class WorkflowOrchestrator {
         payload.put("caption", caption);
         payload.put("keyword", keyword);
         payload.put("tiktokAccountOpenId", tiktokAccountOpenId);
+        payload.put("tiktokSoundId", tiktokSoundId);
         payload.put("templateId", templateId);
         payload.put("qualityProfile", qualityProfile);
         payload.put("durationSec", request.getDurationSec());

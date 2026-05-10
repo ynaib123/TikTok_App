@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, type JSX } from 'react'
+import { Suspense, lazy, useEffect, useState, type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TikTokStepScreenProps } from './types'
 import { JourneyContext } from './JourneyContext'
@@ -11,6 +11,7 @@ import { JourneyErrorBoundary } from './steps/JourneyErrorBoundary'
 const CreationStep = lazy(() => import('./steps/CreationStep'))
 const AudioStep = lazy(() => import('./steps/AudioStep'))
 const TemplateStep = lazy(() => import('./steps/TemplateStep'))
+const RecapStep = lazy(() => import('./steps/RecapStep'))
 const UploadStep = lazy(() => import('./steps/UploadStep'))
 const PublishStep = lazy(() => import('./steps/PublishStep'))
 
@@ -31,15 +32,29 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
   let body: JSX.Element
   if (props.currentStep.id === 'creation') body = <CreationStep />
   else if (props.currentStep.id === 'audio') body = <AudioStep />
-  else if (props.currentStep.id === 'template' || props.currentStep.id === 'init-publish') body = <TemplateStep />
+  else if (
+    props.currentStep.id === 'media' ||
+    props.currentStep.id === 'template' ||
+    props.currentStep.id === 'init-publish'
+  )
+    body = <TemplateStep />
+  else if (props.currentStep.id === 'recapitulatif') body = <RecapStep />
   else if (props.currentStep.id === 'upload') body = <UploadStep />
   else body = <PublishStep />
 
-  const prevIndexRef = useRef(props.currentStepIndex)
-  const direction: 'forward' | 'backward' = props.currentStepIndex >= prevIndexRef.current ? 'forward' : 'backward'
+  const [stepAnimation, setStepAnimation] = useState({
+    index: props.currentStepIndex,
+    direction: 'forward' as 'forward' | 'backward',
+  })
 
   useEffect(() => {
-    prevIndexRef.current = props.currentStepIndex
+    setStepAnimation((current) => {
+      if (current.index === props.currentStepIndex) return current
+      return {
+        index: props.currentStepIndex,
+        direction: props.currentStepIndex > current.index ? 'forward' : 'backward',
+      }
+    })
   }, [props.currentStepIndex])
 
   return (
@@ -56,12 +71,10 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
         <main className="journey-wizard-main">
           <div
             key={props.currentStep.id}
-            className={`journey-step-anim is-${direction}`}
+            className={`journey-step-anim is-${stepAnimation.direction}`}
           >
             <JourneyErrorBoundary key={props.currentStep.id}>
-              <Suspense fallback={<StepFallback />}>
-                {body}
-              </Suspense>
+              <Suspense fallback={<StepFallback />}>{body}</Suspense>
             </JourneyErrorBoundary>
           </div>
         </main>
@@ -69,6 +82,7 @@ export default function TikTokStepScreen(props: TikTokStepScreenProps) {
         {props.isLeaveConfirmOpen ? (
           <LeaveConfirmModal
             activeIdea={props.activeIdea}
+            willDeleteOnLeave={props.willDeleteOnLeave}
             onClose={props.closeLeaveConfirm}
             onLeaveWithoutSaving={props.leaveWithoutSaving}
             onSaveAndLeave={props.saveAndLeaveFlow}

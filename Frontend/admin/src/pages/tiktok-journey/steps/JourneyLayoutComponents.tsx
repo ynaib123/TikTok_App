@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ContentIdea } from '../../../types'
 import type { IconComponent, StepDescriptor } from '../types'
@@ -6,19 +7,47 @@ import { Modal, Button } from '../../../design-system'
 /** Maps a STEPS[].id to the i18n key where its label / sub-label live. */
 const STEP_I18N_KEY: Record<string, string> = {
   creation: 'steps.creation',
+  audio: 'steps.audio',
+  media: 'steps.template',
+  recapitulatif: 'steps.render',
   template: 'steps.template',
   'init-publish': 'steps.render',
   upload: 'steps.upload',
 }
 
-export function LeaveConfirmModal({ activeIdea, onClose, onLeaveWithoutSaving, onSaveAndLeave }: {
+export function LeaveConfirmModal({
+  activeIdea,
+  willDeleteOnLeave = false,
+  onClose,
+  onLeaveWithoutSaving,
+  onSaveAndLeave,
+}: {
   activeIdea: ContentIdea | null
+  willDeleteOnLeave?: boolean
   onClose: () => void
   onLeaveWithoutSaving: () => void
   onSaveAndLeave: () => void
 }) {
-  const ideaLabel = activeIdea?.id ? `#${activeIdea.id}` : null
-  
+  const hasIdea = Boolean(activeIdea?.id)
+
+  let bodyText: ReactNode
+  if (!hasIdea) {
+    bodyText = "Aucune idée n'a encore été créée. Tu peux quitter sans rien perdre."
+  } else if (willDeleteOnLeave) {
+    bodyText = (
+      <>
+        <strong style={{ display: 'block', marginBottom: 6 }}>
+          ⚠️ Quitter sans sauvegarder supprimera cette idée définitivement.
+        </strong>
+        Sauvegarder te permet de retrouver l&apos;idée dans la bibliothèque et de reprendre là où tu
+        t&apos;es arrêté.
+      </>
+    )
+  } else {
+    bodyText =
+      "Sauvegarder te permet de retrouver cette idée dans la bibliothèque et de reprendre là où tu t'es arrêté. Quitter sans sauvegarder abandonnera les dernières modifications."
+  }
+
   return (
     <Modal
       open={true}
@@ -27,27 +56,38 @@ export function LeaveConfirmModal({ activeIdea, onClose, onLeaveWithoutSaving, o
       footer={
         <div className="journey-modal-actions">
           <Button variant="secondary" onClick={onClose}>
-            Continuer
+            Continuer le parcours
           </Button>
-          <Button variant="secondary" onClick={onLeaveWithoutSaving}>
-            Quitter sans sauvegarder
-          </Button>
-          <Button variant="primary" onClick={onSaveAndLeave}>
-            Sauvegarder et quitter
-          </Button>
+          {hasIdea && (
+            <Button variant="secondary" onClick={onLeaveWithoutSaving}>
+              {willDeleteOnLeave ? '🗑 Supprimer et quitter' : 'Quitter sans sauvegarder'}
+            </Button>
+          )}
+          {!hasIdea && (
+            <Button variant="secondary" onClick={onLeaveWithoutSaving}>
+              Quitter
+            </Button>
+          )}
+          {hasIdea && (
+            <Button variant="primary" onClick={onSaveAndLeave}>
+              💾 Sauvegarder et quitter
+            </Button>
+          )}
         </div>
       }
     >
-      <p style={{ margin: 0 }}>
-        {ideaLabel
-          ? <>Tu peux sauvegarder l&apos;idee {ideaLabel} et reprendre plus tard depuis la bibliotheque, ou quitter sans sauvegarder.</>
-          : <>Aucune idee n&apos;a encore ete creee. Quitter le parcours ne perdra rien.</>}
-      </p>
+      <p style={{ margin: 0 }}>{bodyText}</p>
     </Modal>
   )
 }
 
-export function ProgressStepper({ steps, currentStepIndex, goToStep, onLibraryClick, BackArrow }: {
+export function ProgressStepper({
+  steps,
+  currentStepIndex,
+  goToStep,
+  onLibraryClick,
+  BackArrow,
+}: {
   steps: StepDescriptor[]
   currentStepIndex: number
   goToStep: (id: string) => void
@@ -69,7 +109,7 @@ export function ProgressStepper({ steps, currentStepIndex, goToStep, onLibraryCl
         {steps.map((step, index) => {
           const isCurrent = index === currentStepIndex
           const isDone = index < currentStepIndex
-          const isLocked = index !== currentStepIndex
+          const isLocked = index > currentStepIndex
           const cls = `journey-wizard-step ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''} ${isLocked ? 'is-locked' : ''}`
           // Each step's user-facing label comes from the i18n bundle so the
           // STEPS array stays language-agnostic. Falls back to the inline label
@@ -89,7 +129,9 @@ export function ProgressStepper({ steps, currentStepIndex, goToStep, onLibraryCl
                 <span className="journey-wizard-step-num">{isDone ? '✓' : index + 1}</span>
                 <span className="journey-wizard-step-label">{label}</span>
               </button>
-              {index < steps.length - 1 ? <span className="journey-wizard-step-bar" aria-hidden="true" /> : null}
+              {index < steps.length - 1 ? (
+                <span className="journey-wizard-step-bar" aria-hidden="true" />
+              ) : null}
             </li>
           )
         })}

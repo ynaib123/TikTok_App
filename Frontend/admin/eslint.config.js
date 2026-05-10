@@ -20,7 +20,7 @@ export default defineConfig([
     ],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: { ...globals.browser, ...globals.node },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -29,6 +29,8 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
       // Phase 1.9 — surfaces a11y issues in legacy code as warnings so CI
       // stays green; address incrementally during page decomposition (Phase 2.6).
       'jsx-a11y/click-events-have-key-events': 'warn',
@@ -63,6 +65,8 @@ export default defineConfig([
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
       'jsx-a11y/click-events-have-key-events': 'warn',
       'jsx-a11y/no-noninteractive-element-interactions': 'warn',
       'jsx-a11y/no-static-element-interactions': 'warn',

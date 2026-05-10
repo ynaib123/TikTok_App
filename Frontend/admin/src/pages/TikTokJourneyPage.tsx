@@ -25,6 +25,8 @@ import {
   triggerRenderTemplateWorkflow,
 } from '../services/n8nClient'
 import {
+  deleteContentIdea,
+  createContentIdea,
   fetchContentIdeaByIdFromPages,
   fetchContentIdeaStatus,
   fetchRecentContentIdeas,
@@ -46,13 +48,9 @@ import {
   useRenderStep,
   useUploadStep,
 } from './tiktok-journey/useTikTokJourneySteps'
-import {
-  clearJourneyWorkspace,
-  saveJourneyWorkspace,
-} from './tiktok-journey/journeyWorkspace'
+import { clearJourneyWorkspace, saveJourneyWorkspace } from './tiktok-journey/journeyWorkspace'
 import { useJourneyWorkspaceRestore } from './tiktok-journey/useJourneyWorkspaceRestore'
 import { mergeIdeasById } from './tiktok-journey/journeyHelpers'
-import { journeyTelemetry } from './tiktok-journey/journeyTelemetry'
 import { useWorkflowMonitor } from './tiktok-journey/useWorkflowMonitor'
 import '../styles/features/catalog-shared.css'
 import '../styles/features/products.css'
@@ -81,53 +79,71 @@ type PendingExitTarget =
 /* ── Step definitions (kept identical to original) ─────────────────────── */
 
 const STEPS = [
-  { id: 'creation', label: 'Creation', sub: 'Generer une idee + script' },
-  { id: 'audio', label: 'Audio', sub: 'Voix off + musique (ElevenLabs)' },
-  { id: 'init-publish', label: 'Video', sub: 'Regler les scenes puis generer' },
+  { id: 'creation', label: 'Création', sub: 'Idée + script' },
+  { id: 'audio', label: 'Audio', sub: 'Voix off + musique' },
+  { id: 'media', label: 'Médias', sub: 'Vidéos par scène + style' },
+  { id: 'recapitulatif', label: 'Récapitulatif', sub: 'Vérification + génération vidéo' },
   { id: 'upload', label: 'Publication', sub: 'Publier sur TikTok' },
 ]
 const TIKTOK_BASE_ROUTE = '/tiktok'
 const TIKTOK_STEP_ROUTES = STEPS.map((step) => `${TIKTOK_BASE_ROUTE}/${step.id}`)
 
 const LIST_FILTER_OPTIONS = [
-  { value: 'all',         label: 'Toutes' },
-  { value: 'published',   label: 'Publiées' },
+  { value: 'all', label: 'Toutes' },
+  { value: 'published', label: 'Publiées' },
   { value: 'unpublished', label: 'Non publiées' },
-  { value: 'ready',       label: 'Rendues' },
+  { value: 'ready', label: 'Rendues' },
 ]
 
 const LIST_SORT_OPTIONS = [
-  { value: 'recent',           label: 'Plus recentes' },
-  { value: 'oldest',           label: 'Plus anciennes' },
-  { value: 'topic_asc',        label: 'Topic A-Z' },
-  { value: 'topic_desc',       label: 'Topic Z-A' },
-  { value: 'published_first',  label: 'Publiees d abord' },
+  { value: 'recent', label: 'Plus recentes' },
+  { value: 'oldest', label: 'Plus anciennes' },
+  { value: 'topic_asc', label: 'Topic A-Z' },
+  { value: 'topic_desc', label: 'Topic Z-A' },
+  { value: 'published_first', label: 'Publiees d abord' },
 ]
 const TIKTOK_CATEGORY_OPTIONS = ['Food', 'Love', 'Sport', 'Fitness', 'Beauty']
 const TIKTOK_TEMPLATE_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  { value: 'tiktok-scene-sequence', label: 'Scene Sequence (multi-clips)', description: 'Multi-scenes Pexels, hook centre big, typo uppercase pro, crossfade.' },
-  { value: 'tiktok-pro-vertical', label: 'Pro Vertical', description: 'Mono-fond, badge hook, segments script, CTA pill.' },
-  { value: 'tiktok-bold-story',   label: 'Bold Story',   description: 'Mono-fond, chapitres numerotes (01/02), CTA degrade.' },
-  { value: 'tiktok-clean-minimal', label: 'Clean Minimal', description: 'Mono-fond, hook pill blanche, typo reguliere, fleche CTA.' },
+  {
+    value: 'tiktok-scene-sequence',
+    label: 'Scene Sequence (multi-clips)',
+    description: 'Multi-scenes Pexels, hook centre big, typo uppercase pro, crossfade.',
+  },
+  {
+    value: 'tiktok-pro-vertical',
+    label: 'Pro Vertical',
+    description: 'Mono-fond, badge hook, segments script, CTA pill.',
+  },
+  {
+    value: 'tiktok-bold-story',
+    label: 'Bold Story',
+    description: 'Mono-fond, chapitres numerotes (01/02), CTA degrade.',
+  },
+  {
+    value: 'tiktok-clean-minimal',
+    label: 'Clean Minimal',
+    description: 'Mono-fond, hook pill blanche, typo reguliere, fleche CTA.',
+  },
 ]
 const TIKTOK_QUALITY_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  { value: 'draft',    label: 'Draft',    description: 'Rapide, CRF 28, 96 kbps audio' },
+  { value: 'draft', label: 'Draft', description: 'Rapide, CRF 28, 96 kbps audio' },
   { value: 'standard', label: 'Standard', description: 'CRF 24, 128 kbps audio' },
-  { value: 'high',     label: 'High',     description: 'CRF 21, 160 kbps audio' },
-  { value: 'premium',  label: 'Premium',  description: 'Export final lent, CRF 19, 192 kbps audio' },
+  { value: 'high', label: 'High', description: 'CRF 21, 160 kbps audio' },
+  { value: 'premium', label: 'Premium', description: 'Export final lent, CRF 19, 192 kbps audio' },
 ]
-const TIKTOK_DURATION_TARGET_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  { value: 'short',  label: 'Courte (~10s)',  description: '2-3 phrases punchy.' },
-  { value: 'medium', label: 'Moyenne (~15s)', description: '3-4 phrases. Sweet spot TikTok.' },
-  { value: 'long',   label: 'Longue (~25s)',  description: '5-6 phrases, plus d info.' },
-]
+const TIKTOK_DURATION_TARGET_OPTIONS: Array<{ value: string; label: string; description: string }> =
+  [
+    { value: 'short', label: 'Courte (~10s)', description: '2-3 phrases punchy.' },
+    { value: 'medium', label: 'Moyenne (~15s)', description: '3-4 phrases. Sweet spot TikTok.' },
+    { value: 'long', label: 'Longue (~25s)', description: '5-6 phrases, plus d info.' },
+  ]
 const TIKTOK_LANGUAGE_OPTIONS: Array<{ value: string; label: string; description: string }> = [
-  { value: 'fr', label: 'Francais',  description: 'Marche FR.' },
-  { value: 'en', label: 'English',   description: 'Marche EN/global.' },
-  { value: 'es', label: 'Espanol',   description: 'Marche ES/LATAM.' },
-  { value: 'it', label: 'Italiano',  description: 'Marche IT.' },
-  { value: 'de', label: 'Deutsch',   description: 'Marche DE.' },
-  { value: 'ar', label: 'Arabe',     description: 'Arabe standard moderne.' },
+  { value: 'fr', label: 'Francais', description: 'Marche FR.' },
+  { value: 'en', label: 'English', description: 'Marche EN/global.' },
+  { value: 'es', label: 'Espanol', description: 'Marche ES/LATAM.' },
+  { value: 'it', label: 'Italiano', description: 'Marche IT.' },
+  { value: 'de', label: 'Deutsch', description: 'Marche DE.' },
+  { value: 'ar', label: 'Arabe', description: 'Arabe standard moderne.' },
   { value: 'ary', label: 'Darija marocaine', description: 'Dialecte marocain, style naturel.' },
 ]
 const TIKTOK_SEQUENCE_TEMPLATE_ID = 'tiktok-scene-sequence'
@@ -135,15 +151,15 @@ const MIN_VIDEO_DURATION_SEC = 15
 const MAX_VIDEO_DURATION_SEC = 60
 const MIN_SCENE_DURATION_SEC = 3
 const TIKTOK_SCENE_COUNT_OPTIONS: Array<{ value: number; label: string; description: string }> = [
-  { value: 1,  label: '1 scene',   description: '~3s, format flash.' },
-  { value: 2,  label: '2 scenes',  description: '~6s, format tres court.' },
-  { value: 3,  label: '3 scenes',  description: '~9s, format ultra-court.' },
-  { value: 4,  label: '4 scenes',  description: '~12s, sweet spot TikTok.' },
-  { value: 5,  label: '5 scenes',  description: '~15s, retention optimale.' },
-  { value: 6,  label: '6 scenes',  description: '~18s, format etoffe.' },
-  { value: 7,  label: '7 scenes',  description: '~21s, contenu dense.' },
-  { value: 8,  label: '8 scenes',  description: '~24s, storytelling complet.' },
-  { value: 9,  label: '9 scenes',  description: '~27s.' },
+  { value: 1, label: '1 scene', description: '~3s, format flash.' },
+  { value: 2, label: '2 scenes', description: '~6s, format tres court.' },
+  { value: 3, label: '3 scenes', description: '~9s, format ultra-court.' },
+  { value: 4, label: '4 scenes', description: '~12s, sweet spot TikTok.' },
+  { value: 5, label: '5 scenes', description: '~15s, retention optimale.' },
+  { value: 6, label: '6 scenes', description: '~18s, format etoffe.' },
+  { value: 7, label: '7 scenes', description: '~21s, contenu dense.' },
+  { value: 8, label: '8 scenes', description: '~24s, storytelling complet.' },
+  { value: 9, label: '9 scenes', description: '~27s.' },
   { value: 10, label: '10 scenes', description: '~30s, max recommande.' },
 ]
 const MAX_IDEA_BATCH_SIZE = 5
@@ -151,9 +167,11 @@ const MAX_IDEA_BATCH_SIZE = 5
 /* ── Status helpers (unchanged) ────────────────────────────────────────── */
 
 function isRenderReady(idea: ContentIdea | null | undefined) {
-  return Boolean(idea?.shotstackUrl)
-    || idea?.finalVideoStatus === 'ready'
-    || idea?.shotstackStatus === 'done'
+  return (
+    Boolean(idea?.shotstackUrl) ||
+    idea?.finalVideoStatus === 'ready' ||
+    idea?.shotstackStatus === 'done'
+  )
 }
 
 function isPublished(idea: ContentIdea | null | undefined) {
@@ -161,7 +179,9 @@ function isPublished(idea: ContentIdea | null | undefined) {
 }
 
 function normalizeText(value: string | null | undefined) {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 function formatShortOpenId(value: string | null | undefined) {
@@ -198,7 +218,16 @@ function VideoPreview({ url }: { url: string | null | undefined }) {
 
 function ChevronDownIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m6 9 6 6 6-6" />
     </svg>
   )
@@ -206,26 +235,129 @@ function ChevronDownIcon() {
 
 function BackArrow() {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="m14.5 6.5-5.5 5.5 5.5 5.5" />
     </svg>
   )
 }
 
 /* Icons consumed by TikTokLibraryView ----------------------------------- */
-function SearchIcon()  { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>) }
-function FilterIcon()  { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16" /><path d="M7 12h10" /><path d="M10 18h4" /></svg>) }
-function SortIcon()    { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h10" /><path d="M8 12h7" /><path d="M8 18h4" /><path d="m4 8 2-2 2 2" /><path d="M6 6v12" /></svg>) }
-function GridIcon()    { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="6" height="6" rx="1.2" /><rect x="14" y="4" width="6" height="6" rx="1.2" /><rect x="4" y="14" width="6" height="6" rx="1.2" /><rect x="14" y="14" width="6" height="6" rx="1.2" /></svg>) }
-function TableIcon()   { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="1.5" /><path d="M3.5 10h17" /><path d="M9 5v14" /></svg>) }
-function AddIcon()     { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg>) }
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4.5 4.5" />
+    </svg>
+  )
+}
+function FilterIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 6h16" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </svg>
+  )
+}
+function SortIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 6h10" />
+      <path d="M8 12h7" />
+      <path d="M8 18h4" />
+      <path d="m4 8 2-2 2 2" />
+      <path d="M6 6v12" />
+    </svg>
+  )
+}
+function GridIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="4" width="6" height="6" rx="1.2" />
+      <rect x="14" y="4" width="6" height="6" rx="1.2" />
+      <rect x="4" y="14" width="6" height="6" rx="1.2" />
+      <rect x="14" y="14" width="6" height="6" rx="1.2" />
+    </svg>
+  )
+}
+function TableIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
+      <path d="M3.5 10h17" />
+      <path d="M9 5v14" />
+    </svg>
+  )
+}
+function AddIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  )
+}
 
 /* ── Page component ─────────────────────────────────────────────────────── */
 
 export default function TikTokJourneyPage() {
   const navigate = useNavigate()
   const location = useLocation() as Location<JourneyLocationState>
-  const resumeWorkspaceIdeaIdRef = useRef<number | null>(location.state?.resumeWorkspaceIdeaId ?? null)
+  const resumeWorkspaceIdeaIdRef = useRef<number | null>(
+    location.state?.resumeWorkspaceIdeaId ?? null,
+  )
   const pendingExitTargetRef = useRef<PendingExitTarget | null>(null)
   const { logout } = useAdminAuth()
   // Lot 7 / H3 — request Notification permission and pop a toast when a render
@@ -249,13 +381,20 @@ export default function TikTokJourneyPage() {
   const [generationLanguage, setGenerationLanguage] = useState<string>('fr')
   const [generationInspirationRef, setGenerationInspirationRef] = useState<string>('')
   const [generationSceneCount, setGenerationSceneCount] = useState<number>(1)
-  const minVideoDurationSec = Math.min(MAX_VIDEO_DURATION_SEC, Math.max(MIN_VIDEO_DURATION_SEC, generationSceneCount * MIN_SCENE_DURATION_SEC))
+  const minVideoDurationSec = Math.min(
+    MAX_VIDEO_DURATION_SEC,
+    Math.max(MIN_VIDEO_DURATION_SEC, generationSceneCount * MIN_SCENE_DURATION_SEC),
+  )
   useEffect(() => {
-    setVideoDurationSec((current) => Math.min(MAX_VIDEO_DURATION_SEC, Math.max(minVideoDurationSec, current)))
+    setVideoDurationSec((current) =>
+      Math.min(MAX_VIDEO_DURATION_SEC, Math.max(minVideoDurationSec, current)),
+    )
   }, [minVideoDurationSec])
   // ID du workflow_run de rendu en cours, pour permettre au RenderStep de poller
   // l'avancement (/api/video-ops/render-video/progress/:id).
   const [currentRenderRunId, setCurrentRenderRunId] = useState<number | null>(null)
+  // Son TikTok natif sélectionné à l'étape Audio — transmis au workflow de publication.
+  const [selectedTikTokSoundId, setSelectedTikTokSoundId] = useState<string | null>(null)
   // URLs Pexels choisies par l user dans l étape "Médias" — une URL par scène
   // dans l ordre. Reset à chaque nouvelle idée.
   const [selectedSceneMediaUrls, setSelectedSceneMediaUrls] = useState<string[]>([])
@@ -267,6 +406,15 @@ export default function TikTokJourneyPage() {
   const [editedCaption, setEditedCaption] = useState<string>('')
   const [editedKeyword, setEditedKeyword] = useState<string>('')
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
+  // When the user clicks "Gérer" in RecapStep this ref is set to true.
+  // Every "Suivant / Continuer" handler checks it: if true → skip remaining
+  // steps and go straight back to the récapitulatif.
+  const returnToRecapRef = useRef(false)
+  // Snapshot of idea IDs that existed BEFORE the user started a fresh journey.
+  // null = not in a fresh journey (resumed or not started yet).
+  // On "leave without saving", an active idea whose ID is NOT in this snapshot
+  // was created in this session → delete it from the database.
+  const [preJourneyIdeaIds, setPreJourneyIdeaIds] = useState<Set<number> | null>(null)
 
   const currentStepIndex = useMemo(
     () => TIKTOK_STEP_ROUTES.findIndex((route) => location.pathname === route),
@@ -277,15 +425,21 @@ export default function TikTokJourneyPage() {
     if (location.pathname === `${TIKTOK_BASE_ROUTE}/publish`) {
       navigate(`${TIKTOK_BASE_ROUTE}/upload`, { replace: true })
     }
-    // Backwards compat: the previous template/template-style steps are now
-    // merged into the Video step.
-    if (location.pathname === `${TIKTOK_BASE_ROUTE}/template-style` || location.pathname === `${TIKTOK_BASE_ROUTE}/template`) {
-      navigate(`${TIKTOK_BASE_ROUTE}/init-publish`, { replace: true })
+    // Backwards compat: old init-publish, template, template-style → media
+    if (
+      location.pathname === `${TIKTOK_BASE_ROUTE}/init-publish` ||
+      location.pathname === `${TIKTOK_BASE_ROUTE}/template-style` ||
+      location.pathname === `${TIKTOK_BASE_ROUTE}/template`
+    ) {
+      navigate(`${TIKTOK_BASE_ROUTE}/media`, { replace: true })
     }
   }, [location.pathname, navigate])
 
   const connectedTikTokAccount = useMemo<TikTokAccount | null>(
-    () => tiktokAccounts.find((account) => String(account?.openId || '').trim() || String(account?.scope || '').trim()) || null,
+    () =>
+      tiktokAccounts.find(
+        (account) => String(account?.openId || '').trim() || String(account?.scope || '').trim(),
+      ) || null,
     [tiktokAccounts],
   )
 
@@ -381,12 +535,12 @@ export default function TikTokJourneyPage() {
     setOpenListMenu,
   } = listState
 
-  const isGeneratingIdeas  = Boolean(busyActions.generateIdea)
+  const isGeneratingIdeas = Boolean(busyActions.generateIdea)
   const isGeneratingScript = Boolean(busyActions.generateScript)
-  const isPreparingVideo   = Boolean(busyActions.renderVideo)
-  const isPreparingUpload  = Boolean(busyActions.prepareUpload)
-  const isUploadingVideo   = Boolean(busyActions.uploadVideo)
-  const isPublishingVideo  = Boolean(busyActions.publishVideo)
+  const isPreparingVideo = Boolean(busyActions.renderVideo)
+  const isPreparingUpload = Boolean(busyActions.prepareUpload)
+  const isUploadingVideo = Boolean(busyActions.uploadVideo)
+  const isPublishingVideo = Boolean(busyActions.publishVideo)
 
   const workflowMonitor = useWorkflowMonitor({
     fetchContentIdeaById: fetchContentIdeaByIdFromPages,
@@ -424,22 +578,41 @@ export default function TikTokJourneyPage() {
     markWorkflowFinished: workflowMonitor.markWorkflowFinished,
   })
 
+  // Wraps startAddFlow to snapshot the existing idea IDs before opening a new
+  // journey, so "leave without saving" can detect and delete the fresh idea.
+  const startFreshJourney = () => {
+    setPreJourneyIdeaIds(new Set(contentIdeas.map((i) => Number(i.id))))
+    startAddFlow()
+  }
+
+  // Navigate to the next step, or straight back to récapitulatif if the user
+  // entered this step via a "Gérer" button from the recap page.
+  const navigateNext = (targetStep: string) => {
+    if (returnToRecapRef.current) {
+      returnToRecapRef.current = false
+      goToStep('recapitulatif')
+    } else {
+      goToStep(targetStep)
+    }
+  }
+
+  // Called by RecapStep "Gérer" buttons: marks the return destination, then
+  // navigates to the requested edit step directly (bypasses navigateNext).
+  const goToStepFromRecap = (stepId: string) => {
+    returnToRecapRef.current = true
+    goToStep(stepId)
+  }
+
   const handleValidateCreation = async () => {
     if (!selectedGeneratedIdea?.id) {
       showError('Genere une idee avant de valider cette etape.')
       return
     }
-    goToStep('init-publish')
-    try {
-      await handleRetryInitPublish()
-    } catch (error) {
-      showError(getErrorMessage(error, "Le rendu video n'a pas abouti."))
-    }
+    navigateNext('audio')
   }
 
-  // Étape 1 → étape 2 (Template). On sauvegarde d'abord les edits utilisateur
-  // sur topic/script/caption/keyword. Le rendu se déclenchera plus tard depuis
-  // l'étape 3 (Vidéo) une fois le template/qualité choisis.
+  // Étape 1 → étape 2 (Audio). On sauvegarde d'abord les edits utilisateur
+  // sur topic/script/caption/keyword.
   const handleGoToTemplateStep = async () => {
     const idea = scriptedIdea || selectedGeneratedIdea
     if (!idea?.id) {
@@ -468,22 +641,78 @@ export default function TikTokJourneyPage() {
         setScriptedIdea(merged)
         setGeneratedIdeas((current) => mergeIdeasById(current, [merged]))
       } catch (error) {
-        showError(getErrorMessage(error, "Impossible d enregistrer les modifications."))
+        showError(getErrorMessage(error, 'Impossible d enregistrer les modifications.'))
         return
       }
     }
-    goToStep('init-publish')
+    navigateNext('audio')
   }
+
+  // Mode manuel : génère une idée minimale depuis le topic saisi, puis la
+  // patche immédiatement avec le contenu rempli à la main par l'utilisateur.
+  const handleManualCreate = async (manualData: {
+    topic: string
+    script: string
+    caption: string
+    keyword: string
+  }) => {
+    if (!manualData.topic.trim()) {
+      showError('Renseigne un topic avant de continuer.')
+      return
+    }
+    try {
+      const idea = await createContentIdea({
+        category: generationCategory,
+        topic: manualData.topic.trim(),
+        status: 'new',
+        pipelineStatus: 'manual_created',
+        publishStatus: 'draft',
+        platform: 'tiktok',
+        templateId: selectedTemplateId,
+        tiktokAccountOpenId: connectedTikTokAccount?.openId || null,
+      })
+      await updateContentIdeaContent(idea.id, {
+        topic: manualData.topic,
+        script: manualData.script,
+        caption: manualData.caption,
+        keyword: manualData.keyword,
+        plannedScenes: null,
+      })
+      setEditedTopic(manualData.topic)
+      setEditedScript(manualData.script)
+      setEditedCaption(manualData.caption)
+      setEditedKeyword(manualData.keyword)
+      const merged: ContentIdea = {
+        ...idea,
+        topic: manualData.topic,
+        script: manualData.script,
+        caption: manualData.caption,
+        keyword: manualData.keyword,
+      }
+      setScriptedIdea(merged)
+      setGeneratedIdeas((current) => mergeIdeasById(current, [merged]))
+      setSelectedGeneratedIdeaId(Number(idea.id))
+      await refreshPipelineData()
+      navigateNext('audio')
+    } catch (error) {
+      showError(getErrorMessage(error, "La creation manuelle n'a pas abouti."))
+    }
+  }
+
+  // Audio step "Continuer" — goes to media, or back to recap in "Gérer" mode.
+  const handleValidateAudio = () => navigateNext('media')
 
   // Etape Template (fusion style + médias) → étape Vidéo. Pas de side-effect,
   // juste la navigation. Les paramètres style et selectedSceneMediaUrls sont
   // déjà persistés dans le flow state et envoyés au workflow de rendu.
   const handleValidateTemplate = () => {
-    goToStep('init-publish')
+    returnToRecapRef.current = false
+    goToStep('recapitulatif')
   }
 
   const handleValidateMedia = () => {
-    goToStep('init-publish')
+    returnToRecapRef.current = false
+    goToStep('recapitulatif')
   }
 
   const { handleRetryInitPublish } = useRenderStep({
@@ -533,6 +762,7 @@ export default function TikTokJourneyPage() {
     markWorkflowStarted: workflowMonitor.markWorkflowStarted,
     markWorkflowFinished: workflowMonitor.markWorkflowFinished,
     isUploadCompleted: workflowMonitor.isUploadCompleted,
+    selectedTikTokSoundId,
   })
 
   const activeIdea = scriptedIdea || selectedGeneratedIdea
@@ -544,12 +774,16 @@ export default function TikTokJourneyPage() {
   //   - l ID change (nouvelle idee selectionnee)
   //   - le script passe de vide a rempli (etape script_ready terminee)
   // Sinon les valeurs editees par l utilisateur ne sont pas ecrasees.
-  const lastSyncRef = useRef<{ id: number | null; hadScript: boolean }>({ id: null, hadScript: false })
+  const lastSyncRef = useRef<{ id: number | null; hadScript: boolean }>({
+    id: null,
+    hadScript: false,
+  })
   useEffect(() => {
     if (!activeIdea?.id) return
     const hasScript = Boolean(String(activeIdea.script || '').trim())
     const isNewIdea = activeIdea.id !== lastSyncRef.current.id
-    const scriptJustArrived = hasScript && !lastSyncRef.current.hadScript && lastSyncRef.current.id === activeIdea.id
+    const scriptJustArrived =
+      hasScript && !lastSyncRef.current.hadScript && lastSyncRef.current.id === activeIdea.id
     if (isNewIdea || scriptJustArrived) {
       setEditedTopic(activeIdea.topic || '')
       setEditedScript(activeIdea.script || '')
@@ -559,7 +793,13 @@ export default function TikTokJourneyPage() {
     } else if (lastSyncRef.current.id !== activeIdea.id) {
       lastSyncRef.current = { id: activeIdea.id, hadScript: hasScript }
     }
-  }, [activeIdea?.id, activeIdea?.topic, activeIdea?.script, activeIdea?.caption, activeIdea?.keyword])
+  }, [
+    activeIdea?.id,
+    activeIdea?.topic,
+    activeIdea?.script,
+    activeIdea?.caption,
+    activeIdea?.keyword,
+  ])
 
   const openLeaveConfirm = (target: PendingExitTarget = { kind: 'library' }) => {
     pendingExitTargetRef.current = target
@@ -576,6 +816,23 @@ export default function TikTokJourneyPage() {
     pendingExitTargetRef.current = null
     setIsLeaveConfirmOpen(false)
 
+    if (!shouldSave) {
+      // Delete the idea if it was created fresh during this session.
+      const preIds = preJourneyIdeaIds
+      const ideaId = activeIdea?.id ? Number(activeIdea.id) : null
+      if (preIds !== null && ideaId && !preIds.has(ideaId)) {
+        try {
+          await deleteContentIdea(ideaId)
+          await refreshPipelineData()
+        } catch {
+          // Best-effort: if delete fails, still leave the flow.
+        }
+        clearJourneyWorkspace(ideaId)
+      }
+    }
+
+    setPreJourneyIdeaIds(null)
+
     if (shouldSave && activeIdea?.id && currentStep?.id) {
       saveJourneyWorkspace(activeIdea.id, currentStep.id, {
         pexelsQuery: flowState.pexelsCache?.query ?? null,
@@ -585,6 +842,11 @@ export default function TikTokJourneyPage() {
         editedScript,
         editedCaption,
         editedKeyword,
+        selectedTikTokSoundId,
+        selectedTemplateId,
+        selectedQualityProfile,
+        videoDurationSec,
+        generationSceneCount,
       })
     }
 
@@ -625,6 +887,11 @@ export default function TikTokJourneyPage() {
     setEditedScript,
     setEditedCaption,
     setEditedKeyword,
+    setSelectedTikTokSoundId,
+    setSelectedTemplateId,
+    setSelectedQualityProfile,
+    setVideoDurationSec,
+    setGenerationSceneCount,
   })
 
   useEffect(() => {
@@ -642,7 +909,11 @@ export default function TikTokJourneyPage() {
   useEffect(() => {
     if (!isFlowRoute) return undefined
 
-    const historyState = { ...(window.history.state || {}), tiktokJourneyGuard: true, tiktokJourneyGuardAt: Date.now() }
+    const historyState = {
+      ...(window.history.state || {}),
+      tiktokJourneyGuard: true,
+      tiktokJourneyGuardAt: Date.now(),
+    }
     window.history.pushState(historyState, '', window.location.href)
 
     const handlePopState = () => {
@@ -655,13 +926,16 @@ export default function TikTokJourneyPage() {
   }, [isFlowRoute, location.pathname])
 
   const handleValidateInitPublish = () => {
-    const previewUrl = manualAction?.shotstackUrl || scriptedIdea?.shotstackUrl || selectedGeneratedIdea?.shotstackUrl
+    const previewUrl =
+      manualAction?.shotstackUrl ||
+      scriptedIdea?.shotstackUrl ||
+      selectedGeneratedIdea?.shotstackUrl
     if (!previewUrl) {
-      setErrorMessage('Aucune video generee disponible pour cette etape.')
+      setErrorMessage('Génère la vidéo avant de passer à la publication.')
       return
     }
     goToStep('upload')
-    showSuccess('Template video valide. Tu peux lancer la publication.')
+    showSuccess('Vidéo générée. Tu peux maintenant la publier sur TikTok.')
   }
 
   const handleValidateUpload = () => {}
@@ -682,7 +956,10 @@ export default function TikTokJourneyPage() {
     return false
   }
 
-  const guardedStepNavigate = ((to: string | number, options?: { replace?: boolean; state?: unknown }) => {
+  const guardedStepNavigate = ((
+    to: string | number,
+    options?: { replace?: boolean; state?: unknown },
+  ) => {
     if (typeof to === 'number') {
       navigate(to)
       return
@@ -730,7 +1007,9 @@ export default function TikTokJourneyPage() {
   /* ── Aggregate stats for library page ───────────────────────────────── */
   const libraryStats = useMemo(() => {
     const total = contentIdeas.length
-    let published = 0, ready = 0, drafts = 0
+    let published = 0,
+      ready = 0,
+      drafts = 0
     for (const idea of contentIdeas) {
       if (isPublished(idea)) published++
       else if (isRenderReady(idea)) ready++
@@ -746,7 +1025,7 @@ export default function TikTokJourneyPage() {
       <AdminShell
         activeNavId="tiktok"
         feedbackItems={[
-          { type: 'error',   message: errorMessage },
+          { type: 'error', message: errorMessage },
           { type: 'success', message: successMessage },
         ]}
         onBeforeNavigate={handleShellBeforeNavigate}
@@ -758,13 +1037,16 @@ export default function TikTokJourneyPage() {
               <header className="journey-page-head">
                 <div className="journey-page-head-copy">
                   <h1>Bibliothèque TikTok</h1>
-                  <p>Gère tes idées, scripts et vidéos. Lance un nouveau parcours pour générer une vidéo de A à Z.</p>
+                  <p>
+                    Gère tes idées, scripts et vidéos. Lance un nouveau parcours pour générer une
+                    vidéo de A à Z.
+                  </p>
                 </div>
                 <div className="journey-page-head-actions">
                   <button
                     type="button"
                     className="journey-btn is-primary"
-                    onClick={startAddFlow}
+                    onClick={startFreshJourney}
                     disabled={!isJourneyReady}
                   >
                     <AddIcon /> Nouveau parcours
@@ -830,7 +1112,7 @@ export default function TikTokJourneyPage() {
                 setListViewMode={setListViewMode}
                 setOpenListMenu={setOpenListMenu}
                 handleLoadMore={() => contentIdeasQuery.fetchNextPage()}
-                startAddFlow={startAddFlow}
+                startAddFlow={startFreshJourney}
               />
             </>
           ) : (
@@ -841,6 +1123,11 @@ export default function TikTokJourneyPage() {
               closeAddFlow={closeAddFlow}
               saveAndCloseFlow={handleSaveAndCloseFlow}
               isLeaveConfirmOpen={isLeaveConfirmOpen}
+              willDeleteOnLeave={
+                preJourneyIdeaIds !== null &&
+                Boolean(activeIdea?.id) &&
+                !preJourneyIdeaIds.has(Number(activeIdea?.id))
+              }
               openLeaveConfirm={() => openLeaveConfirm({ kind: 'library' })}
               closeLeaveConfirm={closeLeaveConfirm}
               leaveWithoutSaving={leaveWithoutSaving}
@@ -863,8 +1150,10 @@ export default function TikTokJourneyPage() {
               handleUploadVideo={handleUploadVideo}
               handleValidateCreation={handleValidateCreation}
               handleGoToTemplateStep={handleGoToTemplateStep}
+              handleValidateAudio={handleValidateAudio}
               handleValidateTemplate={handleValidateTemplate}
               handleValidateMedia={handleValidateMedia}
+              goToStepFromRecap={goToStepFromRecap}
               handleValidateInitPublish={handleValidateInitPublish}
               handleValidateUpload={handleValidateUpload}
               hasConnectedTikTokAccount={hasConnectedTikTokAccount}
@@ -927,6 +1216,9 @@ export default function TikTokJourneyPage() {
               setGenerationSceneCount={setGenerationSceneCount}
               pexelsCache={flowState.pexelsCache}
               setPexelsCache={flowState.setPexelsCache}
+              handleManualCreate={handleManualCreate}
+              selectedTikTokSoundId={selectedTikTokSoundId}
+              setSelectedTikTokSoundId={setSelectedTikTokSoundId}
             />
           )}
         </div>

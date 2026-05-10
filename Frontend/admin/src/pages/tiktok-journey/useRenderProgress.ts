@@ -9,6 +9,7 @@ export interface UseRenderProgressResult {
   outputUrl: string | null
   error: string | null
   startedAt: number | null // epoch ms du démarrage du rendu côté RenderVideo
+  queuePosition: number | null // position dans la file d'attente (null si en cours)
 }
 
 /**
@@ -16,12 +17,16 @@ export interface UseRenderProgressResult {
  * d'un rendu en cours. S'arrete automatiquement quand le rendu est `done`
  * ou `error`, ou quand `enabled` repasse a false.
  */
-export function useRenderProgress(runId: number | string | null | undefined, enabled: boolean): UseRenderProgressResult {
+export function useRenderProgress(
+  runId: number | string | null | undefined,
+  enabled: boolean,
+): UseRenderProgressResult {
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState<RenderProgress['status']>('unknown')
   const [outputUrl, setOutputUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const cancelRef = useRef(false)
 
   useEffect(() => {
@@ -33,6 +38,7 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
       setOutputUrl(null)
       setError(null)
       setStartedAt(null)
+      setQueuePosition(null)
       return () => {
         cancelRef.current = true
       }
@@ -48,10 +54,13 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
           setOutputUrl(result.outputUrl)
           setError(result.error)
           setStartedAt(result.startedAt)
+          setQueuePosition(
+            (result as RenderProgress & { queuePosition?: number | null }).queuePosition ?? null,
+          )
           if (result.status === 'done' || result.status === 'error') {
             return
           }
-        } catch (err) {
+        } catch {
           // Ignore — on retentera au prochain tick. Le hook reste vivant.
           if (cancelRef.current) return
         }
@@ -65,5 +74,5 @@ export function useRenderProgress(runId: number | string | null | undefined, ena
     }
   }, [runId, enabled])
 
-  return { progress, status, outputUrl, error, startedAt }
+  return { progress, status, outputUrl, error, startedAt, queuePosition }
 }

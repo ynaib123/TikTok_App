@@ -14,6 +14,7 @@ export interface IdeaLike {
   topic?: string | null
   pipelineStatus?: string | null
   lastError?: string | null
+  plannedScenes?: Array<{ sceneText?: string | null }> | null
 }
 
 export interface WorkflowRunLike {
@@ -36,7 +37,9 @@ export interface WorkflowStatusUpdate {
   lastUpdatedAt?: string
 }
 
-export interface WorkflowStatusSnapshot extends Required<Pick<WorkflowStatusUpdate, 'state' | 'workflowType'>> {
+export interface WorkflowStatusSnapshot extends Required<
+  Pick<WorkflowStatusUpdate, 'state' | 'workflowType'>
+> {
   runId: number | string | null
   contentIdeaId: number | null
   state: string
@@ -57,16 +60,18 @@ export function isWorkflowRunTerminal(run: WorkflowRunLike | null | undefined): 
 }
 
 export function isRenderReady(idea: IdeaLike | null | undefined): boolean {
-  return Boolean(idea?.shotstackUrl)
-    || idea?.finalVideoStatus === 'ready'
-    || idea?.shotstackStatus === 'done'
+  return (
+    Boolean(idea?.shotstackUrl) ||
+    idea?.finalVideoStatus === 'ready' ||
+    idea?.shotstackStatus === 'done'
+  )
 }
 
 export function hasScriptGenerationResult(idea: IdeaLike | null | undefined): boolean {
   return Boolean(
-    String(idea?.script || '').trim()
-    || String(idea?.caption || '').trim()
-    || String(idea?.keyword || '').trim(),
+    String(idea?.script || '').trim() ||
+    String(idea?.caption || '').trim() ||
+    String(idea?.keyword || '').trim(),
   )
 }
 
@@ -75,7 +80,9 @@ export function isPublished(idea: IdeaLike | null | undefined): boolean {
 }
 
 export function isUploadCompleted(idea: IdeaLike | null | undefined): boolean {
-  return ['uploaded', 'uploading', 'published'].includes(String(idea?.tiktokStatus || '').toLowerCase())
+  return ['uploaded', 'uploading', 'published'].includes(
+    String(idea?.tiktokStatus || '').toLowerCase(),
+  )
 }
 
 export function normalizeUrl(value: unknown): string | null {
@@ -84,7 +91,9 @@ export function normalizeUrl(value: unknown): string | null {
 }
 
 export function normalizeText(value: unknown): string {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 export function formatShortOpenId(value: unknown): string {
@@ -161,8 +170,8 @@ export function splitScriptIntoScenes(script: string): string[] {
 }
 
 export function getIdeaSceneTexts(idea: IdeaLike | null, fallbackScript: string): string[] {
-  const planned = Array.isArray((idea as any)?.plannedScenes)
-    ? (idea as any).plannedScenes.map((scene: any) => String(scene?.sceneText || '').trim()).filter(Boolean)
+  const planned = Array.isArray(idea?.plannedScenes)
+    ? idea.plannedScenes.map((scene) => String(scene?.sceneText || '').trim()).filter(Boolean)
     : []
   return planned.length > 0 ? planned : splitScriptIntoScenes(fallbackScript)
 }
@@ -171,10 +180,7 @@ export function normalizeSceneCount(scenes: string[], count: number): string[] {
   const targetCount = Math.min(10, Math.max(1, Number(count) || 1))
   const normalized = scenes.map((scene) => scene.trim()).filter((scene) => scene.length > 0)
   if (normalized.length > targetCount) {
-    return [
-      ...normalized.slice(0, targetCount - 1),
-      normalized.slice(targetCount - 1).join(' '),
-    ]
+    return [...normalized.slice(0, targetCount - 1), normalized.slice(targetCount - 1).join(' ')]
   }
   while (normalized.length < targetCount) normalized.push('')
   return normalized
@@ -189,4 +195,44 @@ export function joinScenes(scenes: string[]): string {
     })
     .filter(Boolean)
     .join(' ')
+}
+
+// === Readiness helpers (utilisés par ProjectReadinessPanel et RecapStep) ===
+
+export interface JourneyReadinessInput {
+  hasIdea: boolean
+  filledSceneSlots: number
+  totalSceneSlots: number
+  hasAudio: boolean
+  hasConnectedAccount: boolean
+}
+
+export interface JourneyReadinessResult {
+  isReady: boolean
+  mediaStatus: 'ok' | 'warn' | 'error'
+  canGenerateVideo: boolean
+  blockingIssues: string[]
+}
+
+export function computeJourneyReadiness(input: JourneyReadinessInput): JourneyReadinessResult {
+  const { hasIdea, filledSceneSlots, totalSceneSlots, hasConnectedAccount } = input
+
+  const mediaStatus: 'ok' | 'warn' | 'error' =
+    filledSceneSlots === totalSceneSlots ? 'ok' : filledSceneSlots > 0 ? 'warn' : 'error'
+
+  const blockingIssues: string[] = []
+  if (!hasIdea) blockingIssues.push('Idée & script')
+  if (mediaStatus !== 'ok') blockingIssues.push('Médias')
+
+  const canGenerateVideo = hasIdea && filledSceneSlots === totalSceneSlots
+
+  const warnings: string[] = []
+  if (!hasConnectedAccount) warnings.push('Compte TikTok')
+
+  return {
+    isReady: blockingIssues.length === 0,
+    mediaStatus,
+    canGenerateVideo,
+    blockingIssues,
+  }
 }

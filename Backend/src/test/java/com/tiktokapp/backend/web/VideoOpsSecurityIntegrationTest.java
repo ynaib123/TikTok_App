@@ -90,6 +90,9 @@ class VideoOpsSecurityIntegrationTest {
     @MockBean
     private VideoOpsDataService videoOpsDataService;
 
+    @MockBean
+    private com.tiktokapp.backend.service.videoops.LlmScriptNormalizationService llmScriptNormalizationService;
+
     private String accessToken;
     private Cookie csrfCookie;
     private String csrfHeaderName;
@@ -464,6 +467,99 @@ class VideoOpsSecurityIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.videos[0].id").value(1));
+    }
+
+    // --- Tests négatifs : vérifier que les endpoints sensibles rejettent les requêtes non autorisées ---
+
+    @Test
+    void blocksInternalGroqEndpointWithoutSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/groq/chat-completions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"model":"demo","messages":[{"role":"user","content":"hello"}]}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void blocksInternalGroqEndpointWithWrongSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/groq/chat-completions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Video-Ops-Internal-Secret", "wrong-secret")
+                        .content("""
+                                {"model":"demo","messages":[{"role":"user","content":"hello"}]}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void blocksInternalPexelsEndpointWithoutSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/pexels/videos/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"query":"fitness","perPage":5,"orientation":"portrait"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void blocksInternalTikTokContextEndpointWithoutSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/tiktok/account-context")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tiktokAccountOpenId":"open-id-demo","includeCreatorInfo":true}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void blocksInternalInitPublishContextEndpointWithoutSecret() throws Exception {
+        mockMvc.perform(post("/api/video-ops/internal/tiktok/init-publish-context")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"contentIdeaId":42,"tiktokAccountOpenId":"open-id-demo"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void blocksInternalContentIdeaEndpointWithoutSecret() throws Exception {
+        mockMvc.perform(get("/api/video-ops/internal/content-ideas/42"))
+                .andExpect(status().isForbidden());
+    }
+
+    // Note : la validation HMAC/secret callback est testée dans VideoOpsCallbackAuthServiceTest
+    // (unit test direct sur VideoOpsCallbackAuthService, sans mock de service).
+
+    @Test
+    void blocksRandomUnknownPaths() throws Exception {
+        // Pour un utilisateur anonyme, denyAll() lève AccessDeniedException qui est convertie
+        // en 401 par l'authenticationEntryPoint (HttpStatusEntryPoint(UNAUTHORIZED)). C'est le
+        // comportement Spring Security standard : 401 = pas authentifié, 403 = authentifié mais
+        // refusé. L'important ici est que la requête soit bloquée (4xx), pas le code exact.
+        mockMvc.perform(get("/admin/dashboard"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/some/random/path"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void blocksProtectedApiWithoutAuth() throws Exception {
+        mockMvc.perform(get("/api/video-ops/content-ideas"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/video-ops/accounts"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/video-ops/observability"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void actuatorHealthIsPublic() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
     }
 
 }

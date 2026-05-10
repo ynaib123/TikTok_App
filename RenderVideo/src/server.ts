@@ -175,20 +175,97 @@ async function prepareLocalAssets(job: RenderVideoJob, renderId: string): Promis
 app.use(express.json({ limit: '4mb' }))
 app.use('/renders', express.static(outputDir))
 
-// Suivi de progression keyed par workflowRunId. Permet aux clients HTTP de
-// poller l'avancement d'un rendu en cours (le POST /render reste bloquant
-// pendant plusieurs minutes).
-type ProgressStatus = 'preparing' | 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error'
+// --- Suivi de progression et queue de rendu ---
+// La progression est persistée dans outputDir/progress/ (survit aux redémarrages).
+// La concurrence est limitée à MAX_CONCURRENT_RENDERS rendus simultanés.
+
+type ProgressStatus = 'queued' | 'preparing' | 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error' | 'cancelled'
 interface ProgressEntry {
   progress: number // 0..1
   status: ProgressStatus
   startedAt: number
   updatedAt: number
+  queuePosition?: number // position dans la file (1 = prochain, absent = en cours)
   outputUrl?: string
   error?: string
 }
 const progressByRunId = new Map<number, ProgressEntry>()
 const PROGRESS_TTL_MS = 10 * 60 * 1000 // 10 min après fin → purge
+
+// Concurrence : nombre max de rendus en parallèle. Au-delà → file FIFO.
+const MAX_CONCURRENT_RENDERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_RENDERS || '2', 10))
+let activeRenderCount = 0
+interface QueuedRender { runId: number; execute: () => void }
+const renderQueue: QueuedRender[] = []
+const cancelledRunIds = new Set<number>()
+
+function acquireRenderSlot(runId: number): Promise<boolean> {
+  if (activeRenderCount < MAX_CONCURRENT_RENDERS) {
+    activeRenderCount++
+    return Promise.resolve(true)
+  }
+  return new Promise((resolve) => {
+    renderQueue.push({ runId, execute: () => { activeRenderCount++; resolve(true) } })
+    refreshQueuePositions()
+  })
+}
+
+function releaseRenderSlot() {
+  const next = renderQueue.shift()
+  if (next) {
+    refreshQueuePositions()
+    next.execute()
+  } else {
+    activeRenderCount = Math.max(0, activeRenderCount - 1)
+  }
+}
+
+function refreshQueuePositions() {
+  renderQueue.forEach((item, index) => {
+    const entry = progressByRunId.get(item.runId)
+    if (entry) {
+      const updated = { ...entry, queuePosition: index + 1 }
+      progressByRunId.set(item.runId, updated)
+      persistProgress(item.runId, updated)
+    }
+  })
+}
+
+// --- Persistance fichier (survit aux redémarrages) ---
+const progressDir = path.join(outputDir, 'progress')
+fs.mkdirSync(progressDir, { recursive: true })
+
+function persistProgress(runId: number, entry: ProgressEntry) {
+  const filePath = path.join(progressDir, `${runId}.json`)
+  fs.writeFile(filePath, JSON.stringify(entry), () => {})
+}
+
+function loadPersistedProgress() {
+  try {
+    const files = fs.readdirSync(progressDir)
+    const now = Date.now()
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue
+      const runId = parseInt(file.replace('.json', ''), 10)
+      if (!Number.isFinite(runId) || runId <= 0) continue
+      try {
+        const content = fs.readFileSync(path.join(progressDir, file), 'utf-8')
+        const entry = JSON.parse(content) as ProgressEntry
+        const finished = entry.status === 'done' || entry.status === 'error' || entry.status === 'cancelled'
+        if (finished && now - entry.updatedAt > PROGRESS_TTL_MS) continue
+        // Un rendu interrompu par un crash devient error
+        if (!finished) {
+          entry.status = 'error'
+          entry.error = 'Service redémarré pendant le rendu'
+          entry.updatedAt = now
+          persistProgress(runId, entry)
+        }
+        progressByRunId.set(runId, entry)
+      } catch { /* fichier corrompu, ignoré */ }
+    }
+  } catch { /* répertoire inaccessible */ }
+}
+loadPersistedProgress()
 
 function setProgress(runId: number, patch: Partial<ProgressEntry> & { status?: ProgressStatus }) {
   if (!Number.isFinite(runId) || runId <= 0) return
@@ -196,22 +273,28 @@ function setProgress(runId: number, patch: Partial<ProgressEntry> & { status?: P
   const now = Date.now()
   const next: ProgressEntry = {
     progress: existing?.progress ?? 0,
-    status: existing?.status ?? 'rendering',
+    status: existing?.status ?? 'queued',
     startedAt: existing?.startedAt ?? now,
     updatedAt: now,
     outputUrl: existing?.outputUrl,
     error: existing?.error,
     ...patch,
   }
+  // Effacer la position de queue quand le job démarre réellement
+  if (patch.status && patch.status !== 'queued') {
+    delete next.queuePosition
+  }
   progressByRunId.set(runId, next)
+  persistProgress(runId, next)
 }
 
 setInterval(() => {
   const now = Date.now()
   for (const [runId, entry] of progressByRunId.entries()) {
-    const finished = entry.status === 'done' || entry.status === 'error'
+    const finished = entry.status === 'done' || entry.status === 'error' || entry.status === 'cancelled'
     if (finished && now - entry.updatedAt > PROGRESS_TTL_MS) {
       progressByRunId.delete(runId)
+      fs.unlink(path.join(progressDir, `${runId}.json`), () => {})
     }
   }
 }, 60 * 1000).unref()
@@ -220,7 +303,7 @@ app.get('/progress/:runId', (request, response) => {
   const runId = Number(request.params.runId)
   const entry = progressByRunId.get(runId)
   if (!entry) {
-    response.json({ ok: true, runId, progress: 0, status: 'unknown', updatedAt: null, outputUrl: null })
+    response.json({ ok: true, runId, progress: 0, status: 'unknown', updatedAt: null, outputUrl: null, queuePosition: null })
     return
   }
   response.json({
@@ -230,9 +313,46 @@ app.get('/progress/:runId', (request, response) => {
     status: entry.status,
     startedAt: entry.startedAt,
     updatedAt: entry.updatedAt,
+    queuePosition: entry.queuePosition ?? null,
     outputUrl: entry.outputUrl ?? null,
     error: entry.error ?? null,
   })
+})
+
+app.get('/queue', (_request, response) => {
+  response.json({
+    ok: true,
+    activeRenders: activeRenderCount,
+    maxConcurrent: MAX_CONCURRENT_RENDERS,
+    queueLength: renderQueue.length,
+    pending: renderQueue.map((item, index) => ({ runId: item.runId, queuePosition: index + 1 })),
+  })
+})
+
+app.delete('/renders/:runId/cancel', (request, response) => {
+  const runId = Number(request.params.runId)
+  if (!Number.isFinite(runId) || runId <= 0) {
+    response.status(400).json({ ok: false, error: 'INVALID_RUN_ID' })
+    return
+  }
+  cancelledRunIds.add(runId)
+  // Retirer de la file si encore en attente
+  const queueIndex = renderQueue.findIndex((item) => item.runId === runId)
+  if (queueIndex >= 0) {
+    renderQueue.splice(queueIndex, 1)
+    refreshQueuePositions()
+    setProgress(runId, { status: 'cancelled', progress: 0, error: 'Annulé par l\'utilisateur' })
+    response.json({ ok: true, cancelled: true, wasQueued: true })
+    return
+  }
+  // Si déjà en cours, marquer comme cancelled ; le render loop vérifiera
+  const entry = progressByRunId.get(runId)
+  if (entry && (entry.status === 'preparing' || entry.status === 'rendering' || entry.status === 'post-processing' || entry.status === 'uploading')) {
+    setProgress(runId, { status: 'cancelled', error: 'Annulé par l\'utilisateur' })
+    response.json({ ok: true, cancelled: true, wasQueued: false, note: 'Le rendu en cours sera interrompu au prochain point de contrôle.' })
+    return
+  }
+  response.status(404).json({ ok: false, error: 'RUN_NOT_FOUND_OR_FINISHED' })
 })
 
 app.get('/health', (_request, response) => {
@@ -311,9 +431,22 @@ app.post('/render-async', async (request, response) => {
 
   const job = asRenderVideoJob(request.body)
   const runId = Number(job.workflowRunId) || 0
-  setProgress(runId, { progress: 0, status: 'preparing' })
+  const queuePosition = renderQueue.length + (activeRenderCount < MAX_CONCURRENT_RENDERS ? 0 : 1)
+  setProgress(runId, {
+    progress: 0,
+    status: queuePosition > 0 ? 'queued' : 'preparing',
+    queuePosition: queuePosition > 0 ? queuePosition : undefined,
+  })
 
   void (async () => {
+    const acquired = await acquireRenderSlot(runId)
+    if (!acquired || cancelledRunIds.has(runId)) {
+      cancelledRunIds.delete(runId)
+      setProgress(runId, { status: 'cancelled', error: 'Annulé avant démarrage' })
+      return
+    }
+    cancelledRunIds.delete(runId)
+
     try {
       const renderResponse = await fetch(`${localBaseUrl}/render`, {
         method: 'POST',
@@ -328,17 +461,24 @@ app.post('/render-async', async (request, response) => {
       await completeWorkflowFromRender(job, render, 'SUCCEEDED', 'Remotion render completed.')
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      setProgress(runId, { status: 'error', error: message })
-      await completeWorkflowFromRender(job, { error: message }, 'FAILED', message).catch(() => undefined)
+      const isCancelled = cancelledRunIds.has(runId)
+      setProgress(runId, { status: isCancelled ? 'cancelled' : 'error', error: message })
+      if (!isCancelled) {
+        await completeWorkflowFromRender(job, { error: message }, 'FAILED', message).catch(() => undefined)
+      }
+    } finally {
+      releaseRenderSlot()
     }
   })()
 
   response.status(202).json({
     ok: true,
-    status: 'accepted',
+    status: queuePosition > 0 ? 'queued' : 'accepted',
     engine: 'remotion',
     workflowRunId: job.workflowRunId,
     contentIdeaId: job.contentIdeaId,
+    queuePosition: queuePosition > 0 ? queuePosition : null,
+    maxConcurrent: MAX_CONCURRENT_RENDERS,
   })
 })
 
@@ -440,6 +580,8 @@ app.post('/render', async (request, response, next) => {
       qualityProfile: post.qualityProfile,
       audioMixed: post.audioMixed,
       loudnessNormalized: post.loudnessNormalized,
+      loudnessTargetLufs: post.loudnessTargetLufs,
+      qaScreenshots: post.qaScreenshots.map((p) => path.basename(p)),
     })
   } catch (error) {
     const runId = Number((request.body as { workflowRunId?: number } | undefined)?.workflowRunId) || 0

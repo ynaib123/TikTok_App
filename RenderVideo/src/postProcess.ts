@@ -21,9 +21,13 @@ export interface PostProcessOptions {
 export interface PostProcessResult {
   outputPath: string
   thumbnailPath: string
+  /** Chemins locaux des 3 captures QA (10%, 50%, 90% de la durée) */
+  qaScreenshots: string[]
   qualityProfile: RenderVideoJob['render']['qualityProfile']
   audioMixed: boolean
   loudnessNormalized: boolean
+  /** Cible de loudness LUFS utilisée lors du mixage */
+  loudnessTargetLufs: number | null
   storage: 'local' | 'r2'
   remoteVideoUrl: string | null
   remoteThumbnailUrl: string | null
@@ -58,9 +62,10 @@ async function runFfmpeg(args: string[]): Promise<void> {
   await execFileAsync(bin, args, { maxBuffer: 1024 * 1024 * 64 })
 }
 
-function clampVolume(value: number | undefined, fallback: number): number {
+function clampVolume(value: number | null | undefined, fallback: number): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback
-  return Math.max(0, Math.min(1, value))
+  const normalized = value > 1 ? value / 100 : value
+  return Math.max(0, Math.min(2, normalized))
 }
 
 export async function postProcess({
@@ -77,6 +82,7 @@ export async function postProcess({
 
   const voiceUrl = job.assets.voiceover?.url || null
   const musicUrl = job.assets.music?.url || null
+  const voiceVolume = clampVolume(job.assets.voiceover?.volume, 1)
   const musicVolume = clampVolume(job.assets.music?.volume, 0.18)
 
   // Lot 7 / H1 — parallelize asset downloads. Voice and music are independent
@@ -106,19 +112,32 @@ export async function postProcess({
 
   const filterParts: string[] = []
   let audioMap: string | null = null
+  // Cible LUFS TikTok : -14 LUFS pour les contenus avec voix, -16 pour musique seule
+  const LUFS_VOICE_TARGET = -14
+  const LUFS_MUSIC_ONLY_TARGET = -16
+  let loudnessTargetLufs: number | null = null
+  const durationSec = job.render.durationSec
 
   if (voicePath && musicPath) {
-    filterParts.push('[1:a]aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=1.0[voiceA]')
-    filterParts.push(`[2:a]aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${musicVolume.toFixed(3)}[musicA]`)
-    filterParts.push('[voiceA][musicA]amix=inputs=2:duration=first:dropout_transition=2[mix]')
-    filterParts.push('[mix]loudnorm=I=-14:TP=-1.5:LRA=11[outA]')
+    // Voix : padder avec du silence jusqu'à la durée vidéo pour éviter que
+    // le mix se coupe à la fin de la voix.
+    filterParts.push(`[1:a]aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${voiceVolume.toFixed(3)},apad=whole_dur=${durationSec}[voiceA]`)
+    // Musique : boucler infiniment, tronquer à la durée vidéo, fade-out sur les 2 dernières secondes.
+    const fadeStart = Math.max(0, durationSec - 2)
+    filterParts.push(`[2:a]aloop=loop=-1:size=2000000000,atrim=0:${durationSec.toFixed(3)},aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${musicVolume.toFixed(3)},afade=t=out:st=${fadeStart.toFixed(3)}:d=2[musicA]`)
+    filterParts.push('[voiceA][musicA]amix=inputs=2:duration=longest:dropout_transition=2[mix]')
+    filterParts.push(`[mix]loudnorm=I=${LUFS_VOICE_TARGET}:TP=-1.5:LRA=11[outA]`)
     audioMap = '[outA]'
+    loudnessTargetLufs = LUFS_VOICE_TARGET
   } else if (voicePath) {
-    filterParts.push('[1:a]aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11[outA]')
+    filterParts.push(`[1:a]aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${voiceVolume.toFixed(3)},apad=whole_dur=${durationSec},loudnorm=I=${LUFS_VOICE_TARGET}:TP=-1.5:LRA=11[outA]`)
     audioMap = '[outA]'
+    loudnessTargetLufs = LUFS_VOICE_TARGET
   } else if (musicPath) {
-    filterParts.push(`[1:a]aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${musicVolume.toFixed(3)},loudnorm=I=-16:TP=-1.5:LRA=11[outA]`)
+    const fadeStart = Math.max(0, durationSec - 2)
+    filterParts.push(`[1:a]aloop=loop=-1:size=2000000000,atrim=0:${durationSec.toFixed(3)},aresample=async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${musicVolume.toFixed(3)},afade=t=out:st=${fadeStart.toFixed(3)}:d=2,loudnorm=I=${LUFS_MUSIC_ONLY_TARGET}:TP=-1.5:LRA=11[outA]`)
     audioMap = '[outA]'
+    loudnessTargetLufs = LUFS_MUSIC_ONLY_TARGET
   }
 
   if (filterParts.length > 0) {
@@ -164,6 +183,26 @@ export async function postProcess({
     thumbnailPath,
   ])
 
+  // Screenshots QA aux instants 10%, 50%, 90% de la vidéo
+  const qaDir = path.join(workDir, 'qa')
+  fs.mkdirSync(qaDir, { recursive: true })
+  const qaScreenshots: string[] = []
+  for (const fraction of [0.10, 0.50, 0.90]) {
+    const ts = Math.max(0.1, durationSec * fraction).toFixed(2)
+    const screenshotPath = path.join(qaDir, `qa-${Math.round(fraction * 100)}.jpg`)
+    try {
+      await runFfmpeg([
+        '-y', '-hide_banner', '-loglevel', 'error',
+        '-ss', ts, '-i', outputPath,
+        '-frames:v', '1', '-q:v', '4',
+        screenshotPath,
+      ])
+      qaScreenshots.push(screenshotPath)
+    } catch {
+      // QA screenshot non-bloquant — on continue si ffmpeg échoue sur un frame
+    }
+  }
+
   if (voicePath) fs.rmSync(voicePath, { force: true })
   if (musicPath) fs.rmSync(musicPath, { force: true })
 
@@ -186,9 +225,11 @@ export async function postProcess({
   return {
     outputPath,
     thumbnailPath,
+    qaScreenshots,
     qualityProfile: job.render.qualityProfile,
     audioMixed,
     loudnessNormalized,
+    loudnessTargetLufs,
     storage,
     remoteVideoUrl,
     remoteThumbnailUrl,

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tiktokapp.backend.model.ContentIdea;
+import com.tiktokapp.backend.repository.AudioAssetRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,9 @@ class MultiSceneJobBuilderServiceTest {
     @Mock
     private VideoOpsInternalProxyService proxyService;
 
+    @Mock
+    private AudioAssetRepository audioAssetRepository;
+
     private MultiSceneJobBuilderService service;
 
     @BeforeEach
@@ -33,6 +37,7 @@ class MultiSceneJobBuilderServiceTest {
         service = new MultiSceneJobBuilderService(
                 new SceneBuilderService(),
                 new PexelsMultiSearchService(proxyService),
+                audioAssetRepository,
                 objectMapper
         );
     }

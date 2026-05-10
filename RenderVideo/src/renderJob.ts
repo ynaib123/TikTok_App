@@ -81,6 +81,7 @@ export interface RenderVideoJob {
       url?: string
       provider?: string | null
       voiceId?: string | null
+      volume?: number | null
     } | null
     music?: {
       url?: string

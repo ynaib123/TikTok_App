@@ -321,7 +321,7 @@
     },
     "staticData": {},
     "pinData": {},
-    "active": true
+    "active": true,
+    "workflowVersion": "1.0.0"
   }
 ]
-

@@ -69,13 +69,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate canonical workflow JSON
-        run: |
-          set -e
-          for f in Backend/tools/n8n-workflows/*.json; do
-            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
-            echo "ok $f"
-          done
+      - name: Set up Node for workflow validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate canonical workflow JSON (parse + code node limits)
+        run: node --input-type=module < Backend/tools/n8n-workflows/validate-workflows.js
 
   security:
     name: Security scan (Trivy)

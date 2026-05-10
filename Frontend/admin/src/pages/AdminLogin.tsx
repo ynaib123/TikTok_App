@@ -97,7 +97,10 @@ export default function AdminLogin() {
     return () => window.clearInterval(intervalId)
   }, [loginProgressValue, logoutFallbackUntil])
 
-  const canSubmit = useMemo(() => Boolean(email.trim() && motDePasse.trim().length >= 6), [email, motDePasse])
+  const canSubmit = useMemo(
+    () => Boolean(email.trim() && motDePasse.trim().length >= 6),
+    [email, motDePasse],
+  )
 
   if (loginProgressValue == null && !loading && isAuthenticated && role === 'ADMIN') {
     return <Navigate to="/dashboard" replace />
@@ -183,7 +186,9 @@ export default function AdminLogin() {
 
           <form onSubmit={handleSubmit} className="admin-auth-form">
             <div className="admin-auth-field">
-              <label className="admin-auth-label" htmlFor="admin-email">Email</label>
+              <label className="admin-auth-label" htmlFor="admin-email">
+                Email
+              </label>
               <input
                 id="admin-email"
                 name="email"
@@ -198,7 +203,9 @@ export default function AdminLogin() {
             </div>
 
             <div className="admin-auth-field">
-              <label className="admin-auth-label" htmlFor="admin-password">Mot de passe</label>
+              <label className="admin-auth-label" htmlFor="admin-password">
+                Mot de passe
+              </label>
               <div className="admin-auth-password-wrap">
                 <input
                   id="admin-password"
@@ -236,17 +243,14 @@ export default function AdminLogin() {
             </label>
 
             <button type="submit" className="admin-auth-submit" disabled={isLoading || !canSubmit}>
-              <span className="admin-auth-submit-text">{isLoading ? 'Connexion en cours...' : 'Se connecter'}</span>
+              <span className="admin-auth-submit-text">
+                {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+              </span>
               <span className="admin-auth-submit-icon" aria-hidden="true">
                 {isLoading ? '...' : '->'}
               </span>
             </button>
           </form>
-
-          <div className="admin-auth-demo-hint">
-            <p className="admin-auth-card-kicker">Accès démo</p>
-            <p>Renseigne les identifiants locaux via `VITE_MOCK_ADMIN_EMAIL` et `VITE_MOCK_ADMIN_PASSWORD` si tu actives `VITE_USE_MOCK_ADMIN_AUTH=true`.</p>
-          </div>
         </section>
       </div>
     </div>

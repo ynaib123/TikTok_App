@@ -1,10 +1,16 @@
-import { clearAdminSession, setAdminSession, type AdminSessionState, type AdminSessionUser } from './adminSessionStore'
+import {
+  clearAdminSession,
+  setAdminSession,
+  type AdminSessionState,
+  type AdminSessionUser,
+} from './adminSessionStore'
 import { clearAdminQueryCache } from './adminQueryCache'
 import { clearAdminCsrfTokenCache, fetchAdminCsrfToken } from './adminCsrfService'
 
 const ADMIN_REMEMBER_ME_KEY = 'tiktok_app_admin_remember_me'
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string | undefined) || '/api'
-const USE_MOCK_ADMIN_AUTH = (import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH as string | undefined) === 'true'
+const USE_MOCK_ADMIN_AUTH =
+  (import.meta.env?.VITE_USE_MOCK_ADMIN_AUTH as string | undefined) === 'true'
 const MOCK_ADMIN_EMAIL = (import.meta.env?.VITE_MOCK_ADMIN_EMAIL as string | undefined) || ''
 const MOCK_ADMIN_PASSWORD = (import.meta.env?.VITE_MOCK_ADMIN_PASSWORD as string | undefined) || ''
 
@@ -26,7 +32,9 @@ function buildUrl(endpoint: string): string {
   return `${API_BASE_URL}${endpoint}`
 }
 
-function applyAdminAuthResponse(responseData: AdminAuthResponse | null | undefined): AdminSessionState {
+function applyAdminAuthResponse(
+  responseData: AdminAuthResponse | null | undefined,
+): AdminSessionState {
   return setAdminSession({
     token: responseData?.token ?? 'local-admin-token',
     expiresInSeconds: responseData?.expiresInSeconds ?? 60 * 60 * 12,
@@ -51,13 +59,18 @@ interface RequestOptions {
   retryOnForbiddenWithFreshCsrf?: boolean
 }
 
-async function requestWithOptionalCsrf(endpoint: string, {
-  method = 'GET',
-  body = null,
-  includeCsrf = false,
-  retryOnForbiddenWithFreshCsrf = false,
-}: RequestOptions = {}): Promise<unknown> {
-  const sendRequest = async ({ forceCsrfRefresh = false }: { forceCsrfRefresh?: boolean } = {}): Promise<unknown> => {
+async function requestWithOptionalCsrf(
+  endpoint: string,
+  {
+    method = 'GET',
+    body = null,
+    includeCsrf = false,
+    retryOnForbiddenWithFreshCsrf = false,
+  }: RequestOptions = {},
+): Promise<unknown> {
+  const sendRequest = async ({
+    forceCsrfRefresh = false,
+  }: { forceCsrfRefresh?: boolean } = {}): Promise<unknown> => {
     const headers = new Headers()
     if (body !== null) {
       headers.set('Content-Type', 'application/json')
@@ -76,13 +89,14 @@ async function requestWithOptionalCsrf(endpoint: string, {
     })
 
     const responseText = await response.text()
-    const responseData = parseJsonSafely(responseText) as { message?: string; error?: string } | null
+    const responseData = parseJsonSafely(responseText) as {
+      message?: string
+      error?: string
+    } | null
 
     if (!response.ok) {
       const error = new Error(
-        responseData?.message
-        || responseData?.error
-        || `Erreur HTTP ${response.status}`,
+        responseData?.message || responseData?.error || `Erreur HTTP ${response.status}`,
       ) as AdminHttpError
       error.status = response.status
       error.data = responseData
@@ -96,11 +110,7 @@ async function requestWithOptionalCsrf(endpoint: string, {
     return await sendRequest()
   } catch (error) {
     const httpError = error as AdminHttpError
-    if (
-      retryOnForbiddenWithFreshCsrf
-      && includeCsrf
-      && httpError?.status === 403
-    ) {
+    if (retryOnForbiddenWithFreshCsrf && includeCsrf && httpError?.status === 403) {
       clearAdminCsrfTokenCache()
       return sendRequest({ forceCsrfRefresh: true })
     }
@@ -115,10 +125,14 @@ async function loginAdminWithMock(
   rememberMe: boolean = true,
 ): Promise<AdminSessionState> {
   if (!MOCK_ADMIN_EMAIL || !MOCK_ADMIN_PASSWORD) {
-    throw new Error('Mock admin auth active, mais VITE_MOCK_ADMIN_EMAIL / VITE_MOCK_ADMIN_PASSWORD ne sont pas configures.')
+    throw new Error(
+      'Mock admin auth active, mais VITE_MOCK_ADMIN_EMAIL / VITE_MOCK_ADMIN_PASSWORD ne sont pas configures.',
+    )
   }
 
-  const normalizedEmail = String(email || '').trim().toLowerCase()
+  const normalizedEmail = String(email || '')
+    .trim()
+    .toLowerCase()
   const normalizedPassword = String(motDePasse || '')
 
   if (normalizedEmail !== MOCK_ADMIN_EMAIL || normalizedPassword !== MOCK_ADMIN_PASSWORD) {
@@ -166,12 +180,12 @@ export async function loginAdmin(
   clearAdminQueryCache()
   clearAdminCsrfTokenCache()
 
-  const responseData = await requestWithOptionalCsrf('/admins/login', {
+  const responseData = (await requestWithOptionalCsrf('/admins/login', {
     method: 'POST',
     body: { email, motDePasse, rememberMe },
     includeCsrf: true,
     retryOnForbiddenWithFreshCsrf: true,
-  }) as AdminAuthResponse | null
+  })) as AdminAuthResponse | null
 
   return applyAdminAuthResponse(responseData)
 }
@@ -187,20 +201,25 @@ export async function refreshAdminSession(): Promise<AdminSessionState> {
     refreshAdminSessionPromise = (async (): Promise<AdminSessionState> => {
       try {
         clearAdminCsrfTokenCache()
-        const responseData = await requestWithOptionalCsrf('/admins/refresh', {
+        const responseData = (await requestWithOptionalCsrf('/admins/refresh', {
           method: 'POST',
           body: {},
           includeCsrf: true,
-        }) as AdminAuthResponse | null
+        })) as AdminAuthResponse | null
         clearAdminQueryCache()
         return applyAdminAuthResponse(responseData)
       } catch (error) {
         clearAdminQueryCache()
-        clearAdminSession()
         const httpError = error as AdminHttpError
-        if (Number(httpError?.status) === 401 || Number(httpError?.status) === 403) {
+        const status = Number(httpError?.status)
+        if (status === 401 || status === 403) {
+          // Session définitivement invalide (token expiré côté serveur) → déconnexion propre
+          clearAdminSession()
           throw new Error('Aucune session admin persistante')
         }
+        // Erreur réseau ou serveur transitoire (5xx, ECONNREFUSED…) : la session
+        // est potentiellement encore valide. On ne déconnecte pas l'utilisateur.
+        // Le prochain appel retentera le refresh.
         throw error
       } finally {
         refreshAdminSessionPromise = null

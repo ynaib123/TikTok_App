@@ -123,14 +123,18 @@ services:
       - render_video_renders:/app/renders
 
   n8n:
+    # DEV : latest accepté ici car les workflows ont été créés avec cette version.
+    # Pour la prod, identifier la version exacte via `docker exec tiktok-app-n8n n8n --version`
+    # puis la fixer dans docker-compose.prod-like.yml uniquement.
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: tiktok-app-n8n
     restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
-      N8N_BASIC_AUTH_ACTIVE: false
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      # DEV SEULEMENT — désactiver l'auth n8n en dev local uniquement
+      N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE:-false}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: ${N8N_BLOCK_ENV_ACCESS_IN_NODE:-false}
       NODE_FUNCTION_ALLOW_BUILTIN: crypto,http,https,url
       N8N_HOST: 0.0.0.0
       N8N_PORT: 5678
@@ -147,6 +151,10 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       PEXELS_API_KEY: ${PEXELS_API_KEY:-}
       N8N_BASE_URL: ${N8N_BASE_URL:-http://localhost:5678}
+      # Image n8n sans Python : désactiver le runner Python interne pour
+      # supprimer le warning "Failed to start Python task runner" répété.
+      N8N_NATIVE_PYTHON_RUNNER: "false"
+      N8N_RUNNERS_ENABLED: "false"
     volumes:
       - ./n8n-local:/home/node/.n8n
     depends_on:

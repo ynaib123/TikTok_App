@@ -36,22 +36,28 @@ export default defineConfig(({ mode }) => {
           configure: (proxy) => {
             proxy.on('error', (err, req, res) => {
               if (!res || res.headersSent) return
-              const isUnreachable = err && (err.code === 'ECONNREFUSED' || err.code === 'EHOSTUNREACH' || err.code === 'ECONNRESET')
+              const isUnreachable =
+                err &&
+                (err.code === 'ECONNREFUSED' ||
+                  err.code === 'EHOSTUNREACH' ||
+                  err.code === 'ECONNRESET')
               const status = isUnreachable ? 503 : 502
               const message = isUnreachable
                 ? 'Backend indisponible (probablement en cours de demarrage). Reessaie dans ~30s.'
                 : `Erreur proxy: ${err && err.code ? err.code : 'unknown'}`
               try {
                 res.writeHead(status, { 'Content-Type': 'application/json' })
-                res.end(JSON.stringify({
-                  status,
-                  error: status === 503 ? 'Service Unavailable' : 'Bad Gateway',
-                  message,
-                  path: req.url,
-                  upstreamCode: err && err.code ? err.code : null,
-                  timestamp: new Date().toISOString(),
-                }))
-              } catch (_) {
+                res.end(
+                  JSON.stringify({
+                    status,
+                    error: status === 503 ? 'Service Unavailable' : 'Bad Gateway',
+                    message,
+                    path: req.url,
+                    upstreamCode: err && err.code ? err.code : null,
+                    timestamp: new Date().toISOString(),
+                  }),
+                )
+              } catch {
                 // socket already closed; nothing to do
               }
             })

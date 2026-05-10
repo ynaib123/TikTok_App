@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -41,8 +40,11 @@ public class FailedCallbackRetryWorker {
     }
 
     @Scheduled(fixedDelayString = "${app.video-ops.failed-callback-retry-interval-ms:120000}")
-    @Transactional
     public void retryDue() {
+        // Pas de @Transactional sur la boucle : chaque opération (markResolved,
+        // scheduleNextRetry, replay→completeWorkflowRun) gère sa propre transaction.
+        // Empêche qu'un échec de replay (ex. 404) ne marque la tx outer rollback-only
+        // et n'annule les markResolved des itérations suivantes.
         List<FailedCallback> due = repository.findByResolvedAtIsNullAndNextRetryAtBefore(Instant.now());
         if (due.isEmpty()) return;
 

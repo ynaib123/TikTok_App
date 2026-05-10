@@ -13,6 +13,11 @@ export interface JourneyWorkspaceSnapshot {
   editedScript?: string | null
   editedCaption?: string | null
   editedKeyword?: string | null
+  selectedTikTokSoundId?: string | null
+  selectedTemplateId?: string | null
+  selectedQualityProfile?: string | null
+  videoDurationSec?: number | null
+  generationSceneCount?: number | null
 }
 
 export interface JourneyWorkspaceExtras {
@@ -23,6 +28,11 @@ export interface JourneyWorkspaceExtras {
   editedScript?: string | null
   editedCaption?: string | null
   editedKeyword?: string | null
+  selectedTikTokSoundId?: string | null
+  selectedTemplateId?: string | null
+  selectedQualityProfile?: string | null
+  videoDurationSec?: number | null
+  generationSceneCount?: number | null
 }
 
 type JourneyWorkspaceMap = Record<string, JourneyWorkspaceSnapshot>
@@ -58,9 +68,10 @@ export function saveJourneyWorkspace(
   if (!numericIdeaId || !stepId) return
 
   const current = readWorkspaceMap()
-  const trimmedQuery = typeof extras.pexelsQuery === 'string'
-    ? extras.pexelsQuery.trim().slice(0, MAX_PEXELS_QUERY_LENGTH)
-    : null
+  const trimmedQuery =
+    typeof extras.pexelsQuery === 'string'
+      ? extras.pexelsQuery.trim().slice(0, MAX_PEXELS_QUERY_LENGTH)
+      : null
   const sceneUrls = Array.isArray(extras.selectedSceneMediaUrls)
     ? extras.selectedSceneMediaUrls.slice(0, 10).map((u) => String(u || ''))
     : null
@@ -78,6 +89,12 @@ export function saveJourneyWorkspace(
     editedScript: extras.editedScript ?? null,
     editedCaption: extras.editedCaption ?? null,
     editedKeyword: extras.editedKeyword ?? null,
+    selectedTikTokSoundId: extras.selectedTikTokSoundId ?? null,
+    selectedTemplateId: extras.selectedTemplateId ?? null,
+    selectedQualityProfile: extras.selectedQualityProfile ?? null,
+    videoDurationSec: typeof extras.videoDurationSec === 'number' ? extras.videoDurationSec : null,
+    generationSceneCount:
+      typeof extras.generationSceneCount === 'number' ? extras.generationSceneCount : null,
   }
   writeWorkspaceMap(current)
 }

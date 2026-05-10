@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.tiktokapp.backend.model.AudioAsset;
 import com.tiktokapp.backend.model.ContentIdea;
+import com.tiktokapp.backend.repository.AudioAssetRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,15 +27,18 @@ public class MultiSceneJobBuilderService {
 
     private final SceneBuilderService sceneBuilder;
     private final PexelsMultiSearchService pexelsMulti;
+    private final AudioAssetRepository audioAssetRepository;
     private final ObjectMapper objectMapper;
 
     public MultiSceneJobBuilderService(
             SceneBuilderService sceneBuilder,
             PexelsMultiSearchService pexelsMulti,
+            AudioAssetRepository audioAssetRepository,
             ObjectMapper objectMapper
     ) {
         this.sceneBuilder = sceneBuilder;
         this.pexelsMulti = pexelsMulti;
+        this.audioAssetRepository = audioAssetRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -180,6 +185,7 @@ public class MultiSceneJobBuilderService {
         renderNode.put("sceneStrategy", "timed-scenes");
 
         ObjectNode assetsNode = job.putObject("assets");
+        attachSelectedAudioAssets(assetsNode, idea.getId());
 
         // Premier media disponible = backgroundVideo de fallback (requis par le contrat).
         PexelsMultiSearchService.MediaPick fallback = picks.stream()
@@ -221,6 +227,31 @@ public class MultiSceneJobBuilderService {
         return job;
     }
 
+    private void attachSelectedAudioAssets(ObjectNode assetsNode, Long contentIdeaId) {
+        if (contentIdeaId == null) {
+            return;
+        }
+        audioAssetRepository
+                .findFirstByContentIdeaIdAndAssetKindAndSelectedIsTrue(contentIdeaId, AudioAsset.AssetKind.voice)
+                .filter(asset -> asset.getStorageUrl() != null && !asset.getStorageUrl().isBlank())
+                .ifPresent(asset -> {
+                    ObjectNode voiceover = assetsNode.putObject("voiceover");
+                    voiceover.put("url", asset.getStorageUrl());
+                    voiceover.put("provider", "elevenlabs");
+                    putNullable(voiceover, "voiceId", truncate(asset.getVoiceId(), 128));
+                    voiceover.put("volume", clampDouble(number(asset.getVoiceVolume(), 100.0), 0.0, 200.0));
+                });
+
+        audioAssetRepository
+                .findFirstByContentIdeaIdAndAssetKindAndSelectedIsTrue(contentIdeaId, AudioAsset.AssetKind.music)
+                .filter(asset -> asset.getStorageUrl() != null && !asset.getStorageUrl().isBlank())
+                .ifPresent(asset -> {
+                    ObjectNode music = assetsNode.putObject("music");
+                    music.put("url", asset.getStorageUrl());
+                    music.put("volume", clampDouble(number(asset.getMusicVolume(), 30.0), 0.0, 200.0));
+                });
+    }
+
     private ObjectNode buildSceneTextStyle(List<Map<String, Object>> styles, int index) {
         if (styles == null || index < 0 || index >= styles.size()) {
             return null;
@@ -230,8 +261,8 @@ public class MultiSceneJobBuilderService {
             return null;
         }
         ObjectNode style = objectMapper.createObjectNode();
-        style.put("textX", clampDouble(number(raw.get("textX"), 50.0), 6.0, 94.0));
-        style.put("textY", clampDouble(number(raw.get("textY"), 48.0), 6.0, 94.0));
+        style.put("textX", clampDouble(number(raw.get("textX"), 50.0), 0.0, 100.0));
+        style.put("textY", clampDouble(number(raw.get("textY"), 48.0), 0.0, 100.0));
         style.put("textColor", color(raw.get("textColor"), "#ffffff"));
         style.put("fontFamily", truncate(text(raw.get("fontFamily"), "Inter"), 80));
         style.put("fontSize", clampDouble(number(raw.get("fontSize"), 36.0), 14.0, 80.0));

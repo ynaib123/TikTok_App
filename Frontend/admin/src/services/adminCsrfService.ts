@@ -38,7 +38,9 @@ function readCookieValue(name: string): string | null {
   }
 }
 
-async function parseCsrfResponse(response: Response): Promise<{ token?: string; headerName?: string } | null> {
+async function parseCsrfResponse(
+  response: Response,
+): Promise<{ token?: string; headerName?: string } | null> {
   const responseText = await response.text()
   if (!responseText) return null
 
@@ -63,7 +65,9 @@ export function clearAdminCsrfTokenCache(): void {
   csrfRequestPromise = null
 }
 
-export async function fetchAdminCsrfToken({ force = false }: { force?: boolean } = {}): Promise<AdminCsrfToken> {
+export async function fetchAdminCsrfToken({
+  force = false,
+}: { force?: boolean } = {}): Promise<AdminCsrfToken> {
   if (!USE_ADMIN_CSRF) {
     return {
       headerName: DEFAULT_CSRF_HEADER,
@@ -72,9 +76,18 @@ export async function fetchAdminCsrfToken({ force = false }: { force?: boolean }
   }
 
   if (!force && csrfTokenCache) {
-    return {
-      headerName: csrfHeaderNameCache,
-      token: csrfTokenCache,
+    // Valider que le cookie XSRF-TOKEN correspond encore au cache.
+    // Si le cookie a disparu (fermeture navigateur, session effacée), invalider
+    // le cache pour forcer un re-fetch et éviter un désynchronisation CSRF → 401.
+    const currentCookie = readCookieValue(CSRF_COOKIE_NAME)
+    if (!currentCookie || currentCookie !== csrfTokenCache) {
+      csrfTokenCache = null
+      csrfHeaderNameCache = DEFAULT_CSRF_HEADER
+    } else {
+      return {
+        headerName: csrfHeaderNameCache,
+        token: csrfTokenCache,
+      }
     }
   }
 

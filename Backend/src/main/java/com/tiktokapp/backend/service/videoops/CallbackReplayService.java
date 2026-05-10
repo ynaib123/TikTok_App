@@ -5,7 +5,9 @@ import com.tiktokapp.backend.dto.videoops.VideoWorkflowRunCompletionRequest;
 import com.tiktokapp.backend.model.FailedCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Phase 2.5 follow-up — actually replays a failed callback by re-invoking
@@ -25,6 +27,9 @@ public class CallbackReplayService {
         this.objectMapper = objectMapper;
     }
 
+    // Pas de @Transactional ici : completeWorkflowRun (WorkflowCallbackService)
+    // gère sa propre transaction. Une enveloppe REQUIRES_NEW empoisonnait l'outer
+    // tx du worker via UnexpectedRollbackException quand le run était introuvable.
     public ReplayOutcome replay(FailedCallback failed) {
         Long runId = failed.getRunId();
         if (runId == null) {
@@ -47,6 +52,15 @@ public class CallbackReplayService {
         try {
             videoOpsService.completeWorkflowRun(runId, request);
             return ReplayOutcome.success();
+        } catch (ResponseStatusException statusException) {
+            HttpStatus status = HttpStatus.resolve(statusException.getStatusCode().value());
+            logger.warn("dead_letter replay failed id={} runId={} status={} reason={}",
+                    failed.getId(), runId, status, statusException.getReason());
+            // 404 (run supprimé/introuvable) ou 409 (idempotency mismatch) : aucun retry ne pourra réussir.
+            if (status == HttpStatus.NOT_FOUND || status == HttpStatus.CONFLICT) {
+                return ReplayOutcome.permanentFailure(status + ": " + statusException.getReason());
+            }
+            return ReplayOutcome.transientFailure(status + ": " + statusException.getReason());
         } catch (Exception replayException) {
             logger.warn("dead_letter replay failed id={} runId={} reason={}",
                     failed.getId(), runId, replayException.getMessage());

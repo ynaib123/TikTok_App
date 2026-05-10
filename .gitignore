@@ -49,5 +49,8 @@ test-results
 *.sln
 *.sw?
 
-# Claude Code local settings (may contain webhook URLs / API keys in command allowlist)
-.claude/settings.local.json
+# Claude Code local settings (peut contenir webhook URLs / API keys + lock files de tâches)
+.claude/
+
+# Artefact Windows : redirection accidentelle vers `nul` (device null) crée un fichier vide
+Backend/nul

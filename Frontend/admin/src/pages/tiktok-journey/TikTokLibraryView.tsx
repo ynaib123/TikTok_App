@@ -12,7 +12,6 @@ import { SelectionProvider, useSelection } from '../../contexts/SelectionContext
 import BulkDeleteSelectionBar from '../../components/bulk-delete/BulkDeleteSelectionBar'
 import BulkDeleteConfirmModal from '../../components/bulk-delete/BulkDeleteConfirmModal'
 import { useToasts } from '../../contexts/ToastContext'
-import { deleteContentIdea } from '../../services/videoOpsSupabase'
 import { VIDEO_OPS_QUERY_KEYS } from '../../services/videoOpsQueries'
 import { journeyTelemetry } from './journeyTelemetry'
 import '../../components/bulk-delete/bulk-delete.css'
@@ -82,7 +81,11 @@ interface TikTokLibraryViewProps {
   startAddFlow: () => void
 }
 
-function statusKind(idea: ContentIdea, isPublished: (i: ContentIdea) => boolean, isRenderReady: (i: ContentIdea) => boolean) {
+function statusKind(
+  idea: ContentIdea,
+  isPublished: (i: ContentIdea) => boolean,
+  isRenderReady: (i: ContentIdea) => boolean,
+) {
   if (isPublished(idea)) return 'published'
   if (idea.shotstackStatus === 'rendering') return 'rendering'
   if (isRenderReady(idea)) return 'ready'
@@ -101,13 +104,38 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
   const navigate = useNavigate()
   const handleOpenIdeaDetail = (id: number) => navigate(`/tiktok/idea/${id}`)
   const {
-    FilterIcon, GridIcon, SearchIcon, SortIcon, TableIcon,
-    catalogTags, contentIdeas, contentIdeasErrorMessage, filteredIdeas,
-    getIdeaStatusLabel, handleLoadMore, handleResetAllCatalogTags, hasNextPage,
-    hasClearableCatalogTags, isFetchingNextPage, isJourneyReady, isLoading,
-    isPublished, isRenderReady, listFilter, listFilterOptions, listSearch,
-    listSort, listSortOptions, listViewMode, openListMenu, selectedListFilter,
-    selectedListSort, setListFilter, setListSearch, setListSort, setListViewMode,
+    FilterIcon,
+    GridIcon,
+    SearchIcon,
+    SortIcon,
+    TableIcon,
+    catalogTags,
+    contentIdeas,
+    contentIdeasErrorMessage,
+    filteredIdeas,
+    getIdeaStatusLabel,
+    handleLoadMore,
+    handleResetAllCatalogTags,
+    hasNextPage,
+    hasClearableCatalogTags,
+    isFetchingNextPage,
+    isJourneyReady,
+    isLoading,
+    isPublished,
+    isRenderReady,
+    listFilter,
+    listFilterOptions,
+    listSearch,
+    listSort,
+    listSortOptions,
+    listViewMode,
+    openListMenu,
+    selectedListFilter,
+    selectedListSort,
+    setListFilter,
+    setListSearch,
+    setListSort,
+    setListViewMode,
     setOpenListMenu,
   } = props
 
@@ -174,7 +202,10 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.manualActions })
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.videoDashboardRoot })
       queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.observability })
-      toasts.push(`${ids.length} vidéo${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}`, { variant: 'success' })
+      toasts.push(
+        `${ids.length} vidéo${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}`,
+        { variant: 'success' },
+      )
     } catch (error) {
       setIsDeleting(false)
       // Rollback to the pre-delete snapshot so the user sees their selection
@@ -198,7 +229,9 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
 
   /* ── Filter chip counts ──────────────────────────────────────────── */
   const counts = useMemo(() => {
-    let pub = 0, unpub = 0, ready = 0
+    let pub = 0,
+      unpub = 0,
+      ready = 0
     for (const i of contentIdeas) {
       if (isPublished(i)) pub++
       else unpub++
@@ -262,7 +295,10 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
                     key={option.value}
                     type="button"
                     className={`admin-product-toolbar-option ${listFilter === option.value ? 'is-selected' : ''}`}
-                    onClick={() => { setListFilter(option.value); closeMenu() }}
+                    onClick={() => {
+                      setListFilter(option.value)
+                      closeMenu()
+                    }}
                   >
                     <span>{option.label}</span>
                     {listFilter === option.value ? <strong>.</strong> : null}
@@ -290,7 +326,10 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
                     key={option.value}
                     type="button"
                     className={`admin-product-toolbar-option ${listSort === option.value ? 'is-selected' : ''}`}
-                    onClick={() => { setListSort(option.value); closeMenu() }}
+                    onClick={() => {
+                      setListSort(option.value)
+                      closeMenu()
+                    }}
                   >
                     <span>{option.label}</span>
                     {listSort === option.value ? <strong>.</strong> : null}
@@ -324,7 +363,11 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
         </div>
         <div className="journey-active-filters-meta">
           {hasClearableCatalogTags ? (
-            <button type="button" className="journey-active-filters-reset" onClick={handleResetAllCatalogTags}>
+            <button
+              type="button"
+              className="journey-active-filters-reset"
+              onClick={handleResetAllCatalogTags}
+            >
               Reinitialiser
             </button>
           ) : null}
@@ -353,7 +396,11 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
                 title={tag.isClearable ? `Retirer ${tag.label}` : tag.label}
               >
                 <span>{tag.label}</span>
-                {tag.isClearable ? <span className="journey-active-tag-x" aria-hidden="true">×</span> : null}
+                {tag.isClearable ? (
+                  <span className="journey-active-tag-x" aria-hidden="true">
+                    ×
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -362,10 +409,16 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
 
       {/* Library meta */}
       <div className="journey-library-meta">
-        <span>{filteredIdeas.length} video(s) affichee(s) sur {contentIdeas.length}</span>
+        <span>
+          {filteredIdeas.length} video(s) affichee(s) sur {contentIdeas.length}
+        </span>
         <div className="journey-library-meta-legend" aria-label="Legende des statuts">
-          <span><i className="is-online" aria-hidden="true" /> Publiee</span>
-          <span><i className="is-offline" aria-hidden="true" /> Non publiee</span>
+          <span>
+            <i className="is-online" aria-hidden="true" /> Publiee
+          </span>
+          <span>
+            <i className="is-offline" aria-hidden="true" /> Non publiee
+          </span>
         </div>
       </div>
 
@@ -377,14 +430,19 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       ) : null}
 
       {isLoading ? <p className="journey-library-meta">Chargement…</p> : null}
-      {!isLoading && contentIdeasErrorMessage ? <p className="journey-library-meta">Erreur: {contentIdeasErrorMessage}</p> : null}
+      {!isLoading && contentIdeasErrorMessage ? (
+        <p className="journey-library-meta">Erreur: {contentIdeasErrorMessage}</p>
+      ) : null}
       {!isLoading && !contentIdeasErrorMessage && !contentIdeas.length ? (
         <section className="journey-empty">
           <strong>Aucune video pour le moment</strong>
           <p>Lance ton premier parcours pour generer une video.</p>
         </section>
       ) : null}
-      {!isLoading && !contentIdeasErrorMessage && Boolean(contentIdeas.length) && !filteredIdeas.length ? (
+      {!isLoading &&
+      !contentIdeasErrorMessage &&
+      Boolean(contentIdeas.length) &&
+      !filteredIdeas.length ? (
         <section className="journey-empty">
           <strong>Aucune video ne correspond</strong>
           <p>Modifie ta recherche ou tes filtres pour voir plus de resultats.</p>
@@ -392,7 +450,10 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       ) : null}
 
       {/* Grid view */}
-      {!isLoading && !contentIdeasErrorMessage && filteredIdeas.length && listViewMode === 'grid' ? (
+      {!isLoading &&
+      !contentIdeasErrorMessage &&
+      filteredIdeas.length &&
+      listViewMode === 'grid' ? (
         <section className="journey-library-grid" aria-label="Liste des videos">
           {filteredIdeas.map((idea) => {
             const isSelected = selection.isSelected(idea.id)
@@ -412,7 +473,10 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
       ) : null}
 
       {/* Table view */}
-      {!isLoading && !contentIdeasErrorMessage && filteredIdeas.length && listViewMode === 'table' ? (
+      {!isLoading &&
+      !contentIdeasErrorMessage &&
+      filteredIdeas.length &&
+      listViewMode === 'table' ? (
         <div className="journey-library-table-wrap">
           <table className="journey-library-table">
             <thead>
@@ -429,15 +493,26 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
                 const kind = statusKind(idea, isPublished, isRenderReady)
                 return (
                   <tr key={idea.id}>
-                    <td><span className="journey-library-table-id">#{idea.id}</span></td>
-                    <td className="journey-library-table-topic">{idea.topic || `Video #${idea.id}`}</td>
+                    <td>
+                      <span className="journey-library-table-id">#{idea.id}</span>
+                    </td>
+                    <td className="journey-library-table-topic">
+                      {idea.topic || `Video #${idea.id}`}
+                    </td>
                     <td>
                       <span className={`journey-status-pill is-${kind}`}>
                         {getIdeaStatusLabel(idea)}
                       </span>
                     </td>
                     <td>{isRenderReady(idea) ? 'Pret' : idea.shotstackStatus || 'En attente'}</td>
-                    <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td
+                      style={{
+                        maxWidth: 320,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {idea.caption || '-'}
                     </td>
                   </tr>
@@ -450,7 +525,12 @@ function TikTokLibraryViewInner(props: TikTokLibraryViewProps) {
 
       {!isLoading && !contentIdeasErrorMessage && hasNextPage ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
-          <button type="button" className="journey-btn" onClick={handleLoadMore} disabled={isFetchingNextPage}>
+          <button
+            type="button"
+            className="journey-btn"
+            onClick={handleLoadMore}
+            disabled={isFetchingNextPage}
+          >
             {isFetchingNextPage ? 'Chargement…' : 'Charger plus'}
           </button>
         </div>

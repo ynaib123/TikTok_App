@@ -1,7 +1,4 @@
-import {
-  clearAdminSession,
-  isAdminAccessTokenExpired,
-} from './adminSessionStore'
+import { clearAdminSession, isAdminAccessTokenExpired } from './adminSessionStore'
 import { refreshAdminSession } from './adminAuthService'
 import { attachAdminCsrfHeader, clearAdminCsrfTokenCache } from './adminCsrfService'
 import { beginAdminPerf, endAdminPerf } from './adminPerformance'
@@ -40,9 +37,11 @@ export function buildAdminApiUrl(endpoint: string): string {
 }
 
 function shouldBypassRefresh(endpoint: string = ''): boolean {
-  return endpoint.endsWith('/admins/login')
-    || endpoint.endsWith('/admins/refresh')
-    || endpoint.endsWith('/admins/logout')
+  return (
+    endpoint.endsWith('/admins/login') ||
+    endpoint.endsWith('/admins/refresh') ||
+    endpoint.endsWith('/admins/logout')
+  )
 }
 
 function shouldAttachCsrfHeader(method: string = 'GET'): boolean {
@@ -52,12 +51,30 @@ function shouldAttachCsrfHeader(method: string = 'GET'): boolean {
 // Sprint securite : l'access token est desormais transmis via cookie HttpOnly
 // (envoi automatique via credentials: 'include'). Plus aucun storage cote JS,
 // donc plus de surface XSS pour vol de token.
+
+let _sessionTraceId: string | null = null
+
+/** Retourne ou génère le trace ID de session (16 hex chars). */
+export function getSessionTraceId(): string {
+  if (!_sessionTraceId) {
+    _sessionTraceId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+  return _sessionTraceId
+}
+
 async function createHeaders(options: RequestInit = {}): Promise<Headers> {
   const headers = new Headers(options.headers || {})
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
 
   if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
+  }
+
+  // Propagation du trace ID de session vers le backend pour corrélation end-to-end
+  if (!headers.has('X-Trace-Id')) {
+    headers.set('X-Trace-Id', getSessionTraceId())
   }
 
   if (shouldAttachCsrfHeader(options.method)) {
@@ -94,10 +111,7 @@ async function parseResponse(response: Response): Promise<ParsedResponse> {
 function createHttpError(parsed: ParsedResponse): AdminApiError {
   const data = parsed?.data as { message?: string; error?: string; details?: string } | null
   const message =
-    data?.message
-    || data?.error
-    || data?.details
-    || `Erreur HTTP ${parsed?.status ?? 'inconnue'}`
+    data?.message || data?.error || data?.details || `Erreur HTTP ${parsed?.status ?? 'inconnue'}`
 
   const error = new Error(message) as AdminApiError
   error.status = parsed?.status ?? 500
@@ -111,9 +125,7 @@ async function performFetch(
   options: RequestInit = {},
   requestOptions: PerformFetchOptions = {},
 ): Promise<ParsedResponse> {
-  const {
-    suppressConsoleError = false,
-  } = requestOptions
+  const { suppressConsoleError = false } = requestOptions
 
   const headers = await createHeaders(options)
   const perfToken = beginAdminPerf('admin-api-request', {
@@ -174,11 +186,13 @@ export async function apiRequest<T = unknown>(
       suppressConsoleError: suppressConsoleError || willRetryAuth || willRetryCsrf,
     })
 
-    if (
-      parsed.status === 401
-      && retryOnUnauthorized
-      && shouldTryRefresh
-    ) {
+    if (parsed.status === 401 && retryOnUnauthorized && shouldTryRefresh) {
+      // Vider aussi le cache CSRF : un 401 peut être causé par une désynchronisation
+      // du cookie XSRF-TOKEN (cookie effacé après fermeture navigateur). Le retry
+      // avec CSRF frais résoudra ce cas sans déclencher de déconnexion.
+      if (shouldRetryCsrf) {
+        clearAdminCsrfTokenCache()
+      }
       await refreshAdminSession()
       parsed = await performFetch(endpoint, options, {
         skipAuth,
@@ -186,11 +200,7 @@ export async function apiRequest<T = unknown>(
       })
     }
 
-    if (
-      parsed.status === 403
-      && retryOnForbiddenWithFreshCsrf
-      && shouldRetryCsrf
-    ) {
+    if (parsed.status === 403 && retryOnForbiddenWithFreshCsrf && shouldRetryCsrf) {
       clearAdminCsrfTokenCache()
       parsed = await performFetch(endpoint, options, { skipAuth, suppressConsoleError })
     }
@@ -208,7 +218,12 @@ export async function apiRequest<T = unknown>(
 
     return parsed.data as T
   } catch (error) {
-    if (error instanceof TypeError && String(error.message || '').toLowerCase().includes('fetch')) {
+    if (
+      error instanceof TypeError &&
+      String(error.message || '')
+        .toLowerCase()
+        .includes('fetch')
+    ) {
       throw new Error(
         `Impossible de contacter le serveur admin. Verifiez que le backend tourne et que VITE_API_BASE_URL pointe vers ${API_BASE_URL}.`,
       )
@@ -226,7 +241,10 @@ export async function rawApiRequest<T = unknown>(
   return apiRequest<T>(endpoint, options, requestOptions)
 }
 
-export async function apiGet<T = unknown>(endpoint: string, requestOptions: AdminRequestOptions = {}): Promise<T> {
+export async function apiGet<T = unknown>(
+  endpoint: string,
+  requestOptions: AdminRequestOptions = {},
+): Promise<T> {
   return apiRequest<T>(endpoint, { method: 'GET' }, requestOptions)
 }
 
@@ -235,10 +253,14 @@ export async function apiPost<T = unknown>(
   data: unknown,
   requestOptions: AdminRequestOptions = {},
 ): Promise<T> {
-  return apiRequest<T>(endpoint, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }, requestOptions)
+  return apiRequest<T>(
+    endpoint,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    requestOptions,
+  )
 }
 
 export async function apiPut<T = unknown>(
@@ -246,10 +268,14 @@ export async function apiPut<T = unknown>(
   data: unknown,
   requestOptions: AdminRequestOptions = {},
 ): Promise<T> {
-  return apiRequest<T>(endpoint, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }, requestOptions)
+  return apiRequest<T>(
+    endpoint,
+    {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    },
+    requestOptions,
+  )
 }
 
 export async function apiPatch<T = unknown>(
@@ -257,10 +283,14 @@ export async function apiPatch<T = unknown>(
   data: unknown,
   requestOptions: AdminRequestOptions = {},
 ): Promise<T> {
-  return apiRequest<T>(endpoint, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  }, requestOptions)
+  return apiRequest<T>(
+    endpoint,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
+    requestOptions,
+  )
 }
 
 export async function apiDelete<T = unknown>(
@@ -280,10 +310,7 @@ export async function createAuthenticatedAdminRequest(
   options: RequestInit = {},
   requestOptions: AdminRequestOptions = {},
 ): Promise<AuthenticatedAdminRequest> {
-  const {
-    skipAuth = false,
-    skipAuthRefresh = false,
-  } = requestOptions
+  const { skipAuth = false, skipAuthRefresh = false } = requestOptions
 
   const shouldTryRefresh = !skipAuth && !skipAuthRefresh && !shouldBypassRefresh(endpoint)
   if (shouldTryRefresh && isAdminAccessTokenExpired(ACCESS_TOKEN_EXPIRY_BUFFER_MS)) {

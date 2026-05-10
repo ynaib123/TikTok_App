@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildWorkflowStatusUpdate,
+  computeJourneyReadiness,
   formatShortOpenId,
   getIdeaSceneTexts,
   getIdeaStatusLabel,
@@ -83,15 +84,9 @@ describe('normalizeSceneCount', () => {
 describe('getIdeaSceneTexts', () => {
   test('prefers planned scenes when present', () => {
     const idea = {
-      plannedScenes: [
-        { sceneText: ' First scene ' },
-        { sceneText: 'Second scene' },
-      ],
+      plannedScenes: [{ sceneText: ' First scene ' }, { sceneText: 'Second scene' }],
     } as unknown as Parameters<typeof getIdeaSceneTexts>[0]
-    expect(getIdeaSceneTexts(idea, 'fallback. ignored.')).toEqual([
-      'First scene',
-      'Second scene',
-    ])
+    expect(getIdeaSceneTexts(idea, 'fallback. ignored.')).toEqual(['First scene', 'Second scene'])
   })
 
   test('falls back to script splitting when no planned scenes', () => {
@@ -112,7 +107,10 @@ describe('mergeIdeasById', () => {
       { id: 1, topic: 'old' },
       { id: 2, topic: 'kept' },
     ]
-    const incoming = [{ id: 1, topic: 'new' }, { id: 3, topic: 'fresh' }]
+    const incoming = [
+      { id: 1, topic: 'new' },
+      { id: 3, topic: 'fresh' },
+    ]
     expect(mergeIdeasById(existing, incoming)).toEqual([
       { id: 3, topic: 'fresh' },
       { id: 2, topic: 'kept' },
@@ -226,6 +224,71 @@ describe('buildWorkflowStatusUpdate', () => {
     expect(result.workflowType).toBe('X')
     expect(result.state).toBe('idle')
     expect(typeof result.lastUpdatedAt).toBe('string')
+  })
+})
+
+describe('computeJourneyReadiness', () => {
+  test('isReady when idea and all media slots filled', () => {
+    const result = computeJourneyReadiness({
+      hasIdea: true,
+      filledSceneSlots: 3,
+      totalSceneSlots: 3,
+      hasAudio: false,
+      hasConnectedAccount: true,
+    })
+    expect(result.isReady).toBe(true)
+    expect(result.canGenerateVideo).toBe(true)
+    expect(result.blockingIssues).toHaveLength(0)
+  })
+
+  test('not ready when no idea', () => {
+    const result = computeJourneyReadiness({
+      hasIdea: false,
+      filledSceneSlots: 3,
+      totalSceneSlots: 3,
+      hasAudio: false,
+      hasConnectedAccount: false,
+    })
+    expect(result.isReady).toBe(false)
+    expect(result.blockingIssues).toContain('Idée & script')
+  })
+
+  test('not ready when media slots incomplete', () => {
+    const result = computeJourneyReadiness({
+      hasIdea: true,
+      filledSceneSlots: 2,
+      totalSceneSlots: 4,
+      hasAudio: false,
+      hasConnectedAccount: true,
+    })
+    expect(result.isReady).toBe(false)
+    expect(result.mediaStatus).toBe('warn')
+    expect(result.blockingIssues).toContain('Médias')
+    expect(result.canGenerateVideo).toBe(false)
+  })
+
+  test('not ready when no media at all', () => {
+    const result = computeJourneyReadiness({
+      hasIdea: true,
+      filledSceneSlots: 0,
+      totalSceneSlots: 3,
+      hasAudio: false,
+      hasConnectedAccount: true,
+    })
+    expect(result.mediaStatus).toBe('error')
+    expect(result.canGenerateVideo).toBe(false)
+  })
+
+  test('audio and account are not blocking', () => {
+    const result = computeJourneyReadiness({
+      hasIdea: true,
+      filledSceneSlots: 3,
+      totalSceneSlots: 3,
+      hasAudio: false,
+      hasConnectedAccount: false,
+    })
+    expect(result.isReady).toBe(true)
+    expect(result.blockingIssues).toHaveLength(0)
   })
 })
 

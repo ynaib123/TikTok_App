@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import type { NavigateFunction } from 'react-router-dom'
 import type { ContentIdea, TikTokAccount } from '../../types'
+import type { PexelsVideo } from '../../services/videoOpsSupabase'
 
 export type IconComponent = () => JSX.Element
 
@@ -52,11 +53,14 @@ export interface StepBodyProps {
   closeAddFlow: () => void
   saveAndCloseFlow: () => void
   isLeaveConfirmOpen: boolean
+  willDeleteOnLeave: boolean
   openLeaveConfirm: () => void
   closeLeaveConfirm: () => void
   leaveWithoutSaving: () => void
   saveAndLeaveFlow: () => void
   goToStep: (id: string) => void
+  goToStepFromRecap: (stepId: string) => void
+  handleValidateAudio: () => void
   ChevronDownIcon: IconComponent
   BackArrow: IconComponent
   VideoPreview: ({ url }: { url: string | null | undefined }) => JSX.Element | null
@@ -74,6 +78,14 @@ export interface StepBodyProps {
   handleUploadVideo: () => Promise<void> | void
   handleValidateCreation: () => Promise<void> | void
   handleGoToTemplateStep: () => Promise<void> | void
+  handleManualCreate: (data: {
+    topic: string
+    script: string
+    caption: string
+    keyword: string
+  }) => Promise<void> | void
+  selectedTikTokSoundId: string | null
+  setSelectedTikTokSoundId: (id: string | null) => void
   handleValidateTemplate: () => void
   handleValidateMedia: () => void
   handleValidateInitPublish: () => void
@@ -135,9 +147,11 @@ export interface StepBodyProps {
   selectedSceneMediaUrls: string[]
   setSelectedSceneMediaUrls: (urls: string[] | ((current: string[]) => string[])) => void
   sceneTextStyles: SceneTextStyle[]
-  setSceneTextStyles: (styles: SceneTextStyle[] | ((current: SceneTextStyle[]) => SceneTextStyle[])) => void
-  pexelsCache: { query: string; videos: any[] } | null
-  setPexelsCache: (cache: { query: string; videos: any[] } | null) => void
+  setSceneTextStyles: (
+    styles: SceneTextStyle[] | ((current: SceneTextStyle[]) => SceneTextStyle[]),
+  ) => void
+  pexelsCache: { query: string; videos: PexelsVideo[] } | null
+  setPexelsCache: (cache: { query: string; videos: PexelsVideo[] } | null) => void
 }
 
 export type TikTokStepScreenProps = StepBodyProps

@@ -20,7 +20,11 @@ export function AccountSideCard({
     <div className="journey-wizard-side-card">
       <div className="journey-wizard-side-card-head">
         <h3>Compte TikTok</h3>
-        <button type="button" className="journey-wizard-side-card-link" onClick={() => navigate('/accounts')}>
+        <button
+          type="button"
+          className="journey-wizard-side-card-link"
+          onClick={() => navigate('/accounts')}
+        >
           Gerer
         </button>
       </div>
@@ -28,7 +32,7 @@ export function AccountSideCard({
         <div className="journey-account-row">
           <div className="journey-account-row-head">
             <strong>{account.nickname || 'Compte connecte'}</strong>
-            <Pill variant="published">Connecte</Pill>
+            <Pill tone="success">Connecte</Pill>
           </div>
           <span className="journey-account-row-detail">
             {formatShortOpenId(activeIdea?.tiktokAccountOpenId || account.openId)}
@@ -39,7 +43,7 @@ export function AccountSideCard({
         <div className="journey-account-row">
           <div className="journey-account-row-head">
             <strong>Aucun compte connecte</strong>
-            <Pill variant="error">Off</Pill>
+            <Pill tone="error">Off</Pill>
           </div>
           <span className="journey-account-row-detail">Connecte un compte dans Accounts.</span>
         </div>

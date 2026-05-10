@@ -41,8 +41,10 @@ export const VIDEO_OPS_QUERY_KEYS = {
   ) => ['pexels-videos', query, orientation, perPage] as const,
   pexelsVideosRoot: ['pexels-videos'] as const,
   audioVoices: ['audio', 'voices'] as const,
-  audioAssets: (contentIdeaId: number | null) =>
-    ['audio', 'assets', contentIdeaId] as const,
+  audioAssets: (contentIdeaId: number | null) => ['audio', 'assets', contentIdeaId] as const,
+  tiktokSounds: (category?: string, q?: string) =>
+    ['audio', 'tiktok-sounds', category ?? '', q ?? ''] as const,
+  tiktokSoundsRoot: ['audio', 'tiktok-sounds'] as const,
   audioRoot: ['audio'] as const,
 }
 
@@ -90,7 +92,9 @@ function stickyWriteArray<T>(
   if (previous && previous.length > 0) {
     // Suspect : le backend renvoie [] alors qu'on avait des donnees. On garde le cache.
     if (typeof console !== 'undefined') {
-      console.warn(`[videoOpsQueries] sticky cache : refus d'ecraser ${JSON.stringify(key)} (avait ${previous.length} items, recu vide)`)
+      console.warn(
+        `[videoOpsQueries] sticky cache : refus d'ecraser ${JSON.stringify(key)} (avait ${previous.length} items, recu vide)`,
+      )
     }
     return
   }
@@ -111,7 +115,9 @@ function stickyWritePage(
   const previousCount = previous?.pages.reduce((sum, p) => sum + (p.content?.length ?? 0), 0) ?? 0
   if (previousCount > 0) {
     if (typeof console !== 'undefined') {
-      console.warn(`[videoOpsQueries] sticky cache : refus d'ecraser content-ideas (avait ${previousCount} items, recu vide)`)
+      console.warn(
+        `[videoOpsQueries] sticky cache : refus d'ecraser content-ideas (avait ${previousCount} items, recu vide)`,
+      )
     }
     return
   }

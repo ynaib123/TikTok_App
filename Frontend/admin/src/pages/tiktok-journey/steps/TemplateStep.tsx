@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useJourney } from '../JourneyContext'
@@ -13,7 +14,6 @@ import { useRenderProgress } from '../useRenderProgress'
 import type { SceneTextStyle } from '../types'
 import { Button } from '../../../design-system'
 import { PexelsGallerySkeleton } from './PexelsSkeleton'
-import { PexelsGalleryGrid } from './PexelsGalleryGrid'
 
 /**
  * Step 2 Ã¢â‚¬â€ merged Template + MÃƒÂ©dias.
@@ -70,21 +70,62 @@ const STYLE_DEFAULTS = {
   shadow: 'strong' as const,
 }
 
+const POSITION_MIN = 0
+const POSITION_MAX = 100
+const POSITION_STEP = 0.1
+
+const POSITION_PRESETS = [
+  { label: 'Haut gauche', x: 16, y: 14 },
+  { label: 'Haut centre', x: 50, y: 14 },
+  { label: 'Haut droite', x: 84, y: 14 },
+  { label: 'Milieu gauche', x: 16, y: 50 },
+  { label: 'Centre', x: 50, y: 50 },
+  { label: 'Milieu droite', x: 84, y: 50 },
+  { label: 'Bas gauche', x: 16, y: 86 },
+  { label: 'Bas centre', x: 50, y: 86 },
+  { label: 'Bas droite', x: 84, y: 86 },
+]
+
+function clampPosition(value: number): number {
+  return Math.min(POSITION_MAX, Math.max(POSITION_MIN, value))
+}
+
+function roundPosition(value: number): number {
+  return Math.round(clampPosition(value) * 10) / 10
+}
+
 function createDefaultSceneStyle(saved = false): SceneTextStyle {
   return { ...STYLE_DEFAULTS, saved }
 }
 
 function normalizeSceneStyle(value: unknown): SceneTextStyle {
-  const raw = value && typeof value === 'object' ? value as Partial<SceneTextStyle> : {}
+  const raw = value && typeof value === 'object' ? (value as Partial<SceneTextStyle>) : {}
   return {
-    textX: Number.isFinite(Number(raw.textX)) ? Math.min(94, Math.max(6, Number(raw.textX))) : STYLE_DEFAULTS.textX,
-    textY: Number.isFinite(Number(raw.textY)) ? Math.min(94, Math.max(6, Number(raw.textY))) : STYLE_DEFAULTS.textY,
-    textColor: typeof raw.textColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.textColor) ? raw.textColor : STYLE_DEFAULTS.textColor,
-    fontFamily: typeof raw.fontFamily === 'string' && raw.fontFamily.trim() ? raw.fontFamily : STYLE_DEFAULTS.fontFamily,
-    fontSize: Number.isFinite(Number(raw.fontSize)) ? Math.min(80, Math.max(14, Number(raw.fontSize))) : STYLE_DEFAULTS.fontSize,
-    fontWeight: Number.isFinite(Number(raw.fontWeight)) ? Number(raw.fontWeight) : STYLE_DEFAULTS.fontWeight,
+    textX: Number.isFinite(Number(raw.textX))
+      ? roundPosition(Number(raw.textX))
+      : STYLE_DEFAULTS.textX,
+    textY: Number.isFinite(Number(raw.textY))
+      ? roundPosition(Number(raw.textY))
+      : STYLE_DEFAULTS.textY,
+    textColor:
+      typeof raw.textColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.textColor)
+        ? raw.textColor
+        : STYLE_DEFAULTS.textColor,
+    fontFamily:
+      typeof raw.fontFamily === 'string' && raw.fontFamily.trim()
+        ? raw.fontFamily
+        : STYLE_DEFAULTS.fontFamily,
+    fontSize: Number.isFinite(Number(raw.fontSize))
+      ? Math.min(80, Math.max(14, Number(raw.fontSize)))
+      : STYLE_DEFAULTS.fontSize,
+    fontWeight: Number.isFinite(Number(raw.fontWeight))
+      ? Number(raw.fontWeight)
+      : STYLE_DEFAULTS.fontWeight,
     uppercase: typeof raw.uppercase === 'boolean' ? raw.uppercase : STYLE_DEFAULTS.uppercase,
-    shadow: raw.shadow === 'none' || raw.shadow === 'soft' || raw.shadow === 'strong' ? raw.shadow : STYLE_DEFAULTS.shadow,
+    shadow:
+      raw.shadow === 'none' || raw.shadow === 'soft' || raw.shadow === 'strong'
+        ? raw.shadow
+        : STYLE_DEFAULTS.shadow,
     saved: Boolean(raw.saved),
   }
 }
@@ -108,6 +149,11 @@ function pickPortraitFile(video: PexelsVideo): string | null {
   return (portrait[0] || files[0])?.link || null
 }
 
+// Dimensions exactes du rendu TikTok portrait — la preview sera une version
+// CSS-scalée de ce canvas virtuel pour garantir une fidélité pixel-perfect.
+const RENDER_WIDTH = 1080
+const RENDER_HEIGHT = 1920
+
 export default function TemplateStep() {
   const { t } = useTranslation('journey')
   const p = useJourney()
@@ -121,14 +167,47 @@ export default function TemplateStep() {
     if (renderProgress.outputUrl) setRenderOutputUrl(renderProgress.outputUrl)
   }, [renderProgress.outputUrl])
   const effectivePreviewUrl = previewUrl || renderOutputUrl || ''
+
+  // ── Canvas virtuel scalé — suit la largeur réelle de la frame preview ──
+  const previewFrameRef = useRef<HTMLDivElement | null>(null)
+  const [previewScale, setPreviewScale] = useState(1)
+
+  useEffect(() => {
+    const frame = previewFrameRef.current
+    if (!frame) return
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width
+      if (w && w > 0) setPreviewScale(w / RENDER_WIDTH)
+    })
+    observer.observe(frame)
+    // Mesure initiale
+    setPreviewScale(frame.getBoundingClientRect().width / RENDER_WIDTH || 1)
+    return () => observer.disconnect()
+  }, [])
+
+  // ── Chargement des polices Google Fonts identiques au renderer ─────────
+  useEffect(() => {
+    const id = 'journey-preview-gfonts'
+    if (document.getElementById(id)) return
+    const link = document.createElement('link')
+    link.id = id
+    link.rel = 'stylesheet'
+    link.href =
+      'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800;900&display=swap'
+    document.head.appendChild(link)
+  }, [])
   const progressPct = Math.round(renderProgress.progress * 100)
   const statusLabel: Record<typeof renderProgress.status, string> = {
+    queued: renderProgress.queuePosition
+      ? t('render.status.queued', { position: renderProgress.queuePosition })
+      : t('render.status.queuedWaiting'),
     preparing: t('render.status.preparing'),
     rendering: t('render.status.rendering'),
     'post-processing': t('render.status.post-processing'),
     uploading: t('render.status.uploading'),
     done: t('render.status.done'),
     error: t('render.status.error'),
+    cancelled: t('render.status.cancelled'),
     unknown: t('render.status.unknown'),
   }
 
@@ -141,6 +220,7 @@ export default function TemplateStep() {
   const [fontWeight, setFontWeight] = useState<number>(STYLE_DEFAULTS.fontWeight)
   const [uppercase, setUppercase] = useState<boolean>(STYLE_DEFAULTS.uppercase)
   const [shadow, setShadow] = useState<'none' | 'soft' | 'strong'>(STYLE_DEFAULTS.shadow)
+  const [isDraggingText, setIsDraggingText] = useState(false)
 
   const applyStyleToControls = useCallback((style: SceneTextStyle) => {
     setTextX(style.textX)
@@ -151,6 +231,50 @@ export default function TemplateStep() {
     setFontWeight(style.fontWeight)
     setUppercase(style.uppercase)
     setShadow(style.shadow)
+  }, [])
+
+  const updateTextPosition = useCallback((nextX: number, nextY: number) => {
+    setTextX(roundPosition(nextX))
+    setTextY(roundPosition(nextY))
+  }, [])
+
+  const updateTextPositionFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      const frame = previewFrameRef.current
+      if (!frame) return
+      const rect = frame.getBoundingClientRect()
+      if (!rect.width || !rect.height) return
+      updateTextPosition(
+        ((clientX - rect.left) / rect.width) * 100,
+        ((clientY - rect.top) / rect.height) * 100,
+      )
+    },
+    [updateTextPosition],
+  )
+
+  const startTextDrag = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      event.currentTarget.setPointerCapture(event.pointerId)
+      setIsDraggingText(true)
+      updateTextPositionFromPointer(event.clientX, event.clientY)
+    },
+    [updateTextPositionFromPointer],
+  )
+
+  const moveTextDrag = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      if (!isDraggingText) return
+      updateTextPositionFromPointer(event.clientX, event.clientY)
+    },
+    [isDraggingText, updateTextPositionFromPointer],
+  )
+
+  const stopTextDrag = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    setIsDraggingText(false)
   }, [])
 
   const resetStyleDefaults = () => {
@@ -183,7 +307,8 @@ export default function TemplateStep() {
   }, [activeSlot])
 
   // ----- Pexels search ------------------------------------------------------
-  const defaultQuery = String(idea?.keyword || idea?.topic || p.editedKeyword || '').trim() || 'lifestyle'
+  const defaultQuery =
+    String(idea?.keyword || idea?.topic || p.editedKeyword || '').trim() || 'lifestyle'
   const [query, setQuery] = useState<string>(defaultQuery)
   const [committedQuery, setCommittedQuery] = useState<string>(defaultQuery)
   useEffect(() => {
@@ -210,9 +335,11 @@ export default function TemplateStep() {
     retry: 1,
   })
 
-  const videos = pexelsQuery.data?.videos ?? []
+  const videos = useMemo(() => pexelsQuery.data?.videos ?? [], [pexelsQuery.data?.videos])
   const isSearching = pexelsQuery.isFetching
-  const searchError = pexelsQuery.isError ? (pexelsQuery.error?.message || 'Recherche ÃƒÂ©chouÃƒÂ©e') : null
+  const searchError = pexelsQuery.isError
+    ? pexelsQuery.error?.message || 'Recherche ÃƒÂ©chouÃƒÂ©e'
+    : null
 
   // Mirror the React Query result into the global flow state for workspace
   // save / leave / resume.
@@ -237,16 +364,21 @@ export default function TemplateStep() {
       videoRefs.current = new Set()
     }
   }, [videos])
-  useEffect(() => () => {
-    videoRefs.current.forEach(releaseVideoElement)
-    videoRefs.current.clear()
-  }, [])
+  useEffect(
+    () => () => {
+      videoRefs.current.forEach(releaseVideoElement)
+      videoRefs.current.clear()
+    },
+    [],
+  )
 
   const submitSearch = (q: string) => {
     const trimmed = q.trim()
     if (!trimmed) return
     if (trimmed === trimmedCommittedQuery) {
-      void queryClient.invalidateQueries({ queryKey: VIDEO_OPS_QUERY_KEYS.pexelsVideos(trimmed, 'portrait', 18) })
+      void queryClient.invalidateQueries({
+        queryKey: VIDEO_OPS_QUERY_KEYS.pexelsVideos(trimmed, 'portrait', 18),
+      })
       return
     }
     setCommittedQuery(trimmed)
@@ -256,34 +388,44 @@ export default function TemplateStep() {
   // useCallback so PexelsGalleryGrid (React.memo) doesn't re-render every time
   // a style slider moves Ã¢â‚¬â€ its props stay referentially stable.
   const setSelectedSceneMediaUrls = p.setSelectedSceneMediaUrls
-  const assignSlot = useCallback((slotIndex: number, url: string) => {
-    setSelectedSceneMediaUrls((current) => {
-      const next = [...current]
-      while (next.length < sceneCount) next.push('')
-      for (let i = 0; i < next.length; i += 1) {
-        if (next[i] === url) next[i] = ''
-      }
-      next[slotIndex] = url
-      return next
-    })
-    setActiveSlot(slotIndex)
-  }, [sceneCount, setSelectedSceneMediaUrls])
+  const assignSlot = useCallback(
+    (slotIndex: number, url: string) => {
+      setSelectedSceneMediaUrls((current) => {
+        const next = [...current]
+        while (next.length < sceneCount) next.push('')
+        for (let i = 0; i < next.length; i += 1) {
+          if (next[i] === url) next[i] = ''
+        }
+        next[slotIndex] = url
+        return next
+      })
+      setActiveSlot(slotIndex)
+    },
+    [sceneCount, setSelectedSceneMediaUrls],
+  )
 
-  const clearVideo = useCallback((url: string) => {
-    setSelectedSceneMediaUrls((current) => current.map((value) => (value === url ? '' : value)))
-  }, [setSelectedSceneMediaUrls])
+  const clearVideo = useCallback(
+    (url: string) => {
+      setSelectedSceneMediaUrls((current) => current.map((value) => (value === url ? '' : value)))
+    },
+    [setSelectedSceneMediaUrls],
+  )
 
-  const clearSlot = useCallback((slotIndex: number) => {
-    setSelectedSceneMediaUrls((current) => current.map((value, index) => (index === slotIndex ? '' : value)))
-    setActiveSlot(slotIndex)
-  }, [setSelectedSceneMediaUrls])
+  const clearSlot = useCallback(
+    (slotIndex: number) => {
+      setSelectedSceneMediaUrls((current) =>
+        current.map((value, index) => (index === slotIndex ? '' : value)),
+      )
+      setActiveSlot(slotIndex)
+    },
+    [setSelectedSceneMediaUrls],
+  )
 
   const selectExistingSlot = useCallback((slotIndex: number) => {
     setActiveSlot(slotIndex)
   }, [])
 
   const filledSlots = p.selectedSceneMediaUrls.filter((u) => Boolean(u && u.trim())).length
-  const allFilled = filledSlots === sceneCount
 
   // ----- Carousel scene texts ----------------------------------------------
   const sceneTexts = useMemo(() => {
@@ -293,32 +435,43 @@ export default function TemplateStep() {
 
   const currentSceneText = (sceneTexts[activeSlot] || '').slice(0, 140)
   const currentSceneVideo = p.selectedSceneMediaUrls[activeSlot] || ''
-  const currentControlsStyle: SceneTextStyle = {
-    textX,
-    textY,
-    textColor,
-    fontFamily,
-    fontSize,
-    fontWeight,
-    uppercase,
-    shadow,
-    saved: true,
-  }
+  const currentControlsStyle: SceneTextStyle = useMemo(
+    () => ({
+      textX,
+      textY,
+      textColor,
+      fontFamily,
+      fontSize,
+      fontWeight,
+      uppercase,
+      shadow,
+      saved: true,
+    }),
+    [fontFamily, fontSize, fontWeight, shadow, textColor, textX, textY, uppercase],
+  )
   const savedStyleCount = p.sceneTextStyles
     .slice(0, sceneCount)
     .map(normalizeSceneStyle)
     .filter((style) => style.saved).length
-  const allStylesSaved = savedStyleCount === sceneCount
-  const allScenesConfigured = allFilled && allStylesSaved
 
-  const saveActiveSceneStyle = () => {
-    p.setSceneTextStyles((current) => {
-      const next = current.slice(0, sceneCount).map(normalizeSceneStyle)
-      while (next.length < sceneCount) next.push(createDefaultSceneStyle(false))
-      next[activeSlot] = currentControlsStyle
-      return next
-    })
-  }
+  const setSceneTextStyles = p.setSceneTextStyles
+  const persistActiveSceneStyle = useCallback(
+    (saved = true) => {
+      setSceneTextStyles((current) => {
+        const next = current.slice(0, sceneCount).map(normalizeSceneStyle)
+        while (next.length < sceneCount) next.push(createDefaultSceneStyle(false))
+        next[activeSlot] = { ...currentControlsStyle, saved }
+        return next
+      })
+    },
+    [activeSlot, currentControlsStyle, sceneCount, setSceneTextStyles],
+  )
+
+  useEffect(() => {
+    persistActiveSceneStyle(true)
+  }, [persistActiveSceneStyle])
+
+  const saveActiveSceneStyle = () => persistActiveSceneStyle(true)
 
   const applyCurrentStyleToAllScenes = () => {
     const style = { ...currentControlsStyle, saved: true }
@@ -344,293 +497,319 @@ export default function TemplateStep() {
             </button>
           </div>
           <div className="journey-style-scroll">
-
-          <section className="journey-style-section" aria-labelledby="merged-section-scene">
-            <div className="journey-style-section-head">
-              <h3 id="merged-section-scene" className="journey-style-section-title">Scene active</h3>
-              <span className="journey-step-row-hint">{savedStyleCount}/{sceneCount} styles</span>
-            </div>
-            <div className="journey-scene-style-tabs" role="tablist" aria-label="Scenes">
-              {Array.from({ length: sceneCount }).map((_, index) => {
-                const saved = normalizeSceneStyle(p.sceneTextStyles[index]).saved
-                const filled = Boolean(p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim())
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    role="tab"
-                    aria-selected={index === activeSlot}
-                    className={`journey-scene-style-tab ${index === activeSlot ? 'is-active' : ''} ${saved ? 'is-saved' : ''} ${filled ? 'is-filled' : ''}`}
-                    onClick={() => setActiveSlot(index)}
-                  >
-                    {index + 1}
-                  </button>
-                )
-              })}
-            </div>
-            <div className="journey-style-actions">
-              <button type="button" className="journey-style-action" onClick={saveActiveSceneStyle}>
-                Enregistrer cette scene
-              </button>
-              <button type="button" className="journey-style-action" onClick={applyCurrentStyleToAllScenes}>
-                Appliquer a toutes
-              </button>
-            </div>
-          </section>
-
-
-          <section className="journey-style-section" aria-labelledby="merged-section-position">
-            <h3 id="merged-section-position" className="journey-style-section-title">Position</h3>
-            <div className="journey-style-row">
-              <div className="journey-style-row-head">
-                <label htmlFor="merged-text-y">Verticale</label>
-                <span className="journey-style-row-value">{textY}%</span>
+            <section className="journey-style-section" aria-labelledby="merged-section-scene">
+              <div className="journey-style-section-head">
+                <h3 id="merged-section-scene" className="journey-style-section-title">
+                  Scene active
+                </h3>
+                <span className="journey-step-row-hint">
+                  {savedStyleCount}/{sceneCount} styles
+                </span>
               </div>
-              <input id="merged-text-y" type="range" min={6} max={94} value={textY} onChange={(e) => setTextY(Number(e.target.value))} />
-            </div>
-            <div className="journey-style-row">
-              <div className="journey-style-row-head">
-                <label htmlFor="merged-text-x">Horizontale</label>
-                <span className="journey-style-row-value">{textX}%</span>
-              </div>
-              <input id="merged-text-x" type="range" min={6} max={94} value={textX} onChange={(e) => setTextX(Number(e.target.value))} />
-            </div>
-          </section>
-
-          <section className="journey-style-section" aria-labelledby="merged-section-typo">
-            <h3 id="merged-section-typo" className="journey-style-section-title">Typographie</h3>
-            <div className="journey-style-row">
-              <div className="journey-style-row-head">
-                <label htmlFor="merged-text-size">Taille</label>
-                <span className="journey-style-row-value">{fontSize}px</span>
-              </div>
-              <input id="merged-text-size" type="range" min={14} max={80} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} />
-            </div>
-            <div className="journey-style-grid-2">
-              <div className="journey-style-row">
-                <label htmlFor="merged-font">Police</label>
-                <select id="merged-font" className="journey-step-select" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}>
-                  {FONT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="journey-style-row">
-                <label htmlFor="merged-font-weight">Graisse</label>
-                <select id="merged-font-weight" className="journey-step-select" value={fontWeight} onChange={(e) => setFontWeight(Number(e.target.value))}>
-                  {FONT_WEIGHT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <label className="journey-style-toggle">
-              <input type="checkbox" checked={uppercase} onChange={(e) => setUppercase(e.target.checked)} />
-              <span>Majuscules</span>
-            </label>
-          </section>
-
-          <section className="journey-style-section" aria-labelledby="merged-section-color">
-            <h3 id="merged-section-color" className="journey-style-section-title">Apparence</h3>
-            <div className="journey-style-row">
-              <div className="journey-style-row-head">
-                <label htmlFor="merged-text-color">Couleur du texte</label>
-                <span className="journey-style-color-value">{textColor.toUpperCase()}</span>
-              </div>
-              <div className="journey-style-color-pair">
-                <input id="merged-text-color" className="journey-color-input" type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
-                <input
-                  type="text"
-                  className="journey-step-select journey-style-color-hex"
-                  value={textColor}
-                  onChange={(e) => {
-                    const next = e.target.value.trim()
-                    if (/^#[0-9a-fA-F]{0,6}$/.test(next) || next === '') setTextColor(next)
-                  }}
-                  maxLength={7}
-                  spellCheck={false}
-                  aria-label="Couleur hexadÃƒÂ©cimale"
-                />
-              </div>
-            </div>
-            <div className="journey-style-row">
-              <label>Ombre du texte</label>
-              <div className="journey-style-segmented" role="radiogroup" aria-label="Ombre du texte">
-                {SHADOW_OPTIONS.map((option) => {
-                  const active = option.value === shadow
+              <div className="journey-scene-style-tabs" role="tablist" aria-label="Scenes">
+                {Array.from({ length: sceneCount }).map((_, index) => {
+                  const saved = normalizeSceneStyle(p.sceneTextStyles[index]).saved
+                  const filled = Boolean(
+                    p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim(),
+                  )
                   return (
                     <button
-                      key={option.value}
+                      key={index}
                       type="button"
-                      role="radio"
-                      aria-checked={active}
-                      className={`journey-style-segmented-item ${active ? 'is-active' : ''}`}
-                      onClick={() => setShadow(option.value)}
+                      role="tab"
+                      aria-selected={index === activeSlot}
+                      className={`journey-scene-style-tab ${index === activeSlot ? 'is-active' : ''} ${saved ? 'is-saved' : ''} ${filled ? 'is-filled' : ''}`}
+                      onClick={() => setActiveSlot(index)}
                     >
-                      {option.label}
+                      {index + 1}
                     </button>
                   )
                 })}
               </div>
-            </div>
-          </section>
-
-          <section className="journey-style-section" aria-labelledby="merged-section-render">
-            <h3 id="merged-section-render" className="journey-style-section-title">Rendu</h3>
-            <div className="journey-style-grid-2">
-              <div className="journey-style-row">
-                <label htmlFor="merged-quality">Qualite</label>
-                <select
-                  id="merged-quality"
-                  className="journey-step-select"
-                  value={p.selectedQualityProfile}
-                  onChange={(event) => p.setSelectedQualityProfile(event.target.value)}
-                  disabled={p.isBusy}
+              <div className="journey-style-actions">
+                <button
+                  type="button"
+                  className="journey-style-action"
+                  onClick={saveActiveSceneStyle}
                 >
-                  {p.qualityOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  Enregistrer cette scene
+                </button>
+                <button
+                  type="button"
+                  className="journey-style-action"
+                  onClick={applyCurrentStyleToAllScenes}
+                >
+                  Appliquer a toutes
+                </button>
+              </div>
+              <span className="journey-step-row-hint">
+                Auto-enregistrement actif sur la scene en cours.
+              </span>
+            </section>
+
+            <section className="journey-style-section" aria-labelledby="merged-section-position">
+              <h3 id="merged-section-position" className="journey-style-section-title">
+                Position
+              </h3>
+              <div
+                className="journey-position-presets"
+                role="group"
+                aria-label="Positions rapides du texte"
+              >
+                {POSITION_PRESETS.map((preset) => {
+                  const active =
+                    Math.abs(textX - preset.x) < 0.2 && Math.abs(textY - preset.y) < 0.2
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      className={`journey-position-preset ${active ? 'is-active' : ''}`}
+                      onClick={() => updateTextPosition(preset.x, preset.y)}
+                      aria-label={preset.label}
+                      title={preset.label}
+                    >
+                      <span aria-hidden="true" />
+                    </button>
+                  )
+                })}
               </div>
               <div className="journey-style-row">
-                <label htmlFor="merged-duration">Duree</label>
+                <div className="journey-style-row-head">
+                  <label htmlFor="merged-text-x">X horizontal</label>
+                  <span className="journey-style-row-value">
+                    {textX.toFixed(1)}% / {Math.round((textX / 100) * RENDER_WIDTH)}px
+                  </span>
+                </div>
                 <input
-                  id="merged-duration"
-                  className="journey-step-select"
-                  type="number"
-                  min={p.minVideoDurationSec}
-                  max={p.maxVideoDurationSec}
-                  step={1}
-                  value={p.videoDurationSec}
-                  onChange={(event) => {
-                    const next = Number(event.target.value)
-                    if (Number.isFinite(next)) {
-                      p.setVideoDurationSec(Math.min(p.maxVideoDurationSec, Math.max(p.minVideoDurationSec, next)))
-                    }
-                  }}
-                  disabled={p.isBusy}
+                  id="merged-text-x"
+                  type="range"
+                  min={POSITION_MIN}
+                  max={POSITION_MAX}
+                  step={POSITION_STEP}
+                  value={textX}
+                  onChange={(e) => setTextX(roundPosition(Number(e.target.value)))}
                 />
               </div>
-            </div>
-          </section>
+              <div className="journey-style-row">
+                <div className="journey-style-row-head">
+                  <label htmlFor="merged-text-y">Y vertical</label>
+                  <span className="journey-style-row-value">
+                    {textY.toFixed(1)}% / {Math.round((textY / 100) * RENDER_HEIGHT)}px
+                  </span>
+                </div>
+                <input
+                  id="merged-text-y"
+                  type="range"
+                  min={POSITION_MIN}
+                  max={POSITION_MAX}
+                  step={POSITION_STEP}
+                  value={textY}
+                  onChange={(e) => setTextY(roundPosition(Number(e.target.value)))}
+                />
+              </div>
+            </section>
 
+            <section className="journey-style-section" aria-labelledby="merged-section-typo">
+              <h3 id="merged-section-typo" className="journey-style-section-title">
+                Typographie
+              </h3>
+              <div className="journey-style-row">
+                <div className="journey-style-row-head">
+                  <label htmlFor="merged-text-size">Taille</label>
+                  <span className="journey-style-row-value">{fontSize}px</span>
+                </div>
+                <input
+                  id="merged-text-size"
+                  type="range"
+                  min={14}
+                  max={80}
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                />
+              </div>
+              <div className="journey-style-grid-2">
+                <div className="journey-style-row">
+                  <label htmlFor="merged-font">Police</label>
+                  <select
+                    id="merged-font"
+                    className="journey-step-select"
+                    value={fontFamily}
+                    onChange={(e) => setFontFamily(e.target.value)}
+                  >
+                    {FONT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="journey-style-row">
+                  <label htmlFor="merged-font-weight">Graisse</label>
+                  <select
+                    id="merged-font-weight"
+                    className="journey-step-select"
+                    value={fontWeight}
+                    onChange={(e) => setFontWeight(Number(e.target.value))}
+                  >
+                    {FONT_WEIGHT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <label className="journey-style-toggle">
+                <input
+                  type="checkbox"
+                  checked={uppercase}
+                  onChange={(e) => setUppercase(e.target.checked)}
+                />
+                <span>Majuscules</span>
+              </label>
+            </section>
+
+            <section className="journey-style-section" aria-labelledby="merged-section-color">
+              <h3 id="merged-section-color" className="journey-style-section-title">
+                Apparence
+              </h3>
+              <div className="journey-style-row">
+                <div className="journey-style-row-head">
+                  <label htmlFor="merged-text-color">Couleur du texte</label>
+                  <span className="journey-style-color-value">{textColor.toUpperCase()}</span>
+                </div>
+                <div className="journey-style-color-pair">
+                  <input
+                    id="merged-text-color"
+                    className="journey-color-input"
+                    type="color"
+                    value={textColor}
+                    onChange={(e) => setTextColor(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="journey-step-select journey-style-color-hex"
+                    value={textColor}
+                    onChange={(e) => {
+                      const next = e.target.value.trim()
+                      if (/^#[0-9a-fA-F]{0,6}$/.test(next) || next === '') setTextColor(next)
+                    }}
+                    maxLength={7}
+                    spellCheck={false}
+                    aria-label="Couleur hexadÃƒÂ©cimale"
+                  />
+                </div>
+              </div>
+              <div className="journey-style-row">
+                <span className="journey-style-row-label">Ombre du texte</span>
+                <div
+                  className="journey-style-segmented"
+                  role="radiogroup"
+                  aria-label="Ombre du texte"
+                >
+                  {SHADOW_OPTIONS.map((option) => {
+                    const active = option.value === shadow
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={`journey-style-segmented-item ${active ? 'is-active' : ''}`}
+                        onClick={() => setShadow(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
+
+            <section className="journey-style-section" aria-labelledby="merged-section-render">
+              <h3 id="merged-section-render" className="journey-style-section-title">
+                Rendu
+              </h3>
+              <div className="journey-style-grid-2">
+                <div className="journey-style-row">
+                  <label htmlFor="merged-quality">Qualite</label>
+                  <select
+                    id="merged-quality"
+                    className="journey-step-select"
+                    value={p.selectedQualityProfile}
+                    onChange={(event) => p.setSelectedQualityProfile(event.target.value)}
+                    disabled={p.isBusy}
+                  >
+                    {p.qualityOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="journey-style-row">
+                  <label htmlFor="merged-duration">Duree</label>
+                  <input
+                    id="merged-duration"
+                    className="journey-step-select"
+                    type="number"
+                    min={p.minVideoDurationSec}
+                    max={p.maxVideoDurationSec}
+                    step={1}
+                    value={p.videoDurationSec}
+                    onChange={(event) => {
+                      const next = Number(event.target.value)
+                      if (Number.isFinite(next)) {
+                        p.setVideoDurationSec(
+                          Math.min(p.maxVideoDurationSec, Math.max(p.minVideoDurationSec, next)),
+                        )
+                      }
+                    }}
+                    disabled={p.isBusy}
+                  />
+                </div>
+              </div>
+            </section>
           </div>
           <div className="journey-step-cta journey-step-cta-stack">
             <span className="journey-style-save-status">
-              {allStylesSaved ? 'Styles scenes enregistres' : `Enregistre les styles: ${savedStyleCount}/${sceneCount}`}
+              {filledSlots === sceneCount
+                ? `${sceneCount}/${sceneCount} scènes assignées ✓`
+                : `${filledSlots}/${sceneCount} scènes assignées`}
             </span>
-            {effectivePreviewUrl ? (
-              <>
-                <Button variant="secondary" onClick={() => void p.handleRetryInitPublish()} disabled={p.isBusy || !idea || !allScenesConfigured}>
-                  {t('render.regenerate')}
-                </Button>
-                <Button variant="primary" onClick={p.handleValidateInitPublish} disabled={p.isBusy}>
-                  {t('render.validate')}
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={() => void p.handleRetryInitPublish()}
-                disabled={p.isBusy || !idea || !allScenesConfigured}
-              >
-                {p.isPreparingVideo ? t('common.generating') : t('common.generate')}
-              </Button>
-            )}
+            <Button
+              variant="primary"
+              onClick={() => {
+                persistActiveSceneStyle(true)
+                p.handleValidateMedia()
+              }}
+              disabled={p.isBusy}
+            >
+              Suivant → Récapitulatif
+            </Button>
           </div>
         </div>
       </aside>
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Middle : search + gallery (2 cards / row) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-      <section className="journey-media-middle">
-        <div className="journey-media-gallery-head">
-          <div className="journey-media-gallery-title">
-            <span className="journey-wizard-card-label">{t('media.galleryLabel')}</span>
-            <span className="journey-media-gallery-status">
-              {t('media.sceneActiveStatus', {
-                active: activeSlot + 1,
-                filled: filledSlots,
-                total: sceneCount,
-                label: filledSlots > 1 ? t('media.scenesPickedPlural') : t('media.scenesPickedSingular'),
-              })}
-            </span>
-          </div>
-          <form
-            className="journey-media-search"
-            onSubmit={(e) => {
-              e.preventDefault()
-              submitSearch(query)
-            }}
-          >
-            <input
-              type="search"
-              className="journey-step-select"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('media.searchPlaceholder')}
-              disabled={isSearching}
-            />
-            <Button type="submit" variant="secondary" disabled={isSearching || !query.trim()}>
-              {isSearching ? t('common.searching') : t('common.search')}
-            </Button>
-          </form>
-        </div>
-
-        {searchError ? (
-          <div className="journey-empty">
-            <strong>{t('media.errorTitle')}</strong>
-            <p>{searchError}</p>
-          </div>
-        ) : isSearching && videos.length === 0 ? (
-          <PexelsGallerySkeleton tiles={8} />
-        ) : videos.length === 0 ? (
-          <div className="journey-empty">
-            <strong>{t('media.noVideoTitle')}</strong>
-            <p>{t('media.noVideoSub')}</p>
-          </div>
-        ) : (
-          <>
-            <div className="journey-media-scene-map">
-              {Array.from({ length: sceneCount }).map((_, index) => {
-                const url = p.selectedSceneMediaUrls[index] || ''
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    className={`journey-media-scene-map-item ${index === activeSlot ? 'is-active' : ''} ${url ? 'is-filled' : ''}`}
-                    onClick={() => setActiveSlot(index)}
-                  >
-                    <span>Scene {index + 1}</span>
-                    {url ? (
-                      <span
-                        className="journey-media-scene-map-remove"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          clearSlot(index)
-                        }}
-                      >
-                        Retirer
-                      </span>
-                    ) : <span>Vide</span>}
-                  </button>
-                )
-              })}
-            </div>
-            <PexelsGalleryGrid
-              videos={videos}
-              selectedSceneMediaUrls={p.selectedSceneMediaUrls}
-              activeSlot={activeSlot}
-              sceneCount={sceneCount}
-              pickPortraitFile={pickPortraitFile}
-              onAssign={assignSlot}
-              onSelectExistingSlot={selectExistingSlot}
-              onClear={clearVideo}
-              onClearSlot={clearSlot}
-              registerVideoRef={registerVideoRef}
-            />
-          </>
-        )}
-      </section>
+      {/* Middle : media library — Windows folder style */}
+      <MediaLibraryPanel
+        videos={videos}
+        isSearching={isSearching}
+        searchError={searchError}
+        query={query}
+        setQuery={setQuery}
+        submitSearch={submitSearch}
+        selectedSceneMediaUrls={p.selectedSceneMediaUrls}
+        activeSlot={activeSlot}
+        sceneCount={sceneCount}
+        filledSlots={filledSlots}
+        pickPortraitFile={pickPortraitFile}
+        onAssign={assignSlot}
+        onSelectExistingSlot={selectExistingSlot}
+        onClear={clearVideo}
+        onClearSlot={clearSlot}
+        registerVideoRef={registerVideoRef}
+      />
 
       {/* Ã¢â€â‚¬Ã¢â€â‚¬ Right : TikTok 9:16 carousel preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <aside className="journey-media-preview">
@@ -640,7 +819,7 @@ export default function TemplateStep() {
             Scene {activeSlot + 1} / {sceneCount}
           </span>
         </div>
-        <div className="journey-template-preview-frame">
+        <div className="journey-template-preview-frame" ref={previewFrameRef}>
           {isRenderActive && !effectivePreviewUrl ? (
             <div className="journey-render-stage">
               <div className="journey-render-stage-frame" />
@@ -658,7 +837,9 @@ export default function TemplateStep() {
                 <div className="journey-render-progress-foot">
                   {renderProgress.status === 'error' && renderProgress.error ? (
                     <span className="journey-render-progress-error">{renderProgress.error}</span>
-                  ) : <span />}
+                  ) : (
+                    <span />
+                  )}
                 </div>
               </div>
             </div>
@@ -670,7 +851,9 @@ export default function TemplateStep() {
               controls
               playsInline
               preload="metadata"
-            />
+            >
+              <track kind="captions" />
+            </video>
           ) : currentSceneVideo ? (
             <video
               key={currentSceneVideo}
@@ -681,36 +864,68 @@ export default function TemplateStep() {
               loop
               playsInline
               preload="metadata"
-            />
+            >
+              <track kind="captions" />
+            </video>
           ) : (
             <div className="journey-template-preview-fallback" aria-hidden="true">
-              <span className="journey-media-preview-empty-copy">
-                Aucune video assignee
-              </span>
+              <span className="journey-media-preview-empty-copy">Aucune video assignee</span>
             </div>
           )}
+          {/* Canvas virtuel 1080×1920 mis à l'échelle — identique au rendu final */}
           {!isRenderActive && !effectivePreviewUrl ? (
             <div
-              className="journey-template-preview-text"
-              style={{
-                left: `${textX}%`,
-                top: `${textY}%`,
-                color: textColor,
-                fontFamily,
-                textShadow: SHADOW_CSS[shadow],
-              }}
               key={activeSlot}
+              className={`journey-text-position-layer ${isDraggingText ? 'is-dragging' : ''}`}
+              role="application"
+              aria-label="Glisser le texte dans la prévisualisation"
+              onPointerDown={startTextDrag}
+              onPointerMove={moveTextDrag}
+              onPointerUp={stopTextDrag}
+              onPointerCancel={stopTextDrag}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: RENDER_WIDTH,
+                height: RENDER_HEIGHT,
+                transform: `scale(${previewScale})`,
+                transformOrigin: 'top left',
+                overflow: 'hidden',
+              }}
             >
-              <strong
+              <div
+                className="journey-text-position-guide is-x"
+                style={{ left: `${textX}%` }}
+                aria-hidden="true"
+              />
+              <div
+                className="journey-text-position-guide is-y"
+                style={{ top: `${textY}%` }}
+                aria-hidden="true"
+              />
+              <div
+                className="journey-text-position-handle"
                 style={{
+                  position: 'absolute',
+                  left: `${textX}%`,
+                  top: `${textY}%`,
+                  transform: 'translate(-50%, -50%)',
+                  color: textColor,
+                  fontFamily,
                   fontSize: `${fontSize}px`,
-                  lineHeight: 1.1,
                   fontWeight,
+                  lineHeight: 1.15,
+                  textAlign: 'center',
                   textTransform: uppercase ? 'uppercase' : 'none',
+                  textShadow: SHADOW_CSS[shadow],
+                  maxWidth: `${Math.round(RENDER_WIDTH * 0.88)}px`,
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
                 }}
               >
-                {currentSceneText || '-'}
-              </strong>
+                {currentSceneText || '—'}
+              </div>
             </div>
           ) : null}
           {!isRenderActive && !effectivePreviewUrl && sceneCount > 1 ? (
@@ -741,7 +956,9 @@ export default function TemplateStep() {
           <div className="journey-media-carousel-dots" role="tablist" aria-label="Scenes">
             {Array.from({ length: sceneCount }).map((_, index) => {
               const isActive = index === activeSlot
-              const isFilled = Boolean(p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim())
+              const isFilled = Boolean(
+                p.selectedSceneMediaUrls[index] && p.selectedSceneMediaUrls[index].trim(),
+              )
               return (
                 <button
                   key={index}
@@ -765,3 +982,301 @@ export default function TemplateStep() {
   )
 }
 
+/* ── MediaLibraryPanel ─ Médiathèque style Windows Explorer ──────────────── */
+
+interface MediaLibraryPanelProps {
+  videos: PexelsVideo[]
+  isSearching: boolean
+  searchError: string | null
+  query: string
+  setQuery: (q: string) => void
+  submitSearch: (q: string) => void
+  selectedSceneMediaUrls: string[]
+  activeSlot: number
+  sceneCount: number
+  filledSlots: number
+  pickPortraitFile: (v: PexelsVideo) => string | null
+  onAssign: (slot: number, url: string) => void
+  onSelectExistingSlot: (slot: number) => void
+  onClear: (url: string) => void
+  onClearSlot: (slot: number) => void
+  registerVideoRef: (node: HTMLVideoElement | null) => void
+}
+
+function MediaLibraryPanel({
+  videos,
+  isSearching,
+  searchError,
+  query,
+  setQuery,
+  submitSearch,
+  selectedSceneMediaUrls,
+  activeSlot,
+  sceneCount,
+  filledSlots,
+  pickPortraitFile,
+  onAssign,
+  onSelectExistingSlot,
+  onClear,
+  onClearSlot,
+  registerVideoRef,
+}: MediaLibraryPanelProps) {
+  const { t } = useTranslation('journey')
+  const urlInputRef = useRef<HTMLInputElement | null>(null)
+  const [localMedias, setLocalMedias] = useState<Array<{ url: string; name: string }>>([])
+  const [addUrlOpen, setAddUrlOpen] = useState(false)
+  const [urlInput, setUrlInput] = useState('')
+
+  useEffect(() => {
+    if (addUrlOpen) urlInputRef.current?.focus()
+  }, [addUrlOpen])
+
+  const handleAddUrl = () => {
+    const trimmed = urlInput.trim()
+    if (!/^https?:\/\//i.test(trimmed)) return
+    const name = trimmed.split('/').pop()?.split('?')[0] || 'video'
+    setLocalMedias((prev) => [...prev, { url: trimmed, name }])
+    setUrlInput('')
+    setAddUrlOpen(false)
+  }
+
+  const removeLocal = (url: string) => {
+    setLocalMedias((prev) => prev.filter((m) => m.url !== url))
+    onClear(url)
+  }
+
+  const pexelsTiles = videos.flatMap((v) => {
+    const url = pickPortraitFile(v)
+    if (!url) return []
+    const poster = v.image || v.video_pictures?.[0]?.picture || undefined
+    return [{ url, poster, name: 'Pexels ' + v.id, duration: v.duration, isLocal: false }]
+  })
+
+  const localTiles = localMedias.map((m) => ({
+    url: m.url,
+    poster: undefined as string | undefined,
+    name: m.name,
+    duration: undefined as number | undefined,
+    isLocal: true,
+  }))
+
+  const allTiles = [...localTiles, ...pexelsTiles]
+
+  return (
+    <section className="journey-media-middle">
+      <div className="journey-media-library-bar">
+        <div className="journey-media-library-status">
+          <span className="journey-wizard-card-label">Médiathèque</span>
+          <span className="journey-media-gallery-status">
+            Scène active : {activeSlot + 1} · {filledSlots}/{sceneCount} assignées
+          </span>
+        </div>
+        <form
+          className="journey-media-search"
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitSearch(query)
+          }}
+        >
+          <input
+            type="search"
+            className="journey-step-select"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('media.searchPlaceholder')}
+            disabled={isSearching}
+          />
+          <button
+            type="submit"
+            className="journey-btn is-ghost"
+            disabled={isSearching || !query.trim()}
+          >
+            {isSearching ? '…' : 'Rechercher'}
+          </button>
+        </form>
+        <div className="journey-media-add-group">
+          <button
+            type="button"
+            className="journey-btn is-ghost journey-media-add-btn"
+            onClick={() => setAddUrlOpen((v) => !v)}
+            title="Ajouter une URL vidéo publique"
+          >
+            URL publique
+          </button>
+        </div>
+      </div>
+
+      {addUrlOpen && (
+        <div className="journey-media-url-input-row">
+          <input
+            ref={urlInputRef}
+            type="url"
+            className="journey-step-select"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            placeholder="https://example.com/video.mp4"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddUrl()
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="journey-btn is-primary"
+            onClick={handleAddUrl}
+            disabled={!/^https?:\/\//i.test(urlInput.trim())}
+          >
+            Ajouter
+          </button>
+          <button
+            type="button"
+            className="journey-btn is-ghost"
+            onClick={() => {
+              setAddUrlOpen(false)
+              setUrlInput('')
+            }}
+          >
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {searchError && (
+        <div className="journey-empty" style={{ margin: '4px 0' }}>
+          <strong>Erreur Pexels</strong>
+          <p>{searchError}</p>
+        </div>
+      )}
+      {isSearching && videos.length === 0 && <PexelsGallerySkeleton tiles={12} />}
+      {!isSearching && allTiles.length === 0 && (
+        <div className="journey-empty">
+          <strong>Aucun média</strong>
+          <p>Cherche des vidéos Pexels ou ajoute un fichier local / une URL.</p>
+        </div>
+      )}
+
+      {allTiles.length > 0 && (
+        <div className="journey-media-folder-grid" role="listbox" aria-label="Médiathèque">
+          {allTiles.map((tile) => {
+            const usedAtIndex = selectedSceneMediaUrls.findIndex((u) => u === tile.url)
+            const isUsed = usedAtIndex >= 0
+            const isAssignedHere = selectedSceneMediaUrls[activeSlot] === tile.url
+            return (
+              <div
+                key={tile.url}
+                role="option"
+                tabIndex={0}
+                aria-selected={isUsed}
+                className={[
+                  'journey-folder-tile',
+                  isUsed ? 'is-used' : '',
+                  isAssignedHere ? 'is-active-slot' : '',
+                  tile.isLocal ? 'is-local' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => {
+                  if (isUsed) onSelectExistingSlot(usedAtIndex)
+                  else onAssign(activeSlot, tile.url)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    if (isUsed) onSelectExistingSlot(usedAtIndex)
+                    else onAssign(activeSlot, tile.url)
+                  }
+                }}
+              >
+                <div className="journey-folder-tile-thumb">
+                  {tile.poster && !tile.isLocal ? (
+                    <img
+                      src={tile.poster}
+                      alt=""
+                      className="journey-folder-tile-img"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <video
+                      ref={registerVideoRef}
+                      src={tile.url}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="journey-folder-tile-video"
+                      onMouseEnter={(e) => void e.currentTarget.play()}
+                      onMouseLeave={(e) => e.currentTarget.pause()}
+                    >
+                      <track kind="captions" />
+                    </video>
+                  )}
+                  {isUsed && <span className="journey-folder-tile-badge">S{usedAtIndex + 1}</span>}
+                  {isUsed && (
+                    <button
+                      type="button"
+                      className="journey-folder-tile-remove"
+                      aria-label="Retirer de la scène"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onClearSlot(usedAtIndex)
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                  {tile.isLocal && (
+                    <button
+                      type="button"
+                      className="journey-folder-tile-delete"
+                      aria-label="Supprimer"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeLocal(tile.url)
+                      }}
+                    >
+                      🗑
+                    </button>
+                  )}
+                </div>
+                <div className="journey-folder-tile-info">
+                  <span className="journey-folder-tile-name" title={tile.name}>
+                    {tile.isLocal ? '📁 ' : ''}
+                    {tile.name.length > 18 ? tile.name.slice(0, 16) + '…' : tile.name}
+                  </span>
+                  {tile.duration !== undefined && (
+                    <span className="journey-folder-tile-dur">{Math.round(tile.duration)}s</span>
+                  )}
+                </div>
+                {!isUsed && (
+                  <div className="journey-folder-tile-slots">
+                    {Array.from({ length: sceneCount }).map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={[
+                          'journey-folder-slot-btn',
+                          index === activeSlot ? 'is-current' : '',
+                          selectedSceneMediaUrls[index] ? 'is-taken' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        aria-label={'Assigner à la scène ' + (index + 1)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onAssign(index, tile.url)
+                        }}
+                      >
+                        S{index + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}

@@ -70,22 +70,26 @@ function nextStepFor(idea: IdeaDetail | null, statusInfo: StatusInfo | null): Ne
   const tiktokStatus = String(idea?.tiktokStatus || '').toLowerCase()
   if (tiktokStatus === 'published') return null
   const savedWorkspace = idea?.id ? readJourneyWorkspace(idea.id) : null
-  if (savedWorkspace?.stepId) return { stepId: savedWorkspace.stepId, label: 'Reprendre le parcours' }
-  if (idea?.uploadUrl && idea?.shotstackUrl) return { stepId: 'upload', label: "Continuer vers l'upload" }
+  if (savedWorkspace?.stepId)
+    return { stepId: savedWorkspace.stepId, label: 'Reprendre le parcours' }
+  if (idea?.uploadUrl && idea?.shotstackUrl)
+    return { stepId: 'upload', label: "Continuer vers l'upload" }
   if (idea?.shotstackUrl) return { stepId: 'upload', label: "Préparer l'upload TikTok" }
-  if (stage === 'SCRIPT_READY' || idea?.script || idea?.scripts) return { stepId: 'init-publish', label: 'Générer la vidéo' }
-  if (stage === 'IDEA_CREATED' || idea?.topic) return { stepId: 'init-publish', label: 'Continuer (générer la vidéo)' }
+  if (stage === 'SCRIPT_READY' || idea?.script || idea?.scripts)
+    return { stepId: 'recapitulatif', label: 'Générer la vidéo' }
+  if (stage === 'IDEA_CREATED' || idea?.topic)
+    return { stepId: 'media', label: 'Continuer le parcours' }
   return { stepId: 'creation', label: 'Reprendre dans le parcours' }
 }
 
 const TABS = [
   { id: 'overview', label: 'Aperçu' },
-  { id: 'caption',  label: 'Caption' },
+  { id: 'caption', label: 'Caption' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'logs',     label: 'Logs' },
+  { id: 'logs', label: 'Logs' },
 ] as const
 
-type TabId = typeof TABS[number]['id']
+type TabId = (typeof TABS)[number]['id']
 
 export default function IdeaDetailPage() {
   const { id } = useParams()
@@ -118,14 +122,16 @@ export default function IdeaDetailPage() {
       }
     }
     void load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [ideaId, ideaIdInvalid])
 
   const next = useMemo(() => (idea ? nextStepFor(idea, statusInfo) : null), [idea, statusInfo])
   const stage = statusInfo?.pipelineStage || idea?.pipelineStatus || 'IDEA_CREATED'
   const caption = idea?.caption || ''
   const captionLen = caption.length
-  const hashtags = (caption.match(/#[\p{L}0-9_]+/gu) || [])
+  const hashtags = caption.match(/#[\p{L}0-9_]+/gu) || []
   const logs: PipelineLog[] = statusInfo?.logs || idea?.logs || []
   const steps: PipelineStep[] = statusInfo?.pipelineSteps || idea?.pipelineSteps || []
 
@@ -133,11 +139,14 @@ export default function IdeaDetailPage() {
     <div className="admin-page video-ops-page">
       <AdminShell activeNavId="tiktok" feedbackItems={[{ type: 'error', message: error }]}>
         <div className="idea-detail-page">
-
           <nav className="idea-crumb" aria-label="Fil d'ariane">
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tiktok') }}>Parcours TikTok</a>
+            <button type="button" onClick={() => navigate('/tiktok')}>
+              Parcours TikTok
+            </button>
             <span className="idea-crumb-sep">/</span>
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/tiktok') }}>Idées</a>
+            <button type="button" onClick={() => navigate('/tiktok')}>
+              Idées
+            </button>
             <span className="idea-crumb-sep">/</span>
             <span>#{ideaId || '—'}</span>
           </nav>
@@ -145,37 +154,87 @@ export default function IdeaDetailPage() {
           <header className="idea-head">
             <div className="idea-head-left">
               <span className="idea-id-mono">idea_{ideaId}</span>
-              <h1>{loading ? 'Chargement…' : (idea?.topic || `Vidéo #${id}`)}</h1>
+              <h1>{loading ? 'Chargement…' : idea?.topic || `Vidéo #${id}`}</h1>
               <div className="idea-head-meta">
-                {idea?.targetAccount && <span><strong>Compte</strong> · {idea.targetAccount}</span>}
-                {idea?.category && <span><strong>Catégorie</strong> · {idea.category}</span>}
-                {idea?.createdAt && <span><strong>Créée</strong> · {new Date(idea.createdAt).toLocaleString('fr-FR')}</span>}
-                {idea?.updatedAt && <span><strong>MàJ</strong> · {new Date(idea.updatedAt).toLocaleString('fr-FR')}</span>}
+                {idea?.targetAccount && (
+                  <span>
+                    <strong>Compte</strong> · {idea.targetAccount}
+                  </span>
+                )}
+                {idea?.category && (
+                  <span>
+                    <strong>Catégorie</strong> · {idea.category}
+                  </span>
+                )}
+                {idea?.createdAt && (
+                  <span>
+                    <strong>Créée</strong> · {new Date(idea.createdAt).toLocaleString('fr-FR')}
+                  </span>
+                )}
+                {idea?.updatedAt && (
+                  <span>
+                    <strong>MàJ</strong> · {new Date(idea.updatedAt).toLocaleString('fr-FR')}
+                  </span>
+                )}
               </div>
             </div>
             <div className="idea-head-actions">
               <span className={`journey-status-pill ${pillClassFor(stage)}`}>{stage}</span>
-              <button type="button" className="journey-btn is-ghost" onClick={() => navigate('/tiktok')}>Retour</button>
+              <button
+                type="button"
+                className="journey-btn is-ghost"
+                onClick={() => navigate('/tiktok')}
+              >
+                Retour
+              </button>
               {next && (
-                <button type="button" className="journey-btn is-primary" disabled={loading || !idea}
-                  onClick={() => navigate(`/tiktok/${next.stepId}`)}>{next.label}</button>
+                <button
+                  type="button"
+                  className="journey-btn is-primary"
+                  disabled={loading || !idea}
+                  onClick={() =>
+                    navigate(`/tiktok/${next.stepId}`, {
+                      state: idea?.id ? { resumeWorkspaceIdeaId: idea.id } : undefined,
+                    })
+                  }
+                >
+                  {next.label}
+                </button>
               )}
             </div>
           </header>
 
-          <nav className="idea-tabs" role="tablist">
+          <div className="idea-tabs" role="tablist">
             {TABS.map((t) => (
-              <button key={t.id} role="tab" aria-selected={tab === t.id}
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={tab === t.id}
                 className={`idea-tab ${tab === t.id ? 'is-active' : ''}`}
-                onClick={() => setTab(t.id)}>{t.label}</button>
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
             ))}
-          </nav>
+          </div>
 
           <div className="idea-meta-strip">
-            <div className="idea-meta-cell"><div className="idea-meta-label">Durée</div><div className="idea-meta-val">{idea?.duration || '—'}</div></div>
-            <div className="idea-meta-cell"><div className="idea-meta-label">Format</div><div className="idea-meta-val">{idea?.format || '9:16 · 1080p'}</div></div>
-            <div className="idea-meta-cell"><div className="idea-meta-label">Render ID</div><div className="idea-meta-val is-mono">{idea?.renderId || '—'}</div></div>
-            <div className="idea-meta-cell"><div className="idea-meta-label">Stage</div><div className="idea-meta-val is-mono">{stage}</div></div>
+            <div className="idea-meta-cell">
+              <div className="idea-meta-label">Durée</div>
+              <div className="idea-meta-val">{idea?.duration || '—'}</div>
+            </div>
+            <div className="idea-meta-cell">
+              <div className="idea-meta-label">Format</div>
+              <div className="idea-meta-val">{idea?.format || '9:16 · 1080p'}</div>
+            </div>
+            <div className="idea-meta-cell">
+              <div className="idea-meta-label">Render ID</div>
+              <div className="idea-meta-val is-mono">{idea?.renderId || '—'}</div>
+            </div>
+            <div className="idea-meta-cell">
+              <div className="idea-meta-label">Stage</div>
+              <div className="idea-meta-val is-mono">{stage}</div>
+            </div>
           </div>
 
           {!loading && idea && tab === 'overview' && (
@@ -193,10 +252,24 @@ export default function IdeaDetailPage() {
                   )}
                   <div className="idea-video-actions">
                     {idea.shotstackUrl && (
-                      <a href={idea.shotstackUrl} target="_blank" rel="noreferrer" className="journey-btn">Ouvrir la video</a>
+                      <a
+                        href={idea.shotstackUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="journey-btn"
+                      >
+                        Ouvrir la video
+                      </a>
                     )}
                     {idea.uploadUrl && (
-                      <a href={idea.uploadUrl} target="_blank" rel="noreferrer" className="journey-btn">Télécharger MP4</a>
+                      <a
+                        href={idea.uploadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="journey-btn"
+                      >
+                        Télécharger MP4
+                      </a>
                     )}
                   </div>
                 </div>
@@ -204,14 +277,38 @@ export default function IdeaDetailPage() {
 
               <div className="idea-right">
                 <section>
-                  <div className="idea-sec-head"><h2>Contenu généré</h2></div>
-                  <div className="journey-kv-row"><span className="journey-kv-row-label">Topic</span><span className={`journey-kv-row-value ${!idea.topic ? 'is-empty' : ''}`}>{idea.topic || 'En attente'}</span></div>
-                  <div className="journey-kv-row"><span className="journey-kv-row-label">Mot-clé</span><span className={`journey-kv-row-value is-mono ${!idea.keyword ? 'is-empty' : ''}`}>{idea.keyword || 'En attente'}</span></div>
-                  <div className="journey-kv-row"><span className="journey-kv-row-label">Caption</span><span className={`journey-kv-row-value ${!idea.caption ? 'is-empty' : ''}`}>{idea.caption || 'En attente'}</span></div>
+                  <div className="idea-sec-head">
+                    <h2>Contenu généré</h2>
+                  </div>
+                  <div className="journey-kv-row">
+                    <span className="journey-kv-row-label">Topic</span>
+                    <span className={`journey-kv-row-value ${!idea.topic ? 'is-empty' : ''}`}>
+                      {idea.topic || 'En attente'}
+                    </span>
+                  </div>
+                  <div className="journey-kv-row">
+                    <span className="journey-kv-row-label">Mot-clé</span>
+                    <span
+                      className={`journey-kv-row-value is-mono ${!idea.keyword ? 'is-empty' : ''}`}
+                    >
+                      {idea.keyword || 'En attente'}
+                    </span>
+                  </div>
+                  <div className="journey-kv-row">
+                    <span className="journey-kv-row-label">Caption</span>
+                    <span className={`journey-kv-row-value ${!idea.caption ? 'is-empty' : ''}`}>
+                      {idea.caption || 'En attente'}
+                    </span>
+                  </div>
                   {(idea.script || idea.scripts) && (
-                    <div className="journey-kv-row" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 4 }}>
+                    <div
+                      className="journey-kv-row"
+                      style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 4 }}
+                    >
                       <span className="journey-kv-row-label">Script</span>
-                      <span className="journey-kv-row-value" style={{ whiteSpace: 'pre-wrap' }}>{idea.script || idea.scripts}</span>
+                      <span className="journey-kv-row-value" style={{ whiteSpace: 'pre-wrap' }}>
+                        {idea.script || idea.scripts}
+                      </span>
                     </div>
                   )}
                 </section>
@@ -220,13 +317,17 @@ export default function IdeaDetailPage() {
                   <section className="idea-next-strip">
                     <div className="idea-next-copy">
                       <span className="idea-next-title">{next.label}</span>
-                      <span className="idea-next-desc">Continue dans le parcours pour faire avancer cette idée.</span>
+                      <span className="idea-next-desc">
+                        Continue dans le parcours pour faire avancer cette idée.
+                      </span>
                     </div>
                     <button
                       className="journey-btn is-primary"
-                      onClick={() => navigate(`/tiktok/${next.stepId}`, {
-                        state: idea?.id ? { resumeWorkspaceIdeaId: idea.id } : undefined,
-                      })}
+                      onClick={() =>
+                        navigate(`/tiktok/${next.stepId}`, {
+                          state: idea?.id ? { resumeWorkspaceIdeaId: idea.id } : undefined,
+                        })
+                      }
                     >
                       Continuer →
                     </button>
@@ -245,7 +346,11 @@ export default function IdeaDetailPage() {
               <div className="idea-caption-body">{caption || 'Aucune caption générée.'}</div>
               {hashtags.length > 0 && (
                 <div className="idea-caption-tags">
-                  {hashtags.map((h, i) => <span key={i} className={`idea-tag ${i === 0 ? 'is-warm' : ''}`}>{h}</span>)}
+                  {hashtags.map((h, i) => (
+                    <span key={i} className={`idea-tag ${i === 0 ? 'is-warm' : ''}`}>
+                      {h}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
@@ -267,19 +372,28 @@ export default function IdeaDetailPage() {
 
           {!loading && idea && tab === 'logs' && (
             <div className="idea-logs">
-              {logs.length === 0
-                ? <div className="idea-log"><span className="t">—</span><span>Aucun log disponible.</span></div>
-                : logs.map((l, i) => (
-                    <div key={i} className={`idea-log is-${l.level || 'info'}`}>
-                      <span className="t">{l.time}</span>
-                      <span className="lvl">{l.tag}</span>
-                      <span>{l.message}</span>
-                    </div>
-                  ))}
+              {logs.length === 0 ? (
+                <div className="idea-log">
+                  <span className="t">—</span>
+                  <span>Aucun log disponible.</span>
+                </div>
+              ) : (
+                logs.map((l, i) => (
+                  <div key={i} className={`idea-log is-${l.level || 'info'}`}>
+                    <span className="t">{l.time}</span>
+                    <span className="lvl">{l.tag}</span>
+                    <span>{l.message}</span>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
-          {!loading && !idea && <div className="accounts-empty" style={{ marginTop: 16 }}>Idée introuvable.</div>}
+          {!loading && !idea && (
+            <div className="accounts-empty" style={{ marginTop: 16 }}>
+              Idée introuvable.
+            </div>
+          )}
         </div>
       </AdminShell>
     </div>

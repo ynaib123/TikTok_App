@@ -20,12 +20,22 @@ function formatEtaSeconds(seconds: number): string {
   return s === 0 ? `${m}m` : `${m}m${s.toString().padStart(2, '0')}`
 }
 
-function KV({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
+function KV({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string | null | undefined
+  mono?: boolean
+}) {
   const isEmpty = !value || value === '-' || value === 'En attente'
   return (
     <div className="journey-kv-row">
       <span className="journey-kv-row-label">{label}</span>
-      <span className={`journey-kv-row-value ${mono ? 'is-mono' : ''} ${isEmpty ? 'is-empty' : ''}`}>
+      <span
+        className={`journey-kv-row-value ${mono ? 'is-mono' : ''} ${isEmpty ? 'is-empty' : ''}`}
+      >
         {value || 'En attente'}
       </span>
     </div>
@@ -43,12 +53,16 @@ export default function RenderStep() {
   const renderProgress = useRenderProgress(p.currentRenderRunId, isRenderActive)
   const progressPct = Math.round(renderProgress.progress * 100)
   const statusLabel: Record<typeof renderProgress.status, string> = {
+    queued: renderProgress.queuePosition
+      ? t('render.status.queued', { position: renderProgress.queuePosition })
+      : t('render.status.queuedWaiting'),
     preparing: t('render.status.preparing'),
     rendering: t('render.status.rendering'),
     'post-processing': t('render.status.post-processing'),
     uploading: t('render.status.uploading'),
     done: t('render.status.done'),
     error: t('render.status.error'),
+    cancelled: t('render.status.cancelled'),
     unknown: t('render.status.unknown'),
   }
 
@@ -60,9 +74,14 @@ export default function RenderStep() {
   }, [isRenderActive])
 
   let etaText: string | null = null
-  if (isRenderActive && renderProgress.startedAt && renderProgress.progress > 0.05 && renderProgress.progress < 1) {
+  if (
+    isRenderActive &&
+    renderProgress.startedAt &&
+    renderProgress.progress > 0.05 &&
+    renderProgress.progress < 1
+  ) {
     const elapsedSec = Math.max(0, (nowMs - renderProgress.startedAt) / 1000)
-    const remainingSec = elapsedSec * (1 - renderProgress.progress) / renderProgress.progress
+    const remainingSec = (elapsedSec * (1 - renderProgress.progress)) / renderProgress.progress
     etaText = t('render.etaRemaining', { eta: formatEtaSeconds(remainingSec) })
   } else if (isRenderActive) {
     etaText = t('render.etaPending')
@@ -74,145 +93,153 @@ export default function RenderStep() {
         <div className="journey-wizard-side-card is-narrow">
           <span className="journey-wizard-card-label">{t('render.paramsLabel')}</span>
 
-            <div className="journey-tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={paramsTab === 'standard'}
-                className={`journey-tab ${paramsTab === 'standard' ? 'is-active' : ''}`}
-                onClick={() => setParamsTab('standard')}
-              >
-                {t('tabs.standard')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={paramsTab === 'advanced'}
-                className={`journey-tab ${paramsTab === 'advanced' ? 'is-active' : ''}`}
-                onClick={() => setParamsTab('advanced')}
-              >
-                {t('tabs.advanced')}
-              </button>
-            </div>
+          <div className="journey-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={paramsTab === 'standard'}
+              className={`journey-tab ${paramsTab === 'standard' ? 'is-active' : ''}`}
+              onClick={() => setParamsTab('standard')}
+            >
+              {t('tabs.standard')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={paramsTab === 'advanced'}
+              className={`journey-tab ${paramsTab === 'advanced' ? 'is-active' : ''}`}
+              onClick={() => setParamsTab('advanced')}
+            >
+              {t('tabs.advanced')}
+            </button>
+          </div>
 
-            {paramsTab === 'standard' ? (
-              <div className="journey-tab-panel" role="tabpanel">
-                <div className="journey-step-row-grid">
-                  <div className="journey-step-row">
-                    <label htmlFor="journey-quality-select">{t('render.quality')}</label>
-                    <select
-                      id="journey-quality-select"
-                      className="journey-step-select"
-                      value={p.selectedQualityProfile}
-                      onChange={(event) => p.setSelectedQualityProfile(event.target.value)}
-                      disabled={p.isBusy}
-                    >
-                      {p.qualityOptions.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="journey-step-row">
-                    <label htmlFor="journey-video-duration">{t('render.duration')}</label>
-                    <input
-                      id="journey-video-duration"
-                      className="journey-step-select"
-                      type="number"
-                      min={p.minVideoDurationSec}
-                      max={p.maxVideoDurationSec}
-                      step={1}
-                      value={p.videoDurationSec}
-                      onChange={(event) => {
-                        const next = Number(event.target.value)
-                        if (Number.isFinite(next)) {
-                          p.setVideoDurationSec(Math.min(p.maxVideoDurationSec, Math.max(p.minVideoDurationSec, next)))
-                        }
-                      }}
-                      disabled={p.isBusy}
-                    />
-                  </div>
-                </div>
-
+          {paramsTab === 'standard' ? (
+            <div className="journey-tab-panel" role="tabpanel">
+              <div className="journey-step-row-grid">
                 <div className="journey-step-row">
-                  <label htmlFor="journey-render-scene-count">{t('render.sceneCount')}</label>
+                  <label htmlFor="journey-quality-select">{t('render.quality')}</label>
                   <select
-                    id="journey-render-scene-count"
+                    id="journey-quality-select"
                     className="journey-step-select"
-                    value={String(p.generationSceneCount)}
-                    onChange={(event) => p.setGenerationSceneCount(Number(event.target.value))}
+                    value={p.selectedQualityProfile}
+                    onChange={(event) => p.setSelectedQualityProfile(event.target.value)}
                     disabled={p.isBusy}
                   >
-                    {p.sceneCountOptions.map((option) => (
-                      <option key={option.value} value={String(option.value)}>{option.label}</option>
+                    {p.qualityOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
                     ))}
                   </select>
-                  <span className="journey-step-row-hint">
-                    {t('render.sceneCountHint', {
-                      count: p.generationSceneCount,
-                      plural: p.generationSceneCount === 1 ? '' : 's',
-                      perScene: (p.videoDurationSec / Math.max(1, p.generationSceneCount)).toFixed(1),
-                    })}
-                  </span>
                 </div>
-              </div>
-            ) : (
-              <div className="journey-tab-panel" role="tabpanel">
                 <div className="journey-step-row">
-                  <label htmlFor="journey-template-select">{t('render.template')}</label>
-                  <select
-                    id="journey-template-select"
+                  <label htmlFor="journey-video-duration">{t('render.duration')}</label>
+                  <input
+                    id="journey-video-duration"
                     className="journey-step-select"
-                    value={p.selectedTemplateId}
-                    onChange={(event) => p.setSelectedTemplateId(event.target.value)}
+                    type="number"
+                    min={p.minVideoDurationSec}
+                    max={p.maxVideoDurationSec}
+                    step={1}
+                    value={p.videoDurationSec}
+                    onChange={(event) => {
+                      const next = Number(event.target.value)
+                      if (Number.isFinite(next)) {
+                        p.setVideoDurationSec(
+                          Math.min(p.maxVideoDurationSec, Math.max(p.minVideoDurationSec, next)),
+                        )
+                      }
+                    }}
                     disabled={p.isBusy}
-                  >
-                    {p.templateOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  {(() => {
-                    const tpl = p.templateOptions.find((opt) => opt.value === p.selectedTemplateId)
-                    return tpl?.description ? (
-                      <span className="journey-step-row-hint">{tpl.description}</span>
-                    ) : null
-                  })()}
+                  />
                 </div>
-
-                {renderEngine ? (
-                  <div className="journey-step-row">
-                    <label>{t('render.engine')}</label>
-                    <div className="journey-kv-grid">
-                      <KV label="Engine" value={renderEngine.toUpperCase()} mono />
-                    </div>
-                  </div>
-                ) : null}
               </div>
-            )}
 
-            <div className="journey-step-cta journey-step-cta-stack">
-              {previewUrl ? (
-                <>
-                  <Button variant="secondary" onClick={() => void p.handleRetryInitPublish()} disabled={p.isBusy}>
-                    {t('render.regenerate')}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={p.handleValidateInitPublish}
-                    disabled={p.isBusy}
-                  >
-                    {t('render.validate')}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => void p.handleRetryInitPublish()}
-                  disabled={p.isBusy || !idea}
+              <div className="journey-step-row">
+                <label htmlFor="journey-render-scene-count">{t('render.sceneCount')}</label>
+                <select
+                  id="journey-render-scene-count"
+                  className="journey-step-select"
+                  value={String(p.generationSceneCount)}
+                  onChange={(event) => p.setGenerationSceneCount(Number(event.target.value))}
+                  disabled={p.isBusy}
                 >
-                  {p.isPreparingVideo ? t('common.generating') : t('common.generate')}
-                </Button>
-              )}
+                  {p.sceneCountOptions.map((option) => (
+                    <option key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="journey-step-row-hint">
+                  {t('render.sceneCountHint', {
+                    count: p.generationSceneCount,
+                    plural: p.generationSceneCount === 1 ? '' : 's',
+                    perScene: (p.videoDurationSec / Math.max(1, p.generationSceneCount)).toFixed(1),
+                  })}
+                </span>
+              </div>
             </div>
+          ) : (
+            <div className="journey-tab-panel" role="tabpanel">
+              <div className="journey-step-row">
+                <label htmlFor="journey-template-select">{t('render.template')}</label>
+                <select
+                  id="journey-template-select"
+                  className="journey-step-select"
+                  value={p.selectedTemplateId}
+                  onChange={(event) => p.setSelectedTemplateId(event.target.value)}
+                  disabled={p.isBusy}
+                >
+                  {p.templateOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {(() => {
+                  const tpl = p.templateOptions.find((opt) => opt.value === p.selectedTemplateId)
+                  return tpl?.description ? (
+                    <span className="journey-step-row-hint">{tpl.description}</span>
+                  ) : null
+                })()}
+              </div>
+
+              {renderEngine ? (
+                <div className="journey-step-row">
+                  <label>{t('render.engine')}</label>
+                  <div className="journey-kv-grid">
+                    <KV label="Engine" value={renderEngine.toUpperCase()} mono />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <div className="journey-step-cta journey-step-cta-stack">
+            {previewUrl ? (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => void p.handleRetryInitPublish()}
+                  disabled={p.isBusy}
+                >
+                  {t('render.regenerate')}
+                </Button>
+                <Button variant="primary" onClick={p.handleValidateInitPublish} disabled={p.isBusy}>
+                  {t('render.validate')}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={() => void p.handleRetryInitPublish()}
+                disabled={p.isBusy || !idea}
+              >
+                {p.isPreparingVideo ? t('common.generating') : t('common.generate')}
+              </Button>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -244,7 +271,9 @@ export default function RenderStep() {
               <div className="journey-render-progress-foot">
                 {renderProgress.status === 'error' && renderProgress.error ? (
                   <span className="journey-render-progress-error">{renderProgress.error}</span>
-                ) : <span />}
+                ) : (
+                  <span />
+                )}
                 {etaText ? <span className="journey-render-progress-eta">{etaText}</span> : null}
               </div>
             </div>

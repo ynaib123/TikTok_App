@@ -24,7 +24,7 @@ export default function Waveform({
   bars = 96,
   color = '#22d3ee',
   background = 'rgba(255, 255, 255, 0.06)',
-  ariaLabel = 'Forme d\'onde',
+  ariaLabel = "Forme d'onde",
 }: WaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [peaks, setPeaks] = useState<number[] | null>(null)
@@ -48,7 +48,9 @@ export default function Waveform({
         const response = await fetch(src, { credentials: 'include' })
         if (!response.ok) throw new Error(`audio fetch ${response.status}`)
         const buffer = await response.arrayBuffer()
-        const ctxClass = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)
+        const ctxClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
         if (!ctxClass) throw new Error('Web Audio API indisponible')
         if (!audioContextRef.current) audioContextRef.current = new ctxClass()
         const audio = await audioContextRef.current.decodeAudioData(buffer.slice(0))
@@ -75,7 +77,9 @@ export default function Waveform({
       }
     }
     void decode()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [src, bars])
 
   const widthPerBar = useMemo(() => 4, [])
@@ -106,7 +110,7 @@ export default function Waveform({
       const r = (widthPerBar - 2) / 2
       ctx.fillRect(x, y, widthPerBar - 2, barHeight)
       ctx.arc(x + r, y, r, Math.PI, 0)
-      ctx.arc(x + r, y + barHeight, 0, 0, Math.PI)
+      ctx.arc(x + r, y + barHeight, r, 0, Math.PI)
       ctx.fill()
     }
   }, [peaks, bars, height, color, background, widthPerBar])
@@ -114,17 +118,13 @@ export default function Waveform({
   return (
     <div role="img" aria-label={ariaLabel} style={{ position: 'relative' }}>
       <canvas ref={canvasRef} />
-      {isDecoding ? (
-        <div style={overlayStyle('Décodage...')}>Décodage...</div>
-      ) : null}
-      {error ? (
-        <div style={overlayStyle(error)}>Forme d'onde indisponible : {error}</div>
-      ) : null}
+      {isDecoding ? <div style={overlayStyle()}>Décodage...</div> : null}
+      {error ? <div style={overlayStyle()}>Forme d'onde indisponible : {error}</div> : null}
     </div>
   )
 }
 
-function overlayStyle(_label: string): React.CSSProperties {
+function overlayStyle(): React.CSSProperties {
   return {
     position: 'absolute',
     inset: 0,

@@ -3,12 +3,15 @@ import { test, expect } from '@playwright/test'
 async function seedAdminSession(page) {
   await page.addInitScript(() => {
     window.localStorage.setItem('tiktok_app_admin_remember_me', 'true')
-    window.localStorage.setItem('tiktok_app_admin_session', JSON.stringify({
-      token: 'playwright-admin-token',
-      expiresAt: Date.now() + 60 * 60 * 1000,
-      role: 'ADMIN',
-      user: { email: 'admin@tiktokapp.local', nom: 'Video Ops Admin' },
-    }))
+    window.localStorage.setItem(
+      'tiktok_app_admin_session',
+      JSON.stringify({
+        token: 'playwright-admin-token',
+        expiresAt: Date.now() + 60 * 60 * 1000,
+        role: 'ADMIN',
+        user: { email: 'admin@tiktokapp.local', nom: 'Video Ops Admin' },
+      }),
+    )
   })
 }
 
@@ -33,6 +36,14 @@ async function mockAccountsApi(page) {
     })
   })
 
+  // Catch-all enregistré EN PREMIER : Playwright matche les handlers en LIFO,
+  // donc les routes spécifiques ci-dessous l'override. Sans ce catch-all,
+  // /api/video-ops/health, /readiness, etc. tapent le vrai backend → 401 →
+  // clearAdminSession() dans adminApiClient → redirect /login.
+  await page.route('**/api/video-ops/**', async (route) => {
+    await route.fulfill({ json: {} })
+  })
+
   await page.route('**/api/video-ops/accounts', async (route) => {
     await route.fulfill({
       json: {
@@ -54,7 +65,9 @@ async function openGroqModal(page) {
   return page.getByRole('dialog', { name: 'Connecter Groq' })
 }
 
-test('opens and closes the accounts service modal through accessible controls', async ({ page }) => {
+test('opens and closes the accounts service modal through accessible controls', async ({
+  page,
+}) => {
   await seedAdminSession(page)
   await mockAccountsApi(page)
   await page.goto('/accounts')

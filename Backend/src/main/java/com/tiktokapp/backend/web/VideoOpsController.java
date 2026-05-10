@@ -89,6 +89,7 @@ public class VideoOpsController {
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
     private final FailedCallbackQueue failedCallbackQueue;
+    private final com.tiktokapp.backend.service.videoops.LlmScriptNormalizationService llmScriptNormalizationService;
 
     public VideoOpsController(
             VideoOpsService videoOpsService,
@@ -102,7 +103,8 @@ public class VideoOpsController {
             BatchPublishService batchPublishService,
             ObjectMapper objectMapper,
             AuditService auditService,
-            FailedCallbackQueue failedCallbackQueue
+            FailedCallbackQueue failedCallbackQueue,
+            com.tiktokapp.backend.service.videoops.LlmScriptNormalizationService llmScriptNormalizationService
     ) {
         this.videoOpsService = videoOpsService;
         this.videoOpsDataService = videoOpsDataService;
@@ -116,6 +118,7 @@ public class VideoOpsController {
         this.objectMapper = objectMapper;
         this.auditService = auditService;
         this.failedCallbackQueue = failedCallbackQueue;
+        this.llmScriptNormalizationService = llmScriptNormalizationService;
     }
 
     @GetMapping("/content-ideas")
@@ -239,6 +242,23 @@ public class VideoOpsController {
                 null
         );
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/content-ideas")
+    public ResponseEntity<JsonNode> createContentIdeaAdmin(
+            @Valid @RequestBody ContentIdeaCreateRequest request,
+            Authentication authentication
+    ) {
+        JsonNode created = videoOpsDataService.createContentIdea(request);
+        auditService.log(
+                null,
+                authentication == null ? null : authentication.getName(),
+                "content_idea.created",
+                "content_idea",
+                created.path("id").asText(null),
+                null
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/content-ideas/bulk-delete")
@@ -516,6 +536,15 @@ public class VideoOpsController {
     ) {
         internalAuthService.validateSecret(internalSecret);
         return ResponseEntity.ok(videoOpsDataService.patchContentIdea(id, patch));
+    }
+
+    @PostMapping("/internal/llm/normalize-script")
+    public ResponseEntity<com.tiktokapp.backend.dto.videoops.LlmScriptNormalizeResponse> normalizeLlmScript(
+            @Valid @RequestBody com.tiktokapp.backend.dto.videoops.LlmScriptNormalizeRequest request,
+            @RequestHeader(name = VideoOpsInternalAuthService.HEADER_NAME, required = false) String internalSecret
+    ) {
+        internalAuthService.validateSecret(internalSecret);
+        return ResponseEntity.ok(llmScriptNormalizationService.normalize(request));
     }
 
     @GetMapping("/internal/tiktok-accounts")

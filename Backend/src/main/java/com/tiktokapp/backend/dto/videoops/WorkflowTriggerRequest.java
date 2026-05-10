@@ -39,6 +39,8 @@ public class WorkflowTriggerRequest {
     private String source;
     @Size(max = TIKTOK_ACCOUNT_OPENID_MAX)
     private String tiktokAccountOpenId;
+    @Size(max = 128)
+    private String tiktokSoundId;
     private Boolean force;
     @Size(max = 120)
     private String templateId;
@@ -154,6 +156,14 @@ public class WorkflowTriggerRequest {
 
     public void setTiktokAccountOpenId(String tiktokAccountOpenId) {
         this.tiktokAccountOpenId = tiktokAccountOpenId;
+    }
+
+    public String getTiktokSoundId() {
+        return tiktokSoundId;
+    }
+
+    public void setTiktokSoundId(String tiktokSoundId) {
+        this.tiktokSoundId = tiktokSoundId;
     }
 
     public Boolean getForce() {

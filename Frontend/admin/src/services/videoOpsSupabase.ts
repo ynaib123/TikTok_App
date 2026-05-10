@@ -27,7 +27,7 @@ const BULK_CONTENT_IDEAS_PAGE_SIZE = 100
 type RawRecord = Record<string, unknown>
 
 function asRecord(value: unknown): RawRecord {
-  return value && typeof value === 'object' ? value as RawRecord : {}
+  return value && typeof value === 'object' ? (value as RawRecord) : {}
 }
 
 function parseJsonValue(value: unknown): unknown {
@@ -61,21 +61,31 @@ function normalizeContentIdea(rawIdea: unknown = {}): ContentIdea {
     id: Number(raw.id || 0),
     category: typeof raw.category === 'string' ? raw.category : null,
     topic: typeof raw.topic === 'string' ? raw.topic : null,
-    script: typeof raw.script === 'string'
-      ? raw.script
-      : (typeof raw.scripts === 'string' ? raw.scripts : null),
+    script:
+      typeof raw.script === 'string'
+        ? raw.script
+        : typeof raw.scripts === 'string'
+          ? raw.scripts
+          : null,
     plannedScenes,
-    generationReview: generationReview && typeof generationReview === 'object' ? generationReview as Record<string, unknown> : null,
+    generationReview:
+      generationReview && typeof generationReview === 'object'
+        ? (generationReview as Record<string, unknown>)
+        : null,
     caption: typeof raw.caption === 'string' ? raw.caption : null,
-    keyword: typeof raw.keyword === 'string'
-      ? raw.keyword
-      : (typeof raw.backgroundKeyword === 'string' ? raw.backgroundKeyword : null),
+    keyword:
+      typeof raw.keyword === 'string'
+        ? raw.keyword
+        : typeof raw.backgroundKeyword === 'string'
+          ? raw.backgroundKeyword
+          : null,
     shotstackStatus: typeof raw.shotstackStatus === 'string' ? raw.shotstackStatus : null,
     tiktokStatus: typeof raw.tiktokStatus === 'string' ? raw.tiktokStatus : null,
     finalVideoStatus: typeof raw.finalVideoStatus === 'string' ? raw.finalVideoStatus : null,
     shotstackUrl: typeof raw.shotstackUrl === 'string' ? raw.shotstackUrl : null,
     uploadUrl: typeof raw.uploadUrl === 'string' ? raw.uploadUrl : null,
-    tiktokAccountOpenId: typeof raw.tiktokAccountOpenId === 'string' ? raw.tiktokAccountOpenId : null,
+    tiktokAccountOpenId:
+      typeof raw.tiktokAccountOpenId === 'string' ? raw.tiktokAccountOpenId : null,
     pipelineStatus: typeof raw.pipelineStatus === 'string' ? raw.pipelineStatus : null,
     lastError: typeof raw.lastError === 'string' ? raw.lastError : null,
     templateId: typeof raw.templateId === 'string' ? raw.templateId : null,
@@ -151,7 +161,6 @@ export async function fetchRecentContentIdeas({
 
 export async function fetchContentIdeaByIdFromPages(
   contentIdeaId: number | string,
-  _options: { size?: number } = {},
 ): Promise<ContentIdea | null> {
   if (!contentIdeaId) {
     throw new Error('Le contentIdeaId est obligatoire.')
@@ -209,7 +218,9 @@ function normalizeAccountsOverview(raw: unknown): AccountsOverview {
   const r = asRecord(raw)
   return {
     tiktokAccounts: Array.isArray(r.tiktokAccounts) ? (r.tiktokAccounts as TikTokAccount[]) : [],
-    serviceConnections: Array.isArray(r.serviceConnections) ? (r.serviceConnections as ServiceConnection[]) : [],
+    serviceConnections: Array.isArray(r.serviceConnections)
+      ? (r.serviceConnections as ServiceConnection[])
+      : [],
     readiness: normalizeAccountsReadiness(r.readiness),
   }
 }
@@ -367,10 +378,9 @@ export async function deleteContentIdeasBulk(contentIdeaIds: number[]): Promise<
   // Bulk delete is idempotent on the server (DELETE twice on the same id is a
   // no-op). Retrying on transient 5xx is therefore safe.
   const { withRetry } = await import('./apiRetry')
-  await withRetry(
-    () => apiPost('/video-ops/content-ideas/bulk-delete', { contentIdeaIds }),
-    { retries: 2 },
-  )
+  await withRetry(() => apiPost('/video-ops/content-ideas/bulk-delete', { contentIdeaIds }), {
+    retries: 2,
+  })
 }
 
 export interface ContentIdeaEditPatch {
@@ -379,6 +389,22 @@ export interface ContentIdeaEditPatch {
   plannedScenes?: unknown
   caption?: string | null
   keyword?: string | null
+}
+
+export interface ContentIdeaCreatePayload {
+  category?: string | null
+  topic: string
+  status?: string | null
+  pipelineStatus?: string | null
+  publishStatus?: string | null
+  platform?: string | null
+  templateId?: string | null
+  tiktokAccountOpenId?: string | null
+}
+
+export async function createContentIdea(payload: ContentIdeaCreatePayload): Promise<ContentIdea> {
+  const response = await apiPost('/video-ops/content-ideas', payload)
+  return normalizeContentIdea(response)
 }
 
 export class ContentIdeaPatchValidationError extends Error {
@@ -398,9 +424,8 @@ export async function updateContentIdeaContent(
   // values never make it past this call. Schema is imported lazily to avoid a
   // circular dependency between the shared service layer and the page-level
   // schemas folder.
-  const { contentIdeaEditPatchSchema, flattenZodIssues } = await import(
-    '../pages/tiktok-journey/journeySchemas'
-  )
+  const { contentIdeaEditPatchSchema, flattenZodIssues } =
+    await import('../pages/tiktok-journey/journeySchemas')
   const parsed = contentIdeaEditPatchSchema.safeParse(patch)
   if (!parsed.success) {
     throw new ContentIdeaPatchValidationError(flattenZodIssues(parsed.error))
@@ -424,14 +449,26 @@ export interface RenderProgress {
   ok: boolean
   runId: number
   progress: number
-  status: 'preparing' | 'rendering' | 'post-processing' | 'uploading' | 'done' | 'error' | 'unknown'
+  status:
+    | 'queued'
+    | 'preparing'
+    | 'rendering'
+    | 'post-processing'
+    | 'uploading'
+    | 'done'
+    | 'error'
+    | 'cancelled'
+    | 'unknown'
   startedAt: number | null
   updatedAt: number | null
+  queuePosition: number | null
   outputUrl: string | null
   error: string | null
 }
 
-export async function fetchRenderVideoProgress(workflowRunId: number | string): Promise<RenderProgress> {
+export async function fetchRenderVideoProgress(
+  workflowRunId: number | string,
+): Promise<RenderProgress> {
   return apiGet(`/video-ops/render-video/progress/${workflowRunId}`)
 }
 
@@ -470,10 +507,13 @@ export async function searchPexelsVideos(
   // Pexels rate-limits aggressively; transient 429/5xx are common during
   // bursts. withRetry adds 2 jittered backoff retries on the boundary.
   const { withRetry } = await import('./apiRetry')
-  return withRetry(() => apiGet<PexelsSearchResponse>(`/video-ops/pexels/videos/search?${qs.toString()}`), {
-    retries: 2,
-    baseDelayMs: 350,
-  })
+  return withRetry(
+    () => apiGet<PexelsSearchResponse>(`/video-ops/pexels/videos/search?${qs.toString()}`),
+    {
+      retries: 2,
+      baseDelayMs: 350,
+    },
+  )
 }
 
 export async function triggerPublishTikTokWorkflow(

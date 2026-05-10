@@ -66,3 +66,39 @@ export async function listAudioAssets(contentIdeaId: number): Promise<AudioAsset
 export async function selectAudioAsset(assetId: number): Promise<AudioAsset> {
   return apiPost<AudioAsset>(`/audio/assets/${assetId}/select`, {})
 }
+
+/* ── Sons natifs TikTok ─────────────────────────────────────────────────── */
+
+export interface TikTokSound {
+  soundId: string
+  title: string
+  authorName: string
+  durationMs: number | null
+  coverUrl: string | null
+  playUrl: string | null
+  videoCount: number | null
+  trending: boolean
+  category: string | null
+}
+
+export interface ImportSoundResponse {
+  sound: TikTokSound
+  alreadyExisted: boolean
+}
+
+export async function fetchTikTokSounds(params?: {
+  category?: string
+  q?: string
+  limit?: number
+}): Promise<TikTokSound[]> {
+  const qs = new URLSearchParams()
+  if (params?.category) qs.set('category', params.category)
+  if (params?.q) qs.set('q', params.q)
+  if (params?.limit) qs.set('limit', String(params.limit))
+  const query = qs.toString()
+  return apiGet<TikTokSound[]>(`/audio/tiktok-sounds${query ? `?${query}` : ''}`)
+}
+
+export async function importTikTokSoundByUrl(videoUrl: string): Promise<ImportSoundResponse> {
+  return apiPost<ImportSoundResponse>('/audio/tiktok-sounds/import', { videoUrl })
+}

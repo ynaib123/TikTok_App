@@ -7,6 +7,7 @@ import {
 import type { ContentIdea, ManualAction } from '../../types'
 import { readJourneyWorkspace } from './journeyWorkspace'
 import { journeyTelemetry } from './journeyTelemetry'
+import type { SceneTextStyle } from './types'
 
 interface PexelsCacheValue {
   query: string
@@ -29,11 +30,16 @@ export interface UseJourneyWorkspaceRestoreArgs {
   setManualAction: Dispatch<SetStateAction<ManualActionLike | null>>
   setPexelsCache: Dispatch<SetStateAction<PexelsCacheValue | null>>
   setSelectedSceneMediaUrls: Dispatch<SetStateAction<string[]>>
-  setSceneTextStyles: Dispatch<SetStateAction<any[]>>
+  setSceneTextStyles: Dispatch<SetStateAction<SceneTextStyle[]>>
   setEditedTopic: (value: string) => void
   setEditedScript: (value: string) => void
   setEditedCaption: (value: string) => void
   setEditedKeyword: (value: string) => void
+  setSelectedTikTokSoundId: (id: string | null) => void
+  setSelectedTemplateId: (id: string) => void
+  setSelectedQualityProfile: (p: string) => void
+  setVideoDurationSec: (s: number) => void
+  setGenerationSceneCount: (n: number) => void
 }
 
 /**
@@ -62,6 +68,11 @@ export function useJourneyWorkspaceRestore({
   setEditedScript,
   setEditedCaption,
   setEditedKeyword,
+  setSelectedTikTokSoundId,
+  setSelectedTemplateId,
+  setSelectedQualityProfile,
+  setVideoDurationSec,
+  setGenerationSceneCount,
 }: UseJourneyWorkspaceRestoreArgs) {
   useEffect(() => {
     if (!isFlowRoute) return undefined
@@ -79,22 +90,27 @@ export function useJourneyWorkspaceRestore({
         ])
         if (cancelled || !idea?.id) return
 
-        const manualActionRecord = manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
+        const manualActionRecord =
+          manualActions.find((item) => Number(item?.id) === Number(idea.id)) || null
 
         setGeneratedIdeas([idea])
         setSelectedGeneratedIdeaId(Number(idea.id))
         setScriptedIdea(idea)
-        setManualAction(manualActionRecord ? { ...manualActionRecord } : {
-          id: Number(idea.id),
-          topic: idea.topic ?? null,
-          shotstackUrl: idea.shotstackUrl || null,
-          uploadUrl: idea.uploadUrl || null,
-          tiktokStatus: idea.tiktokStatus || null,
-          finalVideoStatus: idea.finalVideoStatus || null,
-          shotstackStatus: idea.shotstackStatus || null,
-          pipelineStatus: idea.pipelineStatus || null,
-          lastError: idea.lastError || null,
-        })
+        setManualAction(
+          manualActionRecord
+            ? { ...manualActionRecord }
+            : {
+                id: Number(idea.id),
+                topic: idea.topic ?? null,
+                shotstackUrl: idea.shotstackUrl || null,
+                uploadUrl: idea.uploadUrl || null,
+                tiktokStatus: idea.tiktokStatus || null,
+                finalVideoStatus: idea.finalVideoStatus || null,
+                shotstackStatus: idea.shotstackStatus || null,
+                pipelineStatus: idea.pipelineStatus || null,
+                lastError: idea.lastError || null,
+              },
+        )
 
         journeyTelemetry.trackWorkspaceResumed({ contentIdeaId: Number(idea.id) || null })
 
@@ -107,12 +123,22 @@ export function useJourneyWorkspaceRestore({
             setSelectedSceneMediaUrls(snapshot.selectedSceneMediaUrls.map((u) => String(u || '')))
           }
           if (Array.isArray(snapshot.sceneTextStyles)) {
-            setSceneTextStyles(snapshot.sceneTextStyles as any[])
+            setSceneTextStyles(snapshot.sceneTextStyles as SceneTextStyle[])
           }
           if (typeof snapshot.editedTopic === 'string') setEditedTopic(snapshot.editedTopic)
           if (typeof snapshot.editedScript === 'string') setEditedScript(snapshot.editedScript)
           if (typeof snapshot.editedCaption === 'string') setEditedCaption(snapshot.editedCaption)
           if (typeof snapshot.editedKeyword === 'string') setEditedKeyword(snapshot.editedKeyword)
+          if (typeof snapshot.selectedTikTokSoundId === 'string')
+            setSelectedTikTokSoundId(snapshot.selectedTikTokSoundId)
+          if (typeof snapshot.selectedTemplateId === 'string')
+            setSelectedTemplateId(snapshot.selectedTemplateId)
+          if (typeof snapshot.selectedQualityProfile === 'string')
+            setSelectedQualityProfile(snapshot.selectedQualityProfile)
+          if (typeof snapshot.videoDurationSec === 'number')
+            setVideoDurationSec(snapshot.videoDurationSec)
+          if (typeof snapshot.generationSceneCount === 'number')
+            setGenerationSceneCount(snapshot.generationSceneCount)
         }
       } catch {
         // Resume is best-effort. If it fails, the route still opens normally.

@@ -33,7 +33,6 @@ export type JourneyTelemetrySink = (event: JourneyTelemetryEvent) => void
 let activeSink: JourneyTelemetrySink = (event) => {
   recordAdminPerf(event.name, 0, event.payload)
   if (import.meta.env?.DEV) {
-    // eslint-disable-next-line no-console
     console.debug(`[journey] ${event.name}`, event.payload)
   }
 }
@@ -42,9 +41,11 @@ let activeSink: JourneyTelemetrySink = (event) => {
  * Replace the active sink. Pass `null` to revert to the default sink.
  */
 export function setJourneyTelemetrySink(sink: JourneyTelemetrySink | null) {
-  activeSink = sink ?? ((event) => {
-    recordAdminPerf(event.name, 0, event.payload)
-  })
+  activeSink =
+    sink ??
+    ((event) => {
+      recordAdminPerf(event.name, 0, event.payload)
+    })
 }
 
 function emit(name: JourneyTelemetryEventName, payload: Record<string, unknown> = {}) {
@@ -56,16 +57,34 @@ function emit(name: JourneyTelemetryEventName, payload: Record<string, unknown> 
 }
 
 export const journeyTelemetry = {
-  trackIdeaGenerated(payload: { contentIdeaId: number | null; category?: string | null; sceneCount?: number | null; durationMs?: number | null }) {
+  trackIdeaGenerated(payload: {
+    contentIdeaId: number | null
+    category?: string | null
+    sceneCount?: number | null
+    durationMs?: number | null
+  }) {
     emit('journey.idea_generated', payload)
   },
-  trackRenderStarted(payload: { contentIdeaId: number | null; templateId?: string | null; qualityProfile?: string | null; sceneCount?: number | null }) {
+  trackRenderStarted(payload: {
+    contentIdeaId: number | null
+    templateId?: string | null
+    qualityProfile?: string | null
+    sceneCount?: number | null
+  }) {
     emit('journey.render_started', payload)
   },
-  trackRenderCompleted(payload: { contentIdeaId: number | null; runId?: number | string | null; durationMs?: number | null }) {
+  trackRenderCompleted(payload: {
+    contentIdeaId: number | null
+    runId?: number | string | null
+    durationMs?: number | null
+  }) {
     emit('journey.render_completed', payload)
   },
-  trackRenderFailed(payload: { contentIdeaId: number | null; runId?: number | string | null; reason?: string | null }) {
+  trackRenderFailed(payload: {
+    contentIdeaId: number | null
+    runId?: number | string | null
+    reason?: string | null
+  }) {
     emit('journey.render_failed', payload)
   },
   trackVideoUploaded(payload: { contentIdeaId: number | null }) {

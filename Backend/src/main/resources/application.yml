@@ -41,6 +41,10 @@ spring:
       password: ${SPRING_DATA_REDIS_PASSWORD:}
       timeout: 2s
       connect-timeout: 2s
+      repositories:
+        # Aucune entité @RedisHash dans le projet. Désactiver le scan évite le
+        # warning "Could not safely identify store assignment" sur les repos JPA.
+        enabled: false
       # Lettuce client is lazy : the connection factory bean is created at boot
       # but no TCP connection is opened until a @Cacheable method (or any
       # RedisTemplate operation) actually fires. Caches are gated by
@@ -124,6 +128,13 @@ app:
     read-timeout-ms: ${APP_ELEVENLABS_READ_TIMEOUT_MS:60000}
     storage-path: ${APP_ELEVENLABS_STORAGE_PATH:/app/audio-assets}
     public-base-url: ${APP_ELEVENLABS_PUBLIC_BASE_URL:}
+  tiktok-sounds:
+    research-api-key: ${APP_TIKTOK_RESEARCH_API_KEY:}
+    research-api-base-url: ${APP_TIKTOK_RESEARCH_BASE_URL:https://open.tiktokapis.com}
+    oembed-base-url: ${APP_TIKTOK_OEMBED_BASE_URL:https://www.tiktok.com/oembed}
+    refresh-enabled: ${APP_TIKTOK_SOUNDS_REFRESH_ENABLED:false}
+    default-limit: ${APP_TIKTOK_SOUNDS_DEFAULT_LIMIT:40}
+    read-timeout-ms: ${APP_TIKTOK_SOUNDS_READ_TIMEOUT_MS:15000}
   alerting:
     enabled: ${APP_ALERTING_ENABLED:true}
     slack-webhook-url: ${APP_ALERTING_SLACK_WEBHOOK_URL:}
