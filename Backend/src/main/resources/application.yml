@@ -121,6 +121,16 @@ app:
       # est appliquee meme si le secret interne fuite : un attaquant ne peut pas
       # pretendre etre un chat aleatoire.
       allowed-chat-ids: ${APP_AI_TELEGRAM_ALLOWED_CHAT_IDS:}
+  groq:
+    # Fournisseur LLM gratuit OpenAI-compatible. Utilisé via LlmProviderRouter
+    # quand un agent declare un modelId commencant par llama-/mixtral-/gemma-/groq/.
+    # Le free tier (~14 400 req/jour, 30 req/min) est suffisant pour du test agent.
+    enabled: ${APP_GROQ_ENABLED:false}
+    api-key: ${GROQ_API_KEY:}
+    base-url: ${APP_GROQ_BASE_URL:https://api.groq.com/openai/v1}
+    default-model-id: ${APP_GROQ_DEFAULT_MODEL_ID:llama-3.3-70b-versatile}
+    max-tokens: ${APP_GROQ_MAX_TOKENS:4096}
+    read-timeout-ms: ${APP_GROQ_READ_TIMEOUT_MS:60000}
   anthropic:
     enabled: ${APP_ANTHROPIC_ENABLED:false}
     api-key: ${ANTHROPIC_API_KEY:}

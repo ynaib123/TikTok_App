@@ -1,6 +1,7 @@
 package com.tiktokapp.backend;
 
 import com.tiktokapp.backend.ai.llm.AnthropicProperties;
+import com.tiktokapp.backend.ai.llm.GroqProperties;
 import com.tiktokapp.backend.config.AlertingProperties;
 import com.tiktokapp.backend.config.ElevenLabsProperties;
 import com.tiktokapp.backend.config.RateLimitProperties;
@@ -20,7 +21,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 @EnableScheduling
 @EnableAsync
-@EnableConfigurationProperties({SecurityProperties.class, VideoOpsProperties.class, AlertingProperties.class, RateLimitProperties.class, ElevenLabsProperties.class, AnthropicProperties.class, TikTokSoundProperties.class})
+@EnableConfigurationProperties({SecurityProperties.class, VideoOpsProperties.class, AlertingProperties.class, RateLimitProperties.class, ElevenLabsProperties.class, AnthropicProperties.class, GroqProperties.class, TikTokSoundProperties.class})
 public class TikTokAppBackendApplication {
 
     public static void main(String[] args) {

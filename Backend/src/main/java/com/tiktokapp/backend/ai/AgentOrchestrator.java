@@ -222,24 +222,13 @@ public class AgentOrchestrator {
                     }
                     JsonNode toolOut = tool.execute(toolInput, context);
                     resultNode.put("content", serialize(toolOut));
-                    broadcaster.publish("agent_tool_call", java.util.Map.of(
-                            "runId", context.agentRunId(),
-                            "agentId", context.agentId(),
-                            "tool", toolName,
-                            "ok", true
-                    ));
+                    broadcaster.publish("agent_tool_call", toolEventPayload(context, toolName, true, null));
                 } catch (Exception toolEx) {
                     logger.warn("agent tool failed runId={} tool={} reason={}",
                             context.agentRunId(), toolName, toolEx.getMessage());
                     resultNode.put("content", "{\"error\":\"" + truncate(toolEx.getMessage(), 200) + "\"}");
                     resultNode.put("is_error", true);
-                    broadcaster.publish("agent_tool_call", java.util.Map.of(
-                            "runId", context.agentRunId(),
-                            "agentId", context.agentId(),
-                            "tool", toolName,
-                            "ok", false,
-                            "error", toolEx.getMessage() == null ? "" : toolEx.getMessage()
-                    ));
+                    broadcaster.publish("agent_tool_call", toolEventPayload(context, toolName, false, toolEx.getMessage()));
                 }
                 resultsArr.add(resultNode);
             }
@@ -276,6 +265,21 @@ public class AgentOrchestrator {
         textBlock.put("type", "text");
         textBlock.put("text", input == null ? "{}" : input.toString());
         return message;
+    }
+
+    /**
+     * Construit le payload broadcast pour un tool call. Utilise HashMap (et non
+     * Map.of) parce que {@code agentRunId} est null pour les conversations
+     * (pas de AgentRun persisté côté ConversationalAgentService).
+     */
+    private java.util.Map<String, Object> toolEventPayload(AgentExecutionContext context, String toolName, boolean ok, String errorMessage) {
+        java.util.Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("runId", context.agentRunId());
+        payload.put("agentId", context.agentId());
+        payload.put("tool", toolName);
+        payload.put("ok", ok);
+        if (!ok) payload.put("error", errorMessage == null ? "" : errorMessage);
+        return payload;
     }
 
     record ToolLoopResult(JsonNode output, int totalInputTokens, int totalOutputTokens) {}
